@@ -448,6 +448,9 @@ function parseClub(text){
   const t = (text||'').replace(/\r\n?/g,'\n');
   const RE = /^[ \t]*={3,}[ \t]*([^=\n]+?)[ \t]*={3,}[ \t]*$/gm;
   if(!RE.test(t)) return null;              // no tiene secciones: no es archivo de club
+  // sello de última actualización, para saber qué versión es más nueva entre equipos
+  const st = t.match(/^#\s*actualizado:\s*(.+)$/mi);
+  const stamp = st ? Date.parse(st[1].trim()) : 0;
   RE.lastIndex = 0;
   const secs = []; let m, prev = null;
   while((m = RE.exec(t))){
@@ -456,7 +459,7 @@ function parseClub(text){
     secs.push(prev);
   }
   prev.end = t.length;
-  const out = { read:[], vault:[], mazo:null };
+  const out = { read:[], vault:[], mazo:null, stamp: isNaN(stamp)?0:stamp };
   secs.forEach(s=>{
     const cuerpo = t.slice(s.start, s.end);
     if(/mazo|carta/.test(s.name)){ out.mazo = parseMazo(cuerpo); return; }

@@ -113,6 +113,7 @@ async function gameShifumi(){
         <div class="sf-name" style="color:var(--pa)">${escapeHtml(State.players.a)}</div>
         <div class="sf-keys">✊ <b>A</b> · ✋ <b>S</b> · ✌️ <b>D</b></div>
         <div class="sf-hand" id="sfHandA">🤜</div>
+        <div class="sf-tap" data-p="a"><button data-h="r">✊</button><button data-h="p">✋</button><button data-h="s">✌️</button></div>
         <div class="sf-books" id="sfBooksA"></div>
       </div>
       <div class="sf-mid serif" id="sfMid">—</div>
@@ -120,12 +121,24 @@ async function gameShifumi(){
         <div class="sf-name" style="color:var(--pb)">${escapeHtml(State.players.b)}</div>
         <div class="sf-keys">✊ <b>J</b> · ✋ <b>K</b> · ✌️ <b>L</b></div>
         <div class="sf-hand" id="sfHandB">🤛</div>
+        <div class="sf-tap" data-p="b"><button data-h="r">✊</button><button data-h="p">✋</button><button data-h="s">✌️</button></div>
         <div class="sf-books" id="sfBooksB"></div>
       </div>
     </div>`;
   const mid = $('#sfMid');
   const KEYMAP = { a:['a','r'], s:['a','p'], d:['a','s'], j:['b','r'], k:['b','p'], l:['b','s'] };
   let picks = {}, listening = false;
+  // elegir la mano tocando (teléfono): el mismo camino que el teclado
+  const elegir = (p, hand)=>{
+    if(!listening || picks[p]) return;
+    picks[p] = hand;
+    $(p==='a'?'#sfHandA':'#sfHandB').textContent = '✅';
+    stage.querySelectorAll(`.sf-tap[data-p="${p}"] button`).forEach(b=>b.classList.toggle('on', b.dataset.h===hand));
+    Sound.fx.click();
+  };
+  stage.querySelectorAll('.sf-tap button').forEach(btn=>{
+    btn.addEventListener('click', ()=>elegir(btn.parentElement.dataset.p, btn.dataset.h));
+  });
 
   function renderSides(){
     ['a','b'].forEach(p=>{
@@ -156,6 +169,7 @@ async function gameShifumi(){
     picks = {};
     $('#sfHandA').textContent = '🤜';
     $('#sfHandB').textContent = '🤛';
+    stage.querySelectorAll('.sf-tap button.on').forEach(b=>b.classList.remove('on'));
     for(const n of ['3','2','1']){
       mid.textContent = n;
       Sound.fx.shuffle();
@@ -229,6 +243,10 @@ async function gameSoga(){
       </svg>
       <div class="soga-side" style="color:var(--pb)">${escapeHtml(State.players.b)}<br><b>L</b></div>
     </div>
+    <div class="soga-tap">
+      <button class="soga-btn" data-p="a" style="--pc:var(--pa)">${escapeHtml(State.players.a)} ¡TIRÁ!</button>
+      <button class="soga-btn" data-p="b" style="--pc:var(--pb)">${escapeHtml(State.players.b)} ¡TIRÁ!</button>
+    </div>
     <div class="soga-books">
       <div class="soga-team" id="teamA"></div>
       <div class="soga-team" id="teamB"></div>
@@ -271,24 +289,31 @@ async function gameSoga(){
     requestAnimationFrame(ropeLoop);
   })();
 
+  // un tirón, venga del teclado o del botón táctil
+  function tirar(p){
+    if(!active) return;
+    if(p==='a') pos -= 3.4 * (fav==='a' ? 1.25+Math.random()*.35 : 0.8+Math.random()*.25);
+    else        pos += 3.4 * (fav==='b' ? 1.25+Math.random()*.35 : 0.8+Math.random()*.25);
+    lastPress = Date.now();
+    Sound.noise({dur:.07, vol:.07, lp:1200, hp:150});
+    Sound.tone({freq:70 + Math.abs(pos)*1.3, dur:.06, type:'triangle', vol:.05});
+    check();
+  }
   document.addEventListener('keydown', function onKey(e){
     if(!document.getElementById('sogaRope')){ document.removeEventListener('keydown', onKey); clearInterval(drift); return; }
-    if(!active) return;
     const k = e.key.toLowerCase();
     if(held.has(k)) return;
     held.add(k);
-    let pulled = false;
-    if(k==='a'){ pos -= 3.4 * (fav==='a' ? 1.25+Math.random()*.35 : 0.8+Math.random()*.25); pulled = true; }
-    if(k==='l'){ pos += 3.4 * (fav==='b' ? 1.25+Math.random()*.35 : 0.8+Math.random()*.25); pulled = true; }
-    if(pulled){
-      lastPress = Date.now();
-      // estirón: crujido + tensión que sube con la posición
-      Sound.noise({dur:.07, vol:.07, lp:1200, hp:150});
-      Sound.tone({freq:70 + Math.abs(pos)*1.3, dur:.06, type:'triangle', vol:.05});
-      check();
-    }
+    if(k==='a') tirar('a');
+    else if(k==='l') tirar('b');
   });
   document.addEventListener('keyup', e=>held.delete(e.key.toLowerCase()));
+  // los botones: cada toque es un tirón (machacar con el dedo)
+  stage.querySelectorAll('.soga-btn').forEach(btn=>{
+    const go = e=>{ e.preventDefault(); tirar(btn.dataset.p);
+      btn.classList.remove('hit'); void btn.offsetWidth; btn.classList.add('hit'); };
+    btn.addEventListener('pointerdown', go);
+  });
 
   function check(){
     if(Math.abs(pos) >= 100 && active){

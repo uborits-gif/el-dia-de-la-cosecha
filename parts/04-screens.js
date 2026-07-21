@@ -24,6 +24,8 @@ async function screenHome(){
       </div>
     </div>
 
+    <div id="syncBox" class="mt-l"></div>
+
     <section class="mt-l" id="honorSection">
       <div class="section-head">
         <div>
@@ -113,6 +115,7 @@ async function screenHome(){
   mountVaultFilter($('#vfHome'), ()=>$('#homeCloset'));
   renderRecuerdos($('#recBox'));
   renderMazo($('#mazoBox'));
+  renderSync($('#syncBox'));
   renderResumen($('#resumenBox'));
   $('#wrapBtn').addEventListener('click', ()=>{ Sound.fx.click(); screenResumenEvento(); });
   try{ renderStats($('#statsBox')); }catch(e){ $('#statsBox').innerHTML = `<div class="st-hint" style="margin-top:14px;">No pude calcular las estadísticas: ${escapeHtml(e.message)}</div>`; }

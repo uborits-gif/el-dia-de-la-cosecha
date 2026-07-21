@@ -1375,6 +1375,28 @@ h1.title{
 @keyframes fortBlink{50%{opacity:.25;box-shadow:0 0 4px rgba(232,195,74,.3);}}
 .fort-wrap .wheel-pointer{top:2px;}
 
+/* ---- ☁️ Sincronizar con GitHub ---- */
+.sync-card{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  padding:16px 20px;border-radius:16px;border:1px solid var(--border-soft);
+  background:linear-gradient(165deg, rgba(20,32,20,.6), rgba(9,15,10,.75));
+}
+.sync-card.on{border-color:rgba(232,195,74,.3);}
+.sync-state{display:flex;align-items:center;gap:13px;min-width:0;}
+.sync-dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--grey);}
+.sync-card.on .sync-dot{background:#6BF7A6;box-shadow:0 0 10px rgba(107,247,166,.8);}
+.sync-t{font-family:"sztos-variable",'Inter',sans-serif;font-variation-settings:"wght" 680,"wdth" 106;font-size:14px;}
+.sync-s{font-size:12px;color:var(--bone-dim);margin-top:2px;overflow:hidden;text-overflow:ellipsis;}
+.sync-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.sync-field{display:flex;flex-direction:column;gap:5px;margin-top:14px;}
+.sync-field b{font-size:12px;color:var(--bone-dim);font-weight:600;}
+.sync-field input{
+  background:var(--bg-soft);border:1px solid var(--border);color:var(--bone);
+  border-radius:10px;padding:11px 13px;font-family:'Inter';font-size:13px;outline:none;
+}
+.sync-field input:focus{border-color:var(--amber);}
+.sync-help{font-size:11.5px;color:var(--grey);line-height:1.5;margin:7px 0 0;}
+
 /* ---- La Sesión: el juego embebido a pantalla total ---- */
 #sesionWrap{position:fixed;inset:0;z-index:6000;background:#050804;}
 #sesionFrame{width:100%;height:100%;border:none;display:block;}
@@ -2489,6 +2511,109 @@ h1.title.sz-hero{
   .pl-arrow.prev{left:6px;} .pl-arrow.next{right:6px;}
   .section-head{flex-direction:column;align-items:flex-start;}
 }
+/* botones táctiles de los juegos de teclas (sirven en teléfono y en compu) */
+.sf-tap{display:flex;gap:8px;justify-content:center;margin-top:12px;}
+.sf-tap button{
+  width:46px;height:46px;border-radius:12px;font-size:22px;cursor:pointer;
+  background:var(--card);border:1.5px solid var(--border);transition:.15s;
+}
+.sf-tap button:active, .sf-tap button.on{border-color:var(--amber);background:rgba(201,248,57,.12);transform:scale(1.08);}
+.soga-tap{display:flex;gap:14px;justify-content:center;margin-top:16px;}
+.soga-btn{
+  flex:1;max-width:240px;padding:20px 12px;border-radius:16px;cursor:pointer;
+  font-family:"sztos-variable",'Inter',sans-serif;font-variation-settings:"wght" 800,"wdth" 108;
+  font-size:16px;letter-spacing:.04em;text-transform:uppercase;color:#0A1209;
+  background:var(--pc,var(--amber));border:none;user-select:none;-webkit-user-select:none;touch-action:manipulation;
+  box-shadow:0 8px 20px -8px color-mix(in srgb, var(--pc,#888) 60%, transparent);
+}
+.soga-btn.hit{animation:sogaHit .16s ease;}
+@keyframes sogaHit{50%{transform:scale(.93);}}
+
+/* ============================================================
+   📱 MOBILE — la app en el bolsillo, pensada para el pulgar
+   ============================================================ */
+/* touch (sin hover): las X de borrar viven visibles, no escondidas tras el mouse */
+@media (hover: none){
+  .del-x{opacity:.92;transform:scale(1);}
+  .vault-slot .del-x{top:-6px;right:-6px;width:26px;height:26px;}
+  /* nada de estados :hover que se quedan pegados al tocar */
+  .btn:hover, .load-btn:hover, .game-tile:hover, .rz-premio:hover,
+  .carta.mini:hover, .foto-thumb:hover, .rec-card:hover{transform:none;}
+}
+
+@media (max-width:560px){
+  .wrap{padding:36px 16px 96px;}
+  h1.title{font-size:clamp(34px,10vw,50px);}
+  .lead{font-size:14.5px;}
+  .mt-l{margin-top:34px;}
+  .mt-m{margin-top:22px;}
+
+  /* todo lo tocable, con área de pulgar (mín. 44px de alto) */
+  .btn{padding:15px 26px;font-size:15px;}
+  .btn-sm{padding:12px 20px;font-size:13.5px;}
+  .load-btn{padding:12px 16px;font-size:13px;}
+  .vf-lens, .vf-pop button{padding:13px 15px;}
+  .pl2-tool{padding:7px 7px 7px 8px;}
+  .pt-pick{width:30px;height:30px;}
+  .tpl-link{padding:6px 0;display:inline-block;}
+
+  /* las filas de acciones: full-width, cada botón crece parejo */
+  .home-load{width:100%;gap:8px;}
+  .home-load .load-btn{flex:1 1 auto;justify-content:center;min-width:44%;}
+  .section-head{flex-direction:column;align-items:stretch;gap:12px;}
+  .section-head > div:first-child{text-align:left;}
+
+  /* la barra de la cosecha: nombres, lugar, temática y foto apilados y anchos */
+  .names{flex-direction:column;align-items:stretch !important;gap:12px !important;}
+  .names > span, .names > label{justify-content:flex-start;}
+  .names .ninput{width:100% !important;}
+  #temaEmoji{width:64px !important;flex:none;}
+  .foto-pick{width:100%;flex-wrap:wrap;}
+
+  /* overlays y ventanitas: respiran hasta los bordes */
+  .overlay{padding:18px 14px;}
+  .ov-pop{max-width:100% !important;width:100%;}
+  .ov-pop.placard2, .pl2-frame{width:100%;}
+
+  /* el selector de juegos y las apuestas: 2 columnas justas */
+  .game-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .gt-name{font-size:13.5px;}
+  .gt-desc{font-size:11px;}
+  .ap-grid{gap:14px;}
+  .ap-item{padding:8px;}
+
+  /* recuerdos: la mesa un poco más baja para que entre en pantalla */
+  .rec-board{height:58vh;}
+
+  /* la ceremonia del final y los duelos ya apilan; achico estrellas */
+  .rate-stars.big{font-size:34px;letter-spacing:4px;}
+  .fin-name{min-width:56px;font-size:12px;}
+
+  /* el mazo y la carta grande caben */
+  .carta{width:min(74vw,240px);height:auto;aspect-ratio:190/288;}
+  .mazo-fila{gap:12px;}
+
+  /* botones flotantes: un toque más grandes y separados del borde */
+  #muteBtn{width:44px;height:44px;top:12px;right:12px;}
+  #resetBtn, #abortBtn{padding:9px 15px;font-size:12px;opacity:.75;}
+
+  /* el wrapped: la cifra gigante que no reviente */
+  .rz-big{font-size:clamp(54px,20vw,110px);}
+  .rz-podio{gap:12px;}
+  .rz-premio{min-width:100%;max-width:100%;}
+
+  /* sync */
+  .sync-card{flex-direction:column;align-items:stretch;gap:14px;}
+  .sync-actions{width:100%;}
+  .sync-actions .load-btn{flex:1;justify-content:center;}
+}
+
+/* pantallitas muy chicas (iPhone SE y menores) */
+@media (max-width:360px){
+  .game-grid{grid-template-columns:1fr;}
+  h1.title{font-size:clamp(30px,11vw,42px);}
+}
+
 @media (prefers-reduced-motion: reduce){
   #grain{animation:none;}
   .book-float{animation:none;}

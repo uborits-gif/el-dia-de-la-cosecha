@@ -385,7 +385,7 @@ async function gameFortuna(){
   gameShell('La Rueda de la Fortuna', 'Girá y rezá', 'Una vuelta. El puntero corona.');
   await Promise.all(kit.alive.map(b=>ensureColor(b)));
 
-  const S = Math.min(520, Math.floor(innerWidth*0.86));
+  const S = Math.min(520, Math.floor(innerWidth*0.86) - 62);   // deja lugar para la marquesina
   const cv = document.createElement('canvas');
   cv.width = S*2; cv.height = S*2;              // retina
   cv.style.cssText = `width:${S}px;height:${S}px;display:block;`;

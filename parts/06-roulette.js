@@ -406,9 +406,13 @@ function serializeBook(b, {placeholders=false}={}){
 function serializeClub(){
   const sec = (nombre, lista)=>`===== ${nombre} =====\n\n` +
     lista.map(b=>serializeBook(b)).join('\n---\n');
-  return sec('ESTANTE DE HONOR', State.read) + '\n\n' + sec('THE VAULT', State.vault)
+  const stamp = new Date().toISOString();
+  try{ localStorage.setItem('cosecha:clubStamp', stamp); }catch(e){}
+  return `# actualizado: ${stamp}\n\n`
+       + sec('ESTANTE DE HONOR', State.read) + '\n\n' + sec('THE VAULT', State.vault)
        + '\n\n===== EL MAZO =====\n\n' + serializeMazo() + '\n';
 }
+const clubStampLocal = ()=>{ try{ return Date.parse(localStorage.getItem('cosecha:clubStamp')||'')||0; }catch(e){ return 0; } };
 function downloadClub(){
   downloadText('el-club.txt', serializeClub());
   toast(`El club en un archivo · ${State.read.length} leídos + ${State.vault.length} en la bóveda`);
@@ -509,6 +513,7 @@ function confirmReset(){
   await loadPersisted();
   await loadFotos();
   await loadCartas();
+  await syncAlArrancar();          // trae del club de GitHub si hay uno conectado
   const rb = document.getElementById('resetBtn');
   if(rb) rb.addEventListener('click', confirmReset);
   const ab = document.getElementById('abortBtn');
