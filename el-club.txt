@@ -1,0 +1,607 @@
+===== ESTANTE DE HONOR =====
+
+titulo: Yo que nunca supe de los hombres
+portada: https://www.alianzaeditorial.es/imagenes/libros/grande/9791370090982-yo-que-nunca-supe-de-los-hombres.jpg
+sinopsis: Una niña crece encerrada con otras mujeres sin saber qué pasó afuera.
+cosechas: 27 feb 2026
+puntajes: Uri 5 | Maru 4
+dias de lectura: 28
+encuentros: 3
+nota: El libro fundacional del club, de la era pre-cosecha.
+autor: Jacqueline Harpman
+año: 1995
+género: Ficción distópica
+páginas: 184
+país: Bélgica
+tropes: Dark, Sad, Psychological, Identity, Female friendships, Found family, First-person, Cerebral
+blind quote: Creció encerrada sin saber por qué.
+leído: mar 2026
+---
+titulo: Proyecto Hail Mary
+portada: https://www.penguinlibros.com/ar/7605283/proyecto-hail-mary.jpg
+sinopsis: Un hombre despierta solo en una nave sin recordar quién es.
+traido por: Uri
+cosechas: 20 mar 2026 · El Bodegón
+elegidos: 20 mar 2026 · portada
+victorias: 20 mar 2026 · Ruleta clásica
+puntajes: Maru 3.5 | Uri 4
+encuentros: 3
+autor: Andy Weir
+año: 2021
+género: Ciencia ficción
+páginas: 650
+país: Estados Unidos
+tropes: Brainy, Amnesia, Found family, Action-packed, Emotional, Suspenseful, Cerebral, First-person
+blind quote: Despertó solo en el espacio, sin memoria.
+leído: abr 2026
+---
+titulo: La vegetariana
+portada: https://www.penguinlibros.com/ar/4591201-large_default/la-vegetariana.webp
+sinopsis: Una mujer decide dejar de comer carne y todo se vuelve perturbador.
+traido por: Maru
+cosechas: 10 abr 2026 · Casa de Uri
+elegidos: 10 abr 2026 · titulo
+victorias: 10 abr 2026 · Papelitos · empate de honor
+puntajes: Uri 3.5 | Maru 4
+encuentros: 3
+autor: Han Kang
+año: 2007
+género: Thriller psicológico / Ficción literaria
+páginas: 240
+país: Corea del Sur
+tropes: Psychological, Dark, Unhinged, Marriage issues, Social issues, Identity, Creepy, Family drama
+blind quote: Dejó la carne y todo se pudrió.
+leído: may 2026
+---
+titulo: The Wedding People
+portada: https://mpd-biblio-covers.imgix.net/9781250899576.jpg
+sinopsis: Una mujer llega sola a un hotel lleno de gente de una boda, en el momento en el que quiere suicidarse.
+traido por: Uri
+cosechas: 20 mar 2026 · El Bodegón | fecha ?
+elegidos: 20 mar 2026 · titulo
+rescates: 10 abr 2026 · Maru
+victorias: 10 abr 2026 · Papelitos · empate de honor
+puntajes: Uri 2.5 | Maru 1.5
+dias de lectura: 79
+encuentros: 3
+autor: Alison Espach
+año: 2024
+género: Ficción contemporánea
+páginas: 360
+país: Estados Unidos
+tropes: Marriage issues, Dark humor, Witty banter, Emotional, Character-driven, Quirky, Grief, Psychological
+blind quote: Llegó al hotel a hacer otra cosa.
+leído: jun 2026
+---
+titulo: We Were Liars
+portada: https://pictures.abebooks.com/inventory/32409233500_125f79ff-0703-4218-af6f-83edb1fa55d8.jpg
+sinopsis: Una adolescente vuelve a la isla de su familia para reconstruir los recuerdos perdidos de un verano que cambió todo.
+traido por: Maru
+cosechas: 28 jun 2026 · Casa de Uri
+elegidos: 28 jun 2026 · sinopsis
+victorias: 28 jun 2026 · Ruleta clásica
+puntajes: Uri 2.5 | Maru 4
+dias de lectura: 12
+encuentros: 3
+autor: E. Lockhart
+año: 2014
+género: Thriller juvenil
+páginas: 240
+país: Estados Unidos
+tropes: Teens, Amnesia, Twisty, Unreliable narrator, Family drama, Grief, Emotional, Suspenseful
+blind quote: El verano que nadie quiere recordar.
+leído: jul 2026
+---
+titulo: Dark Matter
+portada: https://cloudfront-us-east-1.images.arcpublishing.com/infobae/7OWEEGMQRNHNTPOYI7WTV6MORY.jpg
+sinopsis: Un físico es secuestrado y queda atrapado entre las infinitas versiones de la vida que podría haber vivido según cada decisión que tomó.
+traido por: Uri
+cosechas: 10 jul 2026 · Casa de Uri
+elegidos: 10 jul 2026 · sinopsis
+victorias: 10 jul 2026 · Ta-Te-Ti
+autor: Blake Crouch
+año: 2016
+género: Thriller de ciencia ficción
+páginas: 380
+país: Estados Unidos
+tropes: Action-packed, Emotional, Brainy, Twisty, Suspenseful, Multiple viewpoints, First-person, Fast read
+blind quote: Todas las vidas que no viviste.
+leído: jul 2026
+
+===== THE VAULT =====
+
+titulo: 10 días en un manicomio
+portada: https://http2.mlstatic.com/D_NQ_NP_768098-MLA91991514890_092025-O.webp
+sinopsis: Una periodista finge estar loca para infiltrarse en un manicomio y denunciar sus abusos.
+traido por: Maru
+cosechas: 20 mar 2026 · El Bodegón
+elegidos: 20 mar 2026 · sinopsis
+autor: Nellie Bly
+año: 1887
+género: Periodismo de investigación / No ficción
+páginas: 114
+país: Estados Unidos
+tropes: Periodismo, Under 200 pages, Dark, Psychological, Social issues, Strong female lead, Gritty
+blind quote: Se hizo la loca para entrar.
+---
+titulo: Bajo este sol tremendo
+portada: https://acdn-us.mitiendanube.com/stores/001/029/689/products/9788433971852-bajo-este-sol-tremendo1-b2e0d7b1992e02475416436395328415-1024-1024.webp
+sinopsis: Tras un doble asesinato, un hombre se adentra en un mundo de violencia y decadencia.
+traido por: Maru
+cosechas: 20 mar 2026 · El Bodegón
+elegidos: 20 mar 2026 · titulo
+autor: Carlos Busqued
+año: 2009
+género: Novela negra / Thriller
+páginas: 184
+país: Argentina
+tropes: Gritty, Dark, Graphic violence, Drug & alcohol use, Psychological, Unhinged, Character-driven, Sad
+blind quote: Dos muertos y un calor insoportable.
+---
+titulo: Distancia de rescate
+portada: https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1532327641i/23153581.jpg
+sinopsis: Una madre intenta recordar qué ocurrió antes de que un misterioso envenenamiento cambiara todo.
+traido por: Maru
+cosechas: 20 mar 2026 · El Bodegón
+elegidos: 20 mar 2026 · portada
+autor: Samanta Schweblin
+año: 2014
+género: Terror psicológico
+páginas: 128
+país: Argentina
+tropes: Creepy, Psychological, Mama drama, Supernatural, Suspenseful, Atmospheric, Under 200 pages
+blind quote: ¿A qué distancia salvás a tu hijo?
+---
+titulo: Private Rites
+portada: https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1709679654i/199313102.jpg
+sinopsis: Tres hermanas enfrentan secretos familiares en un mundo donde nunca deja de llover.
+traido por: Uri
+cosechas: 20 mar 2026 · El Bodegón
+elegidos: 20 mar 2026 · sinopsis
+autor: Julia Armfield
+año: 2024
+género: Ficción especulativa / Distopía
+páginas: 208
+país: Reino Unido
+tropes: Sister dynamic, LGBTQ+ themes, Family drama, Grief, Atmospheric, Nature, Emotional, Dark
+blind quote: Tres hermanas y una lluvia eterna.
+---
+titulo: Atmosphere
+portada: https://acdn-us.mitiendanube.com/stores/004/088/117/products/730344-04b2aa8a6aa7eb3aa617471561306918-480-0.webp
+sinopsis: Un entorno hostil parece cobrar vida mientras un grupo lucha por sobrevivir.
+traido por: Uri
+cosechas: 20 mar 2026 · El Bodegón
+autor: Taylor Jenkins Reid
+año: 2025
+género: Ficción romántica / Ficción histórica
+páginas: 384
+país: Estados Unidos
+tropes: 1970s setting, Romance, Emotional, Character-driven, Brainy, Found family, Strong female lead
+blind quote: Querer las estrellas sale carísimo.
+---
+titulo: Las indignas
+portada: https://www.penguinlibros.com/ar/7615290-thickbox_default/las-indignas.webp
+sinopsis: Un grupo de mujeres sobrevive bajo el control de un culto religioso opresivo.
+traido por: Maru
+cosechas: 20 mar 2026 · El Bodegón | fecha ?
+rescates: 10 abr 2026 · Uri
+anulaciones: 10 abr 2026 · volvieron a sortear
+autor: Agustina Bazterrica
+año: 2023
+género: Ficción especulativa / Terror
+páginas: 192
+país: Argentina
+tropes: Secta, Dark, Creepy, Female friendships, Psychological, Social issues, Strong female lead, Gritty
+blind quote: Adentro del convento nadie es inocente.
+---
+titulo: El perfume
+portada: https://cdn.culturagenial.com/es/imagenes/perfume-cke.jpg?class=article
+sinopsis: Un hombre con un olfato extraordinario mata para crear el perfume perfecto.
+traido por: Maru
+cosechas: 10 abr 2026 · Casa de Uri | fecha ?
+elegidos: 10 abr 2026 · sinopsis
+rescates: 28 jun 2026 · Maru
+autor: Patrick Süskind
+año: 1985
+género: Novela histórica / Thriller psicológico
+páginas: 256
+país: Alemania
+tropes: Serial killer, Creepy, Dark, Psychological, Character-driven, Unhinged, Murder mystery
+blind quote: Mata para embotellar el olor perfecto.
+---
+titulo: Las cosas que dejamos sin terminar
+portada: https://m.media-amazon.com/images/I/71ckZsAgdTL._AC_UF1000,1000_QL80_.jpg
+sinopsis: Una escritora descubre un gran romance del pasado al terminar una novela inconclusa.
+traido por: Maru
+cosechas: 10 abr 2026 · Casa de Uri
+autor: Rebecca Yarros
+año: 2021
+género: Romance
+páginas: 452
+país: Estados Unidos
+tropes: Romance, Dual timelines, Tear-jerker, Emotional, Writer's life, Slow-burn, Grief
+blind quote: Terminar la novela de un muerto.
+---
+titulo: Martyr
+portada: https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1683818219i/139400713.jpg
+sinopsis: Un joven poeta obsesionado con los mártires busca descubrir la historia de su madre y darle sentido a su vida.
+traido por: Uri
+cosechas: 10 abr 2026 · Casa de Uri
+elegidos: 10 abr 2026 · portada
+autor: Kaveh Akbar
+año: 2024
+género: Ficción contemporánea
+páginas: 332
+país: Estados Unidos / Irán
+tropes: Addiction themes, Drug & alcohol use, Grief, Identity, Character-driven, LGBTQ+ themes, Emotional, Sad
+blind quote: Quiere que su muerte signifique algo.
+---
+titulo: El final se escribe solo
+portada: https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1755804731l/236447384.jpg
+sinopsis: Varios escritores aislados en una isla compiten por escribir el mejor final para una novela, pero la ficción empieza a volverse real.
+traido por: Uri
+cosechas: 10 abr 2026 · Casa de Uri | fecha ?
+elegidos: 10 abr 2026 · sinopsis
+rescates: 28 jun 2026 · Uri
+autor: Evelyn Clarke
+año: 2026
+género: Thriller literario / Misterio
+páginas: 448
+país: Reino Unido
+tropes: Writer's life, Famous author, Whodunit, Murder mystery, Twisty, Suspenseful, Puzzle
+blind quote: Escritores en una isla. La ficción gana.
+---
+titulo: Trenza del mar esmeralda
+portada: https://www.penguinlibros.com/ar/2742491/trenza-del-mar-esmeralda.jpg
+sinopsis: Una joven cruza océanos mortales para rescatar al chico que ama.
+traido por: Uri
+cosechas: 10 abr 2026 · Casa de Uri
+elegidos: 10 abr 2026 · titulo
+autor: Brandon Sanderson
+año: 2023
+género: Fantasía
+páginas: 560
+país: Estados Unidos
+tropes: Magical, Action-packed, Romance subplot, Strong female lead, 400+ pages, Quirky, Cozy setting
+blind quote: Cruzar mares que matan, por amor.
+---
+titulo: Amanecer en la Cosecha
+portada: https://www.penguinlibros.com/ar/5303821/los-juegos-del-hambre-5-amanecer-en-la-cosecha.jpg
+sinopsis: Haymitch debe sobrevivir a la edición más brutal de los Juegos del Hambre.
+traido por: Uri
+cosechas: 28 jun 2026 · Casa de Uri
+autor: Suzanne Collins
+año: 2025
+género: Ciencia ficción juvenil / Distopía
+páginas: 496
+país: Estados Unidos
+tropes: Teens, Action-packed, Dark, Underdog, Rebelión, Emotional, Social issues, Coming-of-age
+blind quote: Los juegos más brutales de todos.
+---
+titulo: Condenada
+portada: https://images.cdn2.buscalibre.com/fit-in/360x360/ce/2c/ce2c9049ed41dc4c25929d8bb0c967db.jpg
+sinopsis: Una adolescente despierta en el infierno e intenta descubrir por qué terminó allí.
+traido por: Maru
+cosechas: 28 jun 2026 · Casa de Uri | fecha ?
+elegidos: 28 jun 2026 · portada
+rescates: 10 jul 2026 · Maru
+autor: Chuck Palahniuk
+año: 2011
+género: Ficción humorística / Sátira
+páginas: 256
+país: Estados Unidos
+tropes: Dark humor, Teens, Satirical, First-person, Quirky, Dark, Unhinged, LOL
+blind quote: Se despertó en el infierno, y opina.
+lomo color: #cb9c6a
+---
+titulo: Dorayaki
+portada: https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1705668477i/205636254.jpg
+sinopsis: La amistad entre un pastelero y una anciana transforma la vida de ambos.
+traido por: Uri
+cosechas: 28 jun 2026 · Casa de Uri | fecha ?
+elegidos: 28 jun 2026 · sinopsis
+rescates: 10 jul 2026 · Uri
+descartes: 10 jul 2026 · Maru
+autor: Durian Sukegawa
+año: 2013
+género: Ficción contemporánea
+páginas: 200
+país: Japón
+tropes: Cozy, Emotional, Sad, Tear-jerker, Found family, Light read, Social issues
+blind quote: Una anciana, un pastelero, un secreto dulce.
+---
+titulo: Yesteryear
+portada: https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1775927905i/247522184.jpg
+sinopsis: Una influencer obsesionada con la vida trad-wife despierta atrapada en el estilo de vida perfecto que siempre mostró en redes.
+traido por: Uri
+cosechas: 28 jun 2026 · Casa de Uri
+elegidos: 28 jun 2026 · titulo
+autor: Caro Claire Burke
+año: 2026
+género: Ficción contemporánea / Thriller
+páginas: 488
+país: Estados Unidos
+tropes: Marriage issues, Family drama, Psychological, Social issues, Buzzy, Satirical, Unreliable narrator, Suburban drama
+blind quote: Su vida perfecta se volvió cárcel.
+---
+titulo: Y entonces desperté
+portada: https://distopolis.com/wp-content/uploads/2025/12/y-entonces-desperte-1-scaled.png
+sinopsis: Una mujer protege a un niño hasta descubrir que la realidad es muy distinta de lo que creía.
+traido por: Maru
+cosechas: 28 jun 2026 · Casa de Uri
+elegidos: 28 jun 2026 · titulo
+autor: Malcolm Devlin
+año: 2022
+género: Terror / Ciencia ficción
+páginas: 136
+país: Reino Unido
+tropes: Unreliable narrator, Psychological, Creepy, Dark, Identity, Brainy, Twisty
+blind quote: Nada de lo que ves es real.
+---
+titulo: Notes on an Execution
+portada: https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1631888297l/57773248.jpg
+sinopsis: Un asesino serial espera su ejecución mientras la historia se cuenta desde la mirada de las mujeres marcadas por sus crímenes.
+traido por: Uri
+cosechas: 20 mar 2026 · El Bodegón
+autor: Danya Kukafka
+año: 2022
+género: Thriller literario
+páginas: 306
+país: Estados Unidos
+tropes: Serial killer, Multiple viewpoints, Psychological, Dark, Emotional, Social issues, Character-driven, Sad
+blind quote: El asesino espera. Ellas cuentan.
+---
+titulo: Te daría el sol
+portada: https://www.penguinlibros.com/ar/1641194/te-daria-el-sol.jpg
+sinopsis: Dos hermanos gemelos se distancian tras una tragedia y deberán reencontrarse para reconstruir su historia.
+traido por: Maru
+cosechas: 20 mar 2026 · El Bodegón
+autor: Jandy Nelson
+año: 2014
+género: Ficción juvenil (Young Adult)
+páginas: 424
+país: Estados Unidos
+tropes: Teens, Family drama, Coming-of-age, Grief, Multiple viewpoints, LGBTQ+ themes, Emotional, Romance subplot
+blind quote: Gemelos partidos por la mitad.
+---
+titulo: Soy un gato
+portada: https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1681815750i/135015499.jpg
+sinopsis: Un gato observa con ironía la vida de los humanos y reflexiona sobre la sociedad japonesa de su época.
+traido por: Maru
+cosechas: 10 abr 2026 · Casa de Uri
+elegidos: 10 abr 2026 · portada
+autor: Natsume Sōseki
+año: 1905
+género: Ficción clásica / Sátira
+páginas: 656
+país: Japón
+tropes: Satirical, Quirky, Dark humor, Social issues, Cerebral, Character-driven, First-person
+blind quote: Un gato juzga a los humanos.
+---
+titulo: Los ojos son la mejor parte
+portada: https://acdn-us.mitiendanube.com/stores/004/088/117/products/732019-edf515f202a705f13917510424771636-1024-1024.webp
+sinopsis: Tras la desaparición de su padre, una joven desarrolla una perturbadora obsesión que la empuja hacia la violencia.
+traido por: Maru
+cosechas: 28 jun 2026 · Casa de Uri
+autor: Monika Kim
+año: 2024
+género: Terror psicológico
+páginas: 368
+país: Estados Unidos
+tropes: Creepy, Unhinged, Dark, Psychological, Family drama, Social issues, Identity, Revenge
+blind quote: Su obsesión empieza por los ojos.
+---
+titulo: Antes vivíamos aquí
+portada: https://libroide.ar/cdn/shop/files/979138769012.jpg?v=1759358666
+sinopsis: Una familia compra una vieja casa, pero la llegada de unos extraños convence a la protagonista de que hay algo profundamente inquietante en ese lugar.
+traido por: Maru
+cosechas: 28 jun 2026 · Casa de Uri
+autor: Marcus Kliewer
+año: 2024
+género: Terror / Thriller psicológico
+páginas: 303
+país: Estados Unidos
+tropes: Haunted house, Creepy, Psychological, LGBTQ+ themes, Twisty, Suspenseful, Unreliable narrator
+blind quote: Los dueños anteriores no se fueron.
+---
+titulo: Pedro Páramo
+portada: https://semanariouniversidad.com/wp-content/uploads/2020/12/portadilla-pedro-paramo.jpg
+sinopsis: Un hombre viaja a un pueblo para buscar a su padre y descubre un lugar habitado por los recuerdos de sus muertos.
+traido por: Maru
+cosechas: 10 abr 2026 · Casa de Uri
+autor: Juan Rulfo
+año: 1955
+género: Novela realista mágica
+páginas: 128
+país: México
+tropes: Magical realism, Multi-generational, Haunted house, Grief, Atmospheric, Family drama, Nonlinear timeline
+blind quote: Un pueblo donde todos están muertos.
+---
+titulo: 1984
+portada: https://sbslibreria.vtexassets.com/arquivos/ids/5702132/Rsxg3nsva5FV7D5VTpM9-yxmOI4-.jpg?v=639104936490930000
+sinopsis: En un régimen totalitario donde el Gran Hermano lo vigila todo, un hombre se atreve a desafiar al sistema.
+traido por: Maru
+cosechas: 20 mar 2026 · El Bodegón
+autor: George Orwell
+año: 1949
+género: Distopía
+páginas: 328
+país: Reino Unido
+tropes: Rebelión, Dark, Psychological, Social issues, Brainy, Suspenseful, Sad, Unreliable narrator
+blind quote: Alguien te mira mientras leés esto.
+---
+titulo: Diez negritos
+portada: https://m.media-amazon.com/images/I/51gdWyGWY3L._SL1050_.jpg
+sinopsis: Diez desconocidos quedan atrapados en una isla donde un asesino comienza a eliminarlos uno por uno.
+traido por: Uri
+cosechas: 10 abr 2026 · Casa de Uri
+autor: Agatha Christie
+año: 1939
+género: Misterio / Policial
+páginas: 168
+país: Reino Unido
+tropes: Whodunit, Murder mystery, Puzzle, Suspenseful, Dark, Multiple viewpoints, Twisty, Creepy
+blind quote: Diez en una isla. Caen uno a uno.
+---
+titulo: Número dos
+portada: https://www.penguinlibros.com/ar/1790751-thickbox_default/numero-dos.webp
+sinopsis: El chico que estuvo a un paso de ser Harry Potter debe aprender a vivir con el peso de haber sido el eterno número dos.
+traido por: Uri
+cosechas: 10 abr 2026 · Casa de Uri
+autor: David Foenkinos
+año: 2022
+género: Ficción contemporánea
+páginas: 224
+país: Francia
+tropes: Character-driven, Emotional, Identity, Underdog, Sad, Coming-of-age, Psychological
+blind quote: Casi fue el elegido. Casi.
+---
+titulo: Confesión
+portada: https://cms.anagrama-ed.es/uploads/media/portadas/0001/24/735d83a0dc4fda86464022bef13eb0245c8571c4.jpeg
+sinopsis: Tres historias entrelazadas en distintas épocas de Argentina, desde la confesión íntima de una adolescente sobre sus sentimientos por un joven Jorge Rafael Videla, hasta los minuciosos preparativos de un grupo revolucionario para atentar contra él.
+traido por: Maru
+cosechas: 10 jul 2026 · Casa de Uri
+autor: Martín Kohan
+año: 2020
+género: Ficción literaria / Novela histórica
+páginas: 200
+país: Argentina
+tropes: 1970s setting, Nonlinear timeline, Multiple viewpoints, Social issues, Cerebral, Dark
+blind quote: Una confesión sobre un dictador joven.
+---
+titulo: Carrie
+portada: https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSgRbjjaQT9yGkBoZs480muiPhgo4gKIq5flHVYiYwi3xxPwWLJEJG4DH8&s=10
+sinopsis: Una adolescente víctima de bullying descubre que tiene poderes telequinéticos, y una noche de graduación lo cambia todo.
+traido por: Maru
+cosechas: 10 jul 2026 · Casa de Uri
+elegidos: 10 jul 2026 · titulo
+autor: Stephen King
+año: 1974
+género: Terror
+páginas: 256
+país: Estados Unidos
+tropes: Teens, Supernatural, Graphic violence, Mama drama, Dark, Emotional, Revenge, Witchcraft
+blind quote: No la hagan enojar en el baile.
+---
+titulo: Frankenstein
+portada: https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJ931ljm1u9A5uxa39DY_yEXba2JHVxrDycdVxg0c7PZjGU_Qm9ZydaAVt&s=10
+sinopsis: Un científico desafía los límites de la vida al crear un ser humano, pero su experimento se convierte en una pesadilla.
+traido por: Maru
+cosechas: 10 jul 2026 · Casa de Uri
+elegidos: 10 jul 2026 · sinopsis
+autor: Mary Shelley
+año: 1818
+género: Ciencia ficción clásica / Terror gótico
+páginas: 256
+país: Reino Unido
+tropes: Dark, Psychological, Emotional, Sad, Creepy, Identity, Cerebral
+blind quote: Creó vida y no supo quererla.
+---
+titulo: Criaturas luminosas
+portada: https://www.penguinlibros.com/mx/6385447/criaturas-luminosas.jpg
+sinopsis: La amistad entre una viuda, un joven perdido y un pulpo extraordinariamente inteligente termina cambiando la vida de todos.
+traido por: Maru
+cosechas: 10 jul 2026 · Casa de Uri
+elegidos: 10 jul 2026 · portada
+autor: Shelby Van Pelt
+año: 2022
+género: Ficción contemporánea
+páginas: 416
+país: Estados Unidos
+tropes: Emotional, Quirky, Tear-jerker, Nature, Found family, Grief, Multi-generational, Light read
+blind quote: Un pulpo sabe lo que vos no.
+---
+titulo: La ladrona de libros
+portada: https://acdn-us.mitiendanube.com/stores/004/088/117/products/708423-4ce549dd7cfa7f0c2517292846766481-1024-1024.webp
+sinopsis: Durante la Alemania nazi, una niña encuentra refugio en los libros mientras la Muerte narra su historia.
+traido por: Maru
+cosechas: 10 jul 2026 · Casa de Uri
+autor: Markus Zusak
+año: 2005
+género: Ficción histórica
+páginas: 544
+país: Australia
+tropes: Tear-jerker, Sad, Found family, Teens, Dark, Emotional, First-person
+blind quote: La Muerte cuenta y roba palabras.
+---
+titulo: La vida invisible de Addie LaRue
+portada: https://www.edicionesurano.com/media/resources/public/87/87d6/87d6f55146764a55b924bfc3094c9807_wAmapO3
+sinopsis: Tras hacer un pacto con el diablo para vivir eternamente, Addie descubre que todos la olvidan al instante... hasta que, siglos después, alguien la recuerda.
+traido por: Uri
+cosechas: 10 jul 2026 · Casa de Uri
+autor: V.E. Schwab
+año: 2020
+género: Fantasía / Ficción histórica
+páginas: 448
+país: Estados Unidos
+tropes: Amnesia, Magical, Romance, Slow build, Emotional, Found family, Dual timelines
+blind quote: Todos la olvidan apenas se va.
+---
+titulo: Carl el mazmorrero
+portada: https://mattdinniman.com/wp-content/uploads/2026/05/Book-1-Ace-cover-scaled.jpg
+sinopsis: Tras la destrucción de la Tierra, Carl y la gata de su ex deben sobrevivir a un reality show intergaláctico, organizado por aliens, donde cada nivel está diseñado para matarlos.
+traido por: Uri
+cosechas: 10 jul 2026 · Casa de Uri
+elegidos: 10 jul 2026 · portada
+descartes: 10 jul 2026 · Uri
+autor: Matt Dinniman
+año: 2020
+género: LitRPG / Ciencia ficción cómica
+páginas: 462
+país: Estados Unidos
+tropes: Action-packed, LOL, Quirky, Graphic violence, Fast read, Unhinged, Brainy, Dark humor
+blind quote: La Tierra explotó. Empieza el reality.
+---
+titulo: La segunda venida de Hilda Bustamante
+portada: https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1688138927i/152015728.jpg
+sinopsis: Una entrañable anciana argentina vuelve inexplicablemente de la muerte, cambiando para siempre la vida de todo un pueblo.
+traido por: Uri
+cosechas: 10 jul 2026 · Casa de Uri
+elegidos: 10 jul 2026 · titulo
+autor: Salomé Esper
+año: 2023
+género: Ficción contemporánea / Realismo mágico
+páginas: 168
+país: Argentina
+tropes: Magical realism, Quirky, Cozy, Family drama, Multi-generational, Emotional, Tear-jerker
+blind quote: La abuela volvió de la muerte.
+---
+titulo: La casa del mar más azul
+portada: https://mpd-biblio-covers.imgix.net/9781250217288.jpg
+sinopsis: Un trabajador social es enviado a evaluar un orfanato que oculta un secreto: todos los niños tienen magia.
+traido por: Uri
+cosechas: 10 jul 2026 · Casa de Uri
+autor: TJ Klune
+año: 2020
+género: Fantasía acogedora (Cozy fantasy)
+páginas: 496
+país: Estados Unidos
+tropes: Cozy, Found family, LGBTQ+ themes, Magical, Light read, Romance subplot, Tear-jerker, Emotional
+blind quote: Un orfanato con secretos mágicos.
+---
+titulo: Revival
+portada: https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1510335323i/20926278.jpg
+sinopsis: Un músico se reencuentra con un antiguo pastor cuya obsesión por descubrir qué hay después de la muerte lo lleva a desafiar límites aterradores.
+traido por: Uri
+cosechas: 28 jun 2026 · Casa de Uri
+autor: Stephen King
+año: 2014
+género: Terror
+páginas: 416
+país: Estados Unidos
+tropes: Supernatural, Creepy, Dark, Multi-generational, Addiction themes, Grief, Unhinged, First-person
+blind quote: Un pastor obsesionado con el más allá.
+---
+titulo: Best Offer Wins
+portada: https://m.media-amazon.com/images/I/81PY6my8vbL.jpg
+sinopsis: Cuando la obsesión de una mujer por encontrar la casa de sus sueños llega demasiado lejos, llevará la "búsqueda inmobiliaria" a un nivel completamente nuevo.
+traido por: Uri
+cosechas: 28 jun 2026 · Casa de Uri
+elegidos: 28 jun 2026 · portada
+autor: Marisa Kashino
+año: 2024
+género: Ficción contemporánea / Comedia oscura
+páginas: 288
+país: Estados Unidos
+tropes: Fast read, Movieish, Unreliable narrator, Unhinged, Dark humor, Suburban drama
+blind quote: Buscar casa puede volverse mortal.
