@@ -1690,12 +1690,24 @@ h1.title.sz-hero{
 .pl2-edit input:focus{border-color:var(--amber);}
 .tl-n{color:var(--grey);font-size:10px;letter-spacing:.08em;}
 @media (max-width:980px){
-  .pl2-view{max-height:92vh;overflow-y:auto;}
-  .placard2{display:flex;flex-direction:column;gap:14px;padding:10px 4px;}
-  .pl2-book{order:1;min-height:340px;}
-  .pl2-pill{order:2;margin-top:0;}
-  .pl2-left{order:3;} .pl2-right{order:4;}
-  .pl2-panel{max-height:none;overflow:visible;}
+  .pl2-frame{width:100%;}
+  .pl2-view{max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  /* mobile: portada arriba + UNA sola hoja continua (header → secciones) */
+  .placard2{display:flex;flex-direction:column;gap:0;padding:4px 0 0;}
+  .pl2-book{order:1;min-height:300px;margin-bottom:8px;}
+  /* el título pasa a ser el ENCABEZADO de la hoja */
+  .pl2-pill{order:2;width:100%;max-width:none;margin:0;justify-self:stretch;
+    border-radius:20px 20px 0 0;border-bottom:none;padding:16px 20px 14px;box-shadow:none;}
+  /* los dos paneles se funden en la misma hoja, con divisores internos */
+  .pl2-panel{order:3;width:100%;max-height:none;overflow:visible;border-radius:0;
+    border-top:1px solid rgba(30,61,38,.4);border-bottom:none;padding:20px;box-shadow:none;
+    background:linear-gradient(180deg, rgba(12,20,13,.97), rgba(7,12,8,.98));}
+  .pl2-left{order:3;}
+  .pl2-right{order:4;border-radius:0 0 20px 20px;border-bottom:1px solid var(--border-soft);
+    padding-bottom:28px;}
+  .pl2-right .pl2-h{margin-top:0;font-size:11px;color:var(--amber-soft);}
+  .pl2-syn{font-size:16px;line-height:1.72;}
+  .pl2-pill + .pl2-panel, .pl2-left{border-top-color:transparent;}  /* header pega con synopsis, sin línea doble */
   .pl2-arrow.prev{left:2px;} .pl2-arrow.next{right:2px;}
 }
 .pl-link{display:inline-flex;align-items:center;gap:7px;margin-top:18px;font-size:13px;color:var(--amber);text-decoration:none;border:1px solid rgba(201,248,57,.3);border-radius:999px;padding:9px 18px;transition:.2s;}
