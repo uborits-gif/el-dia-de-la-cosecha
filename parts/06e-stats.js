@@ -314,15 +314,26 @@ function renderStats(container){
     </div>`;
   };
 
-  /* línea de tiempo de publicación */
-  const ys = S.anios.map(x=>x.y);
-  const minY = ys.length ? Math.min(...ys) : 1900, maxY = ys.length ? Math.max(...ys) : 2026;
-  const spanY = Math.max(1, maxY-minY);
-  const dots = S.anios.map(({y,b})=>{
-    const p = 4 + (y-minY)/spanY*92;
-    const c = (b.traidoPor||'').toLowerCase()===A.toLowerCase() ? 'var(--pa)'
-            : (b.traidoPor||'').toLowerCase()===B.toLowerCase() ? 'var(--pb)' : 'var(--grey)';
-    return `<div class="st-yr" style="left:${p}%;--bc:${c}" title="${escapeHtml(b.titulo)} · ${y}"></div>`;
+  /* línea de tiempo de publicación → timeline VERTICAL, cronológica e interactiva.
+     Antes era una línea horizontal con puntos que se amontonaban en lo reciente. */
+  const decColor = b => (b.traidoPor||'').toLowerCase()===A.toLowerCase() ? 'var(--pa)'
+        : (b.traidoPor||'').toLowerCase()===B.toLowerCase() ? 'var(--pb)' : 'var(--grey)';
+  const cronos = S.anios.slice().sort((x,z)=>x.y-z.y);   // más viejo → más nuevo
+  let lastDecLabel = null;
+  const tline = cronos.map(({y,b})=>{
+    const c = decColor(b);
+    const dec = y < 1950 ? '‹1950' : (Math.floor(y/10)*10)+'s';
+    const sep = dec !== lastDecLabel ? (lastDecLabel = dec, `<div class="st-tl-era">${dec}</div>`) : '';
+    const meta = [b.autor, b.pais].filter(Boolean).join(' · ');
+    return `${sep}<button class="st-tl-node" data-id="${escapeHtml(String(b.id))}" style="--pc:${c}">
+      <span class="st-tl-dot"></span>
+      <span class="st-tl-cover" style="${b.portada?`background-image:url('${b.portada.replace(/'/g,'%27')}')`:`background:${c}`}"></span>
+      <span class="st-tl-body">
+        <span class="st-tl-title">${escapeHtml(b.titulo)}</span>
+        ${meta?`<span class="st-tl-meta">${escapeHtml(meta)}</span>`:''}
+      </span>
+      <span class="st-tl-year">${y}</span>
+    </button>`;
   }).join('');
 
   /* ribbon de géneros: monocromo con acento (nada de arcoíris) */
@@ -486,10 +497,8 @@ function renderStats(container){
       ])}
 
       <div class="st-rlab" style="margin:34px 0 0;">Línea de tiempo de publicación</div>
-      <div class="st-years">${dots}
-        <div class="st-yrlab" style="left:4%;">${minY}</div>
-        <div class="st-yrlab" style="left:96%;">${maxY}</div>
-      </div>
+      <div class="st-note" style="margin:2px 0 12px;">De lo más viejo a lo más nuevo. Tocá un libro para abrirlo.</div>
+      <div class="st-timeline">${tline || '<div class="st-hint">Todavía sin años cargados.</div>'}</div>
       <div class="st-duel">
         <div class="st-duel-s" style="--pc:var(--pa)">
           <div class="st-duel-y">${S.decadas.a||'—'}</div>
@@ -597,6 +606,16 @@ function renderStats(container){
         showPlacard(list, i<0?0:i, { source: State.read.includes(b) ? 'honor' : 'vault' });
       });
       box.appendChild(holder);
+    });
+  });
+  // timeline de publicación: tocar un libro lo abre
+  $$('.st-tl-node', container).forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const id = node.dataset.id;
+      const list = [...State.read, ...State.vault];
+      const i = list.findIndex(x=>String(x.id)===id);
+      if(i>=0){ try{ Sound.fx.click(); }catch(e){}
+        showPlacard(list, i, { source: State.read.some(x=>String(x.id)===id) ? 'honor' : 'vault' }); }
     });
   });
   // animaciones de entrada
