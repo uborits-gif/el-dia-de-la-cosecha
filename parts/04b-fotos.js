@@ -22,6 +22,7 @@ async function loadFotos(){
 async function persistFotos(){
   const raw = JSON.stringify(State.fotos);
   if(HAS_STORAGE){ try{ await window.storage.set(FOTOS_KEY, raw); }catch(e){} }
+  if(typeof syncFotos === 'function') syncFotos();   // ☁️ sube/borra fotos en la nube
   try{
     localStorage.setItem(FOTOS_KEY, raw);
     return true;

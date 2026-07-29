@@ -1,13 +1,12 @@
 
 /* ============================================================
    ☁️ SINCRONIZACIÓN AUTOMÁTICA — Firebase Firestore
-   El club vive en la nube. Guardás y aparece solo en todos
-   los dispositivos, en tiempo real. Sin archivos, sin tokens.
+   El club vive en la nube y se pone al día solo en todos los
+   dispositivos, en tiempo real. Sin archivos, sin tokens.
    ------------------------------------------------------------
-   · Al abrir la app, se conecta y escucha cambios en vivo.
-   · Cada cosecha / vasallaje / edición se sube sola.
-   · Si otro dispositivo cambió algo, entra solo (last-write-wins).
-   · Las fotos NO se sincronizan (pesan mucho): quedan por dispositivo.
+   · club/main  → estante, bóveda, jugadores y mazo (un doc).
+   · fotos/{id} → cada recuerdo, un doc (se sincronizan también).
+   · Nunca pisa un cambio local que todavía no subió (sello de fecha).
    ============================================================ */
 
 const FB_CONFIG = {
@@ -23,11 +22,20 @@ const FB_VER = '10.12.2';
 const Sync = {
   ready:false, on:false, error:'',
   clientId: Math.random().toString(36).slice(2),
-  lastAt: 0,
-  fs:null, db:null, ref:null,
-  applying:false, pushTimer:null,
-  pending:null,
+  localAt: 0,          // fecha del último cambio local (persiste entre recargas)
+  lastAt: 0,           // último 'updatedAt' que aplicamos/subimos del club
+  fs:null, db:null, ref:null, fotosRef:null,
+  applying:false, applyingFotos:false, pushTimer:null,
+  pending:null, fotoIds:new Set(),
 };
+
+function loadLocalAt(){
+  try{ Sync.localAt = +localStorage.getItem('cosecha:localAt') || 0; }catch(e){ Sync.localAt = 0; }
+}
+function bumpLocalAt(){
+  Sync.localAt = Date.now();
+  try{ localStorage.setItem('cosecha:localAt', String(Sync.localAt)); }catch(e){}
+}
 
 /* ¿hay una cosecha/vasallaje en curso? (para no pisar el juego) */
 function syncEnJuego(){
@@ -42,6 +50,7 @@ function syncEnJuego(){
 
 /* ---------- arranque ---------- */
 async function initSync(){
+  loadLocalAt();
   try{
     const appMod = await import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app.js`);
     const fsMod  = await import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-firestore.js`);
@@ -49,18 +58,42 @@ async function initSync(){
     const app = appMod.initializeApp(FB_CONFIG);
     Sync.db  = fsMod.getFirestore(app);
     Sync.ref = fsMod.doc(Sync.db, 'club', 'main');
+    Sync.fotosRef = fsMod.collection(Sync.db, 'fotos');
     Sync.ready = true;
 
+    // -------- club en vivo --------
     fsMod.onSnapshot(Sync.ref, (snap)=>{
-      if(!snap.exists()){ syncPush(true); return; }   // primera vez: sembrar desde este dispositivo
+      if(!snap.exists()){ syncPush(true); return; }     // primera vez: sembrar desde acá
       const d = snap.data() || {};
-      if(d.clientId === Sync.clientId) return;         // es el eco de mi propia escritura
+      if(d.clientId === Sync.clientId) return;           // eco de mi propia escritura
       const at = +d.updatedAt || 0;
-      if(at && at <= Sync.lastAt) return;              // no hay nada más nuevo
-      if(syncEnJuego()){ Sync.pending = d; return; }   // guardá para cuando vuelva al home
-      aplicarRemoto(d);
-      Sync.lastAt = at || Date.now();
+      if(at > Sync.localAt){                              // la nube es más nueva → entra
+        if(syncEnJuego()){ Sync.pending = d; return; }
+        aplicarRemoto(d);
+        Sync.localAt = at; try{ localStorage.setItem('cosecha:localAt', String(at)); }catch(e){}
+        Sync.lastAt = at;
+      } else if(at < Sync.localAt){                       // lo mío es más nuevo y no subió → subilo
+        syncPush(true);
+      }
     }, (err)=>{ syncBadge('err', err && err.message); });
+
+    // -------- fotos en vivo --------
+    fsMod.onSnapshot(Sync.fotosRef, (qs)=>{
+      const arr = []; const ids = new Set();
+      qs.forEach(doc=>{
+        ids.add(doc.id);
+        const x = doc.data() || {};
+        if(x.deleted) return;
+        arr.push({ id:doc.id, src:x.src, w:x.w, h:x.h, fecha:x.fecha, lugar:x.lugar, libro:x.libro, pie:x.pie });
+      });
+      Sync.fotoIds = ids;
+      Sync.applyingFotos = true;
+      State.fotos = arr;
+      try{ persistFotos(); }catch(e){}
+      Sync.applyingFotos = false;
+      const rb = document.querySelector('#recBox');
+      if(rb){ try{ renderRecuerdos(rb); }catch(e){} }
+    }, ()=>{});
 
     syncBadge('on');
   }catch(e){
@@ -91,7 +124,7 @@ async function aplicarRemoto(d){
   if(document.querySelector('#syncBox')){ try{ screenHome(); }catch(e){} }
 }
 
-/* ---------- subir a la nube ---------- */
+/* ---------- subir el club ---------- */
 function syncPayload(){
   const club = {
     read: State.read,
@@ -99,9 +132,10 @@ function syncPayload(){
     players: State.players,
     mazo: { mano: Cartas.mano, historial: Cartas.historial },
   };
-  return { data: JSON.stringify(club), updatedAt: Date.now(), clientId: Sync.clientId };
+  const at = Sync.localAt || Date.now();
+  Sync.localAt = at; try{ localStorage.setItem('cosecha:localAt', String(at)); }catch(e){}
+  return { data: JSON.stringify(club), updatedAt: at, clientId: Sync.clientId };
 }
-
 async function syncPush(inmediato=false){
   if(!Sync.ready) return;
   const doIt = async ()=>{
@@ -120,7 +154,33 @@ async function syncPush(inmediato=false){
 /* lo llaman persist() y persistCartas() cuando algo cambia localmente */
 function onLocalChange(){
   if(!Sync.ready || Sync.applying) return;
+  bumpLocalAt();
   syncPush();
+}
+
+/* ---------- fotos ---------- */
+function fotoLimpia(f){
+  return { src:f.src, w:f.w||0, h:f.h||0, fecha:f.fecha||'', lugar:f.lugar||'',
+           libro:f.libro||'', pie:f.pie||'', updatedAt: Date.now() };
+}
+async function syncFotos(){
+  if(!Sync.ready || Sync.applyingFotos || !Sync.fotosRef) return;
+  try{
+    const local = new Map((State.fotos||[]).map(f=>[f.id, f]));
+    // nuevas → subir (cada una su doc)
+    for(const [id, f] of local){
+      if(!Sync.fotoIds.has(id) && f && f.src){
+        try{ await Sync.fs.setDoc(Sync.fs.doc(Sync.db, 'fotos', id), fotoLimpia(f)); }
+        catch(e){ toast('Una foto es muy pesada para la nube y quedó solo en este dispositivo'); }
+      }
+    }
+    // borradas localmente → borrar en la nube
+    for(const id of Sync.fotoIds){
+      if(!local.has(id)){
+        try{ await Sync.fs.deleteDoc(Sync.fs.doc(Sync.db, 'fotos', id)); }catch(e){}
+      }
+    }
+  }catch(e){}
 }
 
 /* ---------- estado visual ---------- */
@@ -134,11 +194,13 @@ function syncBadge(state, msg){
 /* ---------- la tarjeta del home ---------- */
 function renderSync(box){
   if(!box) return;
-  // si quedó un cambio remoto pendiente (por estar jugando) y ya volviste, aplicalo
   if(Sync.pending && !syncEnJuego()){
     const d = Sync.pending; Sync.pending = null;
-    aplicarRemoto(d); Sync.lastAt = +d.updatedAt || Date.now();
-    return; // aplicarRemoto vuelve a renderizar el home
+    const at = +d.updatedAt || Date.now();
+    aplicarRemoto(d);
+    Sync.localAt = at; try{ localStorage.setItem('cosecha:localAt', String(at)); }catch(e){}
+    Sync.lastAt = at;
+    return;
   }
   const on = Sync.on;
   const titulo = on ? 'Sincronización activada'
@@ -165,6 +227,7 @@ function renderSync(box){
     try{ Sound.fx.click(); }catch(e){}
     if(!Sync.ready){ toast('Reconectando…'); initSync(); return; }
     await syncPush(true);
+    await syncFotos();
     toast('Sincronizado ✓');
   });
 }
