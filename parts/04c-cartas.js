@@ -46,6 +46,7 @@ async function persistCartas(){
   const raw = JSON.stringify(Cartas);
   try{ localStorage.setItem('cosecha:cartas', raw); }catch(e){}
   if(HAS_STORAGE){ try{ await window.storage.set('cosecha:cartas', raw); }catch(e){} }
+  if(typeof onLocalChange === 'function') onLocalChange();   // ☁️ sube a la nube (Firestore)
 }
 
 /* al archivo del club: legible y editable a mano */

@@ -162,6 +162,7 @@ async function persist(){
     localStorage.setItem('cosecha:vault', JSON.stringify(State.vault));
     localStorage.setItem('cosecha:names', JSON.stringify(State.players));
   }catch(e){}
+  if(typeof onLocalChange === 'function') onLocalChange();   // ☁️ sube a la nube (Firestore)
 }
 
 /* ---------- utilidades ---------- */
