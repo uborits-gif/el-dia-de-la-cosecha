@@ -219,10 +219,9 @@ function screenRoulette(){
    ============================================================ */
 async function celebrate(winner, fellThisRun){
   Flow.hide();
-  // los caídos de ESTE juego vuelan al cajón acá mismo, no recién al final
-  const caidos = (fellThisRun||[])
-    .map(id=>cosechaParticipants().find(b=>b.id===id)).filter(Boolean);
-  if(caidos.length) await drawerReturn(caidos, { eyebrow:'El juego se cobró' });
+  // Los libros que no ganan vuelven a la bóveda en UNA sola animación, recién
+  // después de festejar al ganador (más abajo, al aceptar). Antes se animaban
+  // los caídos acá y de nuevo los finalistas al final → la animación se veía dos veces.
   Sound.fx.fanfare();
   setTimeout(()=>Sound.playCelebration(), 500);   // canción sorpresa (sin mostrar el nombre)
   ensureColor(winner).then(c=>{
@@ -272,14 +271,12 @@ async function celebrate(winner, fellThisRun){
         Sound.fx.click();
         clearInterval(burstTimer);
         await renameUndo(`la cosecha de «${winner.titulo}»`);
-        // TODOS los que jugaron (menos el ganador) vuelven a la bóveda con su historial al día.
-        // Al cajón vuelan solo los que NO cayeron durante el juego (esos ya volaron).
-        const enVault = new Set(State.vault.map(v=>v.id));
+        // TODOS los que jugaron (menos el ganador) vuelven a la bóveda con su historial
+        // al día, en UNA sola animación (después del festejo del ganador).
         const losers = returnLosersToVault([winner]);
-        const nuevos = losers.filter(b=>!enVault.has(b.id));
-        if(nuevos.length){
+        if(losers.length){
           wash.remove();
-          await drawerReturn(nuevos);
+          await drawerReturn(losers);
           finishHarvest(winner, null);
         } else {
           finishHarvest(winner, wash);
