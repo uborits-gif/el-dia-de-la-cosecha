@@ -1689,25 +1689,35 @@ h1.title.sz-hero{
 }
 .pl2-edit input:focus{border-color:var(--amber);}
 .tl-n{color:var(--grey);font-size:10px;letter-spacing:.08em;}
+.pl2-exp{display:none;}
 @media (max-width:980px){
   .pl2-frame{width:100%;}
   .pl2-view{max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-  /* mobile: portada arriba + UNA sola hoja continua (header → secciones) */
+  /* mobile estilo Criterion: portada grande + tarjeta que se abre con la flechita */
   .placard2{display:flex;flex-direction:column;gap:0;padding:4px 0 0;}
-  .pl2-book{order:1;min-height:300px;margin-bottom:8px;}
-  /* el título pasa a ser el ENCABEZADO de la hoja */
+  .pl2-book{order:1;min-height:340px;margin-bottom:10px;}
+  /* la barra del título: se toca la flechita para desplegar */
   .pl2-pill{order:2;width:100%;max-width:none;margin:0;justify-self:stretch;
-    border-radius:20px 20px 0 0;border-bottom:none;padding:16px 20px 14px;box-shadow:none;}
-  /* los dos paneles se funden en la misma hoja, con divisores internos */
-  .pl2-panel{order:3;width:100%;max-height:none;overflow:visible;border-radius:0;
-    border-top:1px solid rgba(30,61,38,.4);border-bottom:none;padding:20px;box-shadow:none;
+    border-radius:20px;padding:14px 14px 14px 18px;box-shadow:0 -14px 44px -22px rgba(0,0,0,.9);}
+  .pl2-exp{display:flex;align-items:center;justify-content:center;flex:none;
+    width:36px;height:36px;border-radius:50%;border:1px solid var(--border);
+    background:rgba(20,34,22,.85);color:var(--bone);font-size:20px;line-height:1;
+    cursor:pointer;transition:transform .32s var(--ease-pop);}
+  /* paneles (sinopsis + historial): parte de la misma hoja cuando se abre */
+  .pl2-panel{order:3;width:100%;max-height:none;overflow:visible;box-shadow:none;
+    border:none;border-radius:0;padding:20px;
     background:linear-gradient(180deg, rgba(12,20,13,.97), rgba(7,12,8,.98));}
-  .pl2-left{order:3;}
-  .pl2-right{order:4;border-radius:0 0 20px 20px;border-bottom:1px solid var(--border-soft);
-    padding-bottom:28px;}
+  .pl2-left{order:3;padding-top:22px;}
+  .pl2-right{order:4;border-top:1px solid rgba(30,61,38,.4);
+    border-radius:0 0 20px 20px;border-bottom:1px solid var(--border-soft);padding-bottom:28px;}
   .pl2-right .pl2-h{margin-top:0;font-size:11px;color:var(--amber-soft);}
   .pl2-syn{font-size:16px;line-height:1.72;}
-  .pl2-pill + .pl2-panel, .pl2-left{border-top-color:transparent;}  /* header pega con synopsis, sin línea doble */
+  /* colapsado por defecto: solo portada + barra de título */
+  .placard2:not(.pl2-open) .pl2-left,
+  .placard2:not(.pl2-open) .pl2-right{display:none;}
+  /* abierto: la barra se pega a la hoja y la flechita gira */
+  .placard2.pl2-open .pl2-pill{border-radius:20px 20px 0 0;}
+  .placard2.pl2-open .pl2-exp{transform:rotate(180deg);}
   .pl2-arrow.prev{left:2px;} .pl2-arrow.next{right:2px;}
 }
 .pl-link{display:inline-flex;align-items:center;gap:7px;margin-top:18px;font-size:13px;color:var(--amber);text-decoration:none;border:1px solid rgba(201,248,57,.3);border-radius:999px;padding:9px 18px;transition:.2s;}
@@ -1726,6 +1736,27 @@ h1.title.sz-hero{
   box-shadow:0 4px 10px rgba(0,0,0,.5);
 }
 .del-x.peek{opacity:1;transform:scale(1);}
+
+/* borrar desde adentro de la ficha (bóveda) */
+.pl2-del{margin-top:18px;width:100%;background:none;border:1px solid rgba(224,106,94,.4);
+  color:var(--danger);border-radius:10px;padding:11px;font-family:'Inter';font-size:13px;
+  cursor:pointer;transition:.2s;}
+.pl2-del:hover{background:rgba(224,106,94,.1);border-color:var(--danger);}
+
+/* bóveda en modo LISTA */
+.vault-list{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+.vl-row{display:flex;align-items:center;gap:14px;padding:9px 12px;cursor:pointer;transition:.18s;
+  border:1px solid var(--border-soft);border-radius:14px;
+  background:linear-gradient(165deg,rgba(15,25,16,.7),rgba(7,12,8,.82));}
+.vl-row:hover{border-color:var(--amber);transform:translateX(2px);}
+.vl-cover{width:44px;height:64px;border-radius:5px;flex:none;background-size:cover;background-position:center;
+  box-shadow:0 4px 12px rgba(0,0,0,.5);}
+.vl-body{flex:1;min-width:0;}
+.vl-title{font-family:'Fraunces',serif;font-weight:700;font-size:16px;line-height:1.2;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.vl-meta{font-size:12px;color:var(--bone-dim);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.vl-badge{flex:none;font-size:11px;color:var(--amber);letter-spacing:.06em;}
 
 /* botones de carga en el home */
 .home-load{
@@ -2544,10 +2575,10 @@ h1.title.sz-hero{
 /* ============================================================
    📱 MOBILE — la app en el bolsillo, pensada para el pulgar
    ============================================================ */
-/* touch (sin hover): las X de borrar viven visibles, no escondidas tras el mouse */
+/* touch (sin hover): la X de borrar NO vive visible en mobile.
+   En el celu se borra desde adentro de la ficha del libro (botón 🗑). */
 @media (hover: none){
-  .del-x{opacity:.92;transform:scale(1);}
-  .vault-slot .del-x{top:-6px;right:-6px;width:26px;height:26px;}
+  .vault-slot .del-x{display:none;}
   /* nada de estados :hover que se quedan pegados al tocar */
   .btn:hover, .load-btn:hover, .game-tile:hover, .rz-premio:hover,
   .carta.mini:hover, .foto-thumb:hover, .rec-card:hover{transform:none;}

@@ -507,14 +507,16 @@ function showPlacard(list, startIdx, opts={}){
             ${esActual?`<button class="btn btn-amber btn-sm fin-btn" id="fichaFin">Terminamos el libro</button>`
               : esLeido?`<div class="rate-box" id="rateBox"></div>`:''}
             ${tl.length?`<div class="tl">${tl.join('')}</div>`:`<div class="pl-empty">Todavía sin historia. Ya va a tener.</div>`}
-            ${b.nota?`<p class="pl-nota">${escapeHtml(b.nota)}</p>`:''}`}
+            ${b.nota?`<p class="pl-nota">${escapeHtml(b.nota)}</p>`:''}
+            ${opts.source==='vault'?`<button class="pl2-del" id="plDel">🗑 Sacar de la bóveda</button>`:''}`}
         </div>
         <div class="pl2-pill">
           <span class="pl2-num">#${idx+1}</span>
-          <div>
+          <div style="flex:1;min-width:0;">
             <div class="pl2-t">${escapeHtml(b.titulo)}</div>
             ${subBits?`<div class="pl2-sub">${escapeHtml(subBits)}</div>`:''}
           </div>
+          <button class="pl2-exp" id="plExpand" aria-label="Ver la ficha completa">⌄</button>
         </div>`;
     $('.pl2-book', scene).appendChild(bookEl(b, { size:bs(270), baseY:-26 }));
 
@@ -536,6 +538,22 @@ function showPlacard(list, startIdx, opts={}){
       saliente.remove();
     }
     render._scene = scene;
+    const plExp = $('#plExpand', scene);
+    if(plExp) plExp.addEventListener('click', ()=>{ try{ Sound.fx.click(); }catch(e){}
+      scene.classList.toggle('pl2-open');
+      plExp.setAttribute('aria-label', scene.classList.contains('pl2-open') ? 'Cerrar la ficha' : 'Ver la ficha completa');
+    });
+    const plDel = $('#plDel', scene);
+    if(plDel) plDel.addEventListener('click', async ()=>{
+      try{ Sound.fx.click(); }catch(e){}
+      if(!confirm(`¿Sacar «${b.titulo}» de la bóveda? Si algún día lo rescatan, vuelve.`)) return;
+      State.vault = State.vault.filter(v=>v.id!==b.id);
+      await persist();
+      toast('Sacado de la bóveda');
+      close();
+      if(document.querySelector('#homeCloset')) buildHomeCloset();
+      else if(document.querySelector('#closet')) screenVault();
+    });
     wireSpineTools(b, scene);
     wireRatings(b, scene);
     if($('#fichaFin', scene)) $('#fichaFin', scene).addEventListener('click', ()=>ceremoniaFinal(b));
@@ -875,6 +893,8 @@ function screenVault(){
     <div class="eyebrow" style="color:var(--grey);">La bóveda de los caídos</div>
     <h1 class="title" style="font-size:clamp(34px,5vw,54px);">The Vault</h1>
     <p class="lead mt-s">Todos perdieron alguna vez. Ninguno está afuera.</p>
+    ${State.vault.length?`<div class="row mt-m" style="justify-content:flex-start;">
+      <button class="load-btn" id="vaultViewBtn">☰ Ver como lista</button></div>`:''}
     <div id="vfBig"></div>
     <div id="closet"></div>
     <div class="row mt-l" style="justify-content:flex-start;">
@@ -882,9 +902,17 @@ function screenVault(){
       ${State.vault.length?'<button class="btn btn-ghost" id="dlBtn">Descargar el club</button>':''}
     </div>
   `);
+  let vaultModo = 'estante';
   const rebuild = ()=>{
-    buildCloset($('#closet'), State.vault, closetOpts);
-    mountVaultFilter($('#vfBig'), ()=>$('#closet'));
+    if(vaultModo === 'lista'){
+      $('#vfBig').innerHTML = '';
+      buildVaultList($('#closet'), State.vault, closetOpts);
+      if($('#vaultViewBtn')) $('#vaultViewBtn').textContent = '▦ Ver como estante';
+    } else {
+      buildCloset($('#closet'), State.vault, closetOpts);
+      mountVaultFilter($('#vfBig'), ()=>$('#closet'));
+      if($('#vaultViewBtn')) $('#vaultViewBtn').textContent = '☰ Ver como lista';
+    }
   };
   const closetOpts = {
     mode:'browse',
@@ -896,8 +924,47 @@ function screenVault(){
     onDelete(book){ removeFromList(State.vault, book, 'la bóveda', rebuild); },
   };
   rebuild();
+  if($('#vaultViewBtn')) $('#vaultViewBtn').addEventListener('click', ()=>{
+    Sound.fx.click(); vaultModo = vaultModo === 'estante' ? 'lista' : 'estante'; rebuild();
+  });
   $('#backBtn').addEventListener('click', ()=>{ Sound.fx.click(); screenHome(); });
   if($('#dlBtn')) $('#dlBtn').addEventListener('click', downloadClub);
+}
+
+/* ---------- la bóveda como LISTA (portadas + título), alternativa al armario 3D ---------- */
+function buildVaultList(container, books, opts={}){
+  container.innerHTML = '';
+  if(!books.length){
+    container.innerHTML = `<div class="closet-empty">La bóveda está vacía.</div>`;
+    return;
+  }
+  const list = document.createElement('div');
+  list.className = 'vault-list';
+  books.forEach(book=>{
+    ensureColor(book);
+    const meta = [book.autor, book.anio, book.pais].filter(Boolean).join(' · ');
+    const nRes = evCount(book,'rescates');
+    const row = document.createElement('div');
+    row.className = 'vl-row';
+    row._vfBook = book;
+    row.innerHTML = `
+      <div class="vl-cover" style="${book.portada
+        ? `background-image:url('${book.portada.replace(/'/g,'%27')}')`
+        : `background:${(book._color&&book._color.css)||'#26331f'}`}"></div>
+      <div class="vl-body">
+        <div class="vl-title">${escapeHtml(book.titulo)}</div>
+        ${meta?`<div class="vl-meta">${escapeHtml(meta)}</div>`:''}
+      </div>
+      ${nRes?`<div class="vl-badge">⛏ ${nRes}</div>`:''}`;
+    row.addEventListener('click', ()=>{
+      try{ Sound.fx.click(); }catch(e){}
+      const idx = books.indexOf(book);
+      if(opts.onPick) opts.onPick(book);
+      else showPlacard(books, idx<0?0:idx, { source:'vault' });
+    });
+    list.appendChild(row);
+  });
+  container.appendChild(list);
 }
 
 /* tipografías de lomo: cada libro recibe una fija según su título → estante ecléctico */
@@ -972,9 +1039,13 @@ function buildCloset(container, books, opts={}){
     return;
   }
 
-  // capacidad por estante según el ancho disponible
-  const availW = Math.min(1080, innerWidth) - 64 - 52 - 40;
-  const perShelf = Math.max(4, Math.floor(availW / 52));
+  // capacidad por estante según el ancho disponible.
+  // En mobile los libros van más chicos y entran más por fila.
+  const mob = innerWidth < 560 ? 0.78 : 1;
+  const availW = Math.min(1080, innerWidth) - (innerWidth < 560 ? 36 : 156);
+  const perShelf = innerWidth < 560
+    ? Math.min(7, Math.max(5, Math.floor(availW / (52 * mob))))
+    : Math.max(4, Math.floor(availW / 52));
   const shelves = [];
   for(let i=0;i<books.length;i+=perShelf) shelves.push(books.slice(i, i+perShelf));
 
@@ -1001,8 +1072,8 @@ function buildCloset(container, books, opts={}){
     group.forEach((book, i)=>{
       const len = (book.titulo||'').length;
       // alto orgánico, sesgado: título más largo → libro más alto
-      const h = Math.round(Math.min(196, 146 + Math.max(0, len-10)*1.1) + (hashStr(book.titulo||book.id) % 12));
-      const d = 30 + (hashStr(book.id+book.titulo) % 12);         // grosor orgánico
+      const h = Math.round((Math.min(196, 146 + Math.max(0, len-10)*1.1) + (hashStr(book.titulo||book.id) % 12)) * mob);
+      const d = Math.round((30 + (hashStr(book.id+book.titulo) % 12)) * mob);   // grosor orgánico
       const w = Math.round(h/1.5);
       const slot = document.createElement('div');
       slot.className = 'vault-slot';
