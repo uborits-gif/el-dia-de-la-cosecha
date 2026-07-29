@@ -122,6 +122,22 @@ function screenVasallajeModes(){
           <div class="vsm-d">La bóveda escupe ${VS_NEED*2} y nadie opina.</div>
         </div>
       </div>
+      <div class="vsm-big" style="width:min(920px,94vw);">
+        <button class="vsm-bigcard ${State.vault.length>=32?'':'dim'}" id="vmG32">
+          <span class="vsm-bigico">🏟️</span>
+          <span class="vsm-bigt">Gran Vasallaje · 32</span>
+          <span class="vsm-bigd">${State.vault.length>=32
+            ? 'Entran 32. Los que sobran se sortean afuera. Cada cruce lo votan ustedes.'
+            : `Necesitás 32 libros — tenés ${State.vault.length}.`}</span>
+        </button>
+        <button class="vsm-bigcard ${State.vault.length>=64?'':'lock'}" id="vmG64">
+          <span class="vsm-bigico">${State.vault.length>=64?'🏟️':'🔒'}</span>
+          <span class="vsm-bigt">Gran Vasallaje · 64</span>
+          <span class="vsm-bigd">${State.vault.length>=64
+            ? 'El torneo total. Entran 64.'
+            : `Se desbloquea con 64 libros — tenés ${State.vault.length}.`}</span>
+        </button>
+      </div>
       <div class="row mt-l">
         <button class="btn btn-ghost" id="vsBack">← Volver</button>
         <button class="btn btn-ghost" id="vsAny" style="border-color:rgba(232,195,74,.45);color:#E8C34A;">
@@ -141,6 +157,8 @@ function screenVasallajeModes(){
   go('vm2','trope',    ()=>vsModeTrope());
   go('vm3','quote',    ()=>vsModeQuote());
   go('vm4','random',   ()=>vsModeRandom());
+  if(State.vault.length>=32 && $('#vmG32')) $('#vmG32').addEventListener('click', ()=>{ Sound.fx.chosen(); startGranVasallaje(32); });
+  if(State.vault.length>=64 && $('#vmG64')) $('#vmG64').addEventListener('click', ()=>{ Sound.fx.chosen(); startGranVasallaje(64); });
 
   // el azar elige el modo: recorre las tarjetas disponibles y clava una
   $('#vsAny').addEventListener('click', async ()=>{
@@ -1216,4 +1234,157 @@ async function finishVasallaje(winners){
   $('#vsDl').addEventListener('click', downloadClub);
   $('#vsHome').addEventListener('click', ()=>{ Sound.fx.click(); screenHome(); });
   mostrarPremios(premios);
+}
+
+/* ============================================================
+   🏟️ GRAN VASALLAJE — torneos de 32 / 64, ronda por ronda.
+   · Al empezar se SORTEAN al azar los que quedan afuera (ruleta horizontal).
+   · El resto lo definen ustedes: cada cruce, tocan al que pasa.
+   · Todo al historial (dieciseisavos → octavos → cuartos → semi → final).
+   ============================================================ */
+const GRAN_PLACE = {64:'dieciseisavos',32:'dieciseisavos',16:'octavos',8:'cuartos',4:'semifinal',2:'final'};
+const GRAN_RONDA = {64:'Ronda de 64',32:'Dieciseisavos',16:'Octavos',8:'Cuartos',4:'Semifinal',2:'Final'};
+const granPlace = n => GRAN_PLACE[n] || ('ronda de '+n);
+const granRonda = n => GRAN_RONDA[n] || ('Ronda de '+n);
+
+function startGranVasallaje(size){
+  if(State.vault.length < size){ toast(`Necesitás ${size} libros en la bóveda (tenés ${State.vault.length})`); return; }
+  saveUndo('el Gran Vasallaje a medias');
+  VS.picks={a:[],b:[]}; VS.sides=null; VS.grand=null; VS.blind=false; VS.revealed=false;
+  VS.mode='gran'; VS.modeLabel=`Gran Vasallaje ${size}`; VS.sideTags=null; VS.phase='gran';
+  const pool = shuffled(State.vault.slice());
+  const participantes = pool.slice(0, size);
+  const excluidos = pool.slice(size);
+  VS.all = participantes.slice();
+  const ids = new Set(participantes.map(b=>b.id));
+  State.vault = State.vault.filter(b=>!ids.has(b.id));   // salen mientras dura; vuelven al final
+  if(Sound.startMusic) Sound.startMusic('vasallaje');
+  const ab = $('#abortBtn'); if(ab) ab.classList.add('on');
+  if(excluidos.length) granRuleta(excluidos, participantes, size);
+  else granRound(participantes.slice(), size);
+}
+
+/* ---- la ruleta horizontal que sortea a los que no juegan ---- */
+async function granRuleta(excluidos, participantes, size){
+  App.ambient('rgba(232,195,74,.06)', 'rgba(30,26,50,.5)');
+  const fila = shuffled([...excluidos, ...participantes]);
+  show(`
+    <div class="center" style="min-height:70vh;justify-content:center;">
+      <div class="eyebrow" style="color:#E8C34A;">🏟️ Gran Vasallaje · ${size}</div>
+      <h2 class="serif" style="font-weight:900;font-size:clamp(22px,4.5vw,38px);margin:2px 0 4px;">La bóveda tiene de más</h2>
+      <p class="lead" id="grSub">Se sortean ${excluidos.length} que miran de afuera…</p>
+      <div class="gr-reel-wrap"><div class="gr-reel" id="grReel"></div></div>
+    </div>
+  `);
+  const reel = $('#grReel');
+  const cellOf = {};
+  fila.forEach(b=>{
+    ensureColor(b);
+    const c = document.createElement('div');
+    c.className = 'gr-cell';
+    c.style.cssText = b.portada ? `background-image:url('${b.portada.replace(/'/g,'%27')}')` : `background:${(b._color&&b._color.css)||'#26331f'}`;
+    reel.appendChild(c); cellOf[b.id]=c;
+  });
+  const cells = fila.map(b=>cellOf[b.id]);
+  await sleep(450);
+  for(let e=0;e<excluidos.length;e++){
+    const target = excluidos[e];
+    const tIdx = fila.findIndex(b=>b.id===target.id);
+    const total = 20 + Math.floor(Math.random()*8);
+    for(let i=0;i<total;i++){
+      const at = (i < total-1) ? (i % cells.length) : tIdx;   // el último paso cae en el excluido
+      cells.forEach((c,j)=>c.classList.toggle('lit', j===at && !c.classList.contains('out')));
+      const c = cells[at]; if(c) c.scrollIntoView({inline:'center', block:'nearest', behavior:'smooth'});
+      try{ Sound.fx.tick(i/total); }catch(err){}
+      await sleep(45 + Math.pow(i/total,2.7)*230);
+    }
+    cells.forEach(c=>c.classList.remove('lit'));
+    cellOf[target.id].classList.add('out');
+    try{ Sound.fx.drop(); }catch(err){}
+    if($('#grSub')) $('#grSub').innerHTML = `«${escapeHtml(target.titulo)}» queda afuera`;
+    evPush(target, 'puestos', { fecha:fechaHoy(), quien:`Gran Vasallaje ${size}`, extra:'no entró al sorteo' });
+    await sleep(600);
+  }
+  await persist();
+  if($('#grSub')) $('#grSub').textContent = '¡A pelear!';
+  await sleep(700);
+  granRound(participantes.slice(), size);
+}
+
+/* ---- una ronda: los cruces los votan ustedes ---- */
+function granRound(books, size){
+  if(books.length <= 1) return granChampion(books[0], size);
+  const pares = [];
+  for(let i=0;i<books.length;i+=2) pares.push({ a:books[i], b:books[i+1]||null, winner:null });
+  VS.gran = { size, n:books.length, nombre:granRonda(books.length), pares, decididos:0 };
+  screenGranRound();
+}
+
+function granSideHTML(b){
+  ensureColor(b);
+  const cov = b.portada ? `background-image:url('${b.portada.replace(/'/g,'%27')}')` : `background:${(b._color&&b._color.css)||'#26331f'}`;
+  return `<span class="gr-cover" style="${cov}"></span><span class="gr-t">${escapeHtml(b.titulo)}</span>`;
+}
+
+function screenGranRound(){
+  const G = VS.gran;
+  App.ambient('rgba(232,195,74,.06)', 'rgba(30,26,50,.5)');
+  const cruces = G.pares.filter(p=>p.b).length;
+  show(`
+    <div class="center" style="padding-top:6px;">
+      <div class="eyebrow" style="color:#E8C34A;">🏟️ Gran Vasallaje · ${G.size}</div>
+      <h2 class="serif" style="font-weight:900;font-size:clamp(22px,4vw,36px);margin:2px 0 2px;">${escapeHtml(G.nombre)}</h2>
+      <p class="lead" id="grHint">Toquen al que pasa · <b id="grCount">0</b>/${cruces}</p>
+      <div class="gr-matches" id="grMatches"></div>
+      <div class="row mt-l" id="grNextRow" style="display:none;justify-content:center;">
+        <button class="btn btn-amber" id="grNext">${G.n<=2?'Coronar campeón 🏆':'Siguiente ronda →'}</button>
+      </div>
+    </div>
+  `);
+  const wrap = $('#grMatches');
+  G.pares.forEach(p=>{
+    if(!p.b){ p.winner = p.a; return; }
+    const card = document.createElement('div');
+    card.className = 'gr-match';
+    card.innerHTML = `
+      <button class="gr-side" data-w="a">${granSideHTML(p.a)}</button>
+      <div class="gr-vs">vs</div>
+      <button class="gr-side" data-w="b">${granSideHTML(p.b)}</button>`;
+    wrap.appendChild(card);
+    card.querySelectorAll('.gr-side').forEach(s=>s.addEventListener('click', ()=>{
+      if(card.classList.contains('done')) return;
+      const w = s.dataset.w;
+      p.winner = (w==='a') ? p.a : p.b;
+      const loser = (w==='a') ? p.b : p.a;
+      loser._vsPlace = granPlace(G.n);
+      card.classList.add('done');
+      s.classList.add('win');
+      const otro = card.querySelector(`.gr-side[data-w="${w==='a'?'b':'a'}"]`);
+      if(otro) otro.classList.add('lose');
+      try{ Sound.fx.chosen(); }catch(e){}
+      G.decididos++;
+      if($('#grCount')) $('#grCount').textContent = G.decididos;
+      if(G.decididos >= cruces){
+        $('#grNextRow').style.display = 'flex';
+        if($('#grHint')) $('#grHint').innerHTML = 'Pasan los elegidos.';
+      }
+    }));
+  });
+  if(cruces === 0){ granRound(G.pares.map(p=>p.winner), G.size); return; }
+  $('#grNext').addEventListener('click', ()=>{ try{ Sound.fx.click(); }catch(e){}
+    granRound(G.pares.map(p=>p.winner), G.size); });
+}
+
+/* ---- campeón: retorno rápido (son muchos libros) + festejo reusado ---- */
+async function granChampion(champ, size){
+  champ._vsPlace = 'campeon';
+  VS.modeLabel = `Gran Vasallaje ${size}`;
+  await renameUndo(`el Gran Vasallaje de «${champ.titulo}»`);
+  const losers = VS.all.filter(b=>b.id!==champ.id);
+  losers.forEach(b=>{ stampCosecha(b); vsStampPlace(b, b._vsPlace || granPlace(size)); });
+  const loserIds = new Set(losers.map(b=>b.id));
+  State.vault = State.vault.filter(v=>!loserIds.has(v.id));
+  State.vault.push(...losers.map(cleanBook));
+  await persist();
+  vsCelebrate([champ]);
 }
