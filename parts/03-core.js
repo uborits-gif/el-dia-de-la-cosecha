@@ -85,6 +85,7 @@ const State = {
   starter: null,
   picks: { a: null, b: null },
   finalists: [],
+  duelos: [],    // duelos de final del Vasallaje (para las estadísticas)
 };
 
 const PLAYER_COLOR = { a:'var(--pa)', b:'var(--pb)' };
@@ -138,6 +139,10 @@ async function loadPersisted(){
   if(!gotRead && State.read.length===0){
     State.read = DEFAULT_READ.slice();
   }
+  // duelos de final (memoria para las estadísticas)
+  if(HAS_STORAGE){ try{ const d = await window.storage.get('cosecha:duelos'); if(d && d.value) State.duelos = JSON.parse(d.value)||[]; }catch(e){} }
+  if(!State.duelos || !State.duelos.length){ try{ const d = localStorage.getItem('cosecha:duelos'); if(d) State.duelos = JSON.parse(d)||[]; }catch(e){} }
+  if(!Array.isArray(State.duelos)) State.duelos = [];
   // higiene: sin duplicados (pruebas viejas dejaban repetidos en la memoria)
   const dedupe = (arr)=>{
     const seen = new Set();

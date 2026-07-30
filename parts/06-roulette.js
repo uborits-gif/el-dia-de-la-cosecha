@@ -373,7 +373,8 @@ function screenHarvestEnd(winner){
     <div class="center" style="min-height:46vh;justify-content:flex-end;">
       <div class="eyebrow">Cosecha cerrada</div>
       <h1 class="title" style="font-size:clamp(30px,5vw,52px);">A leer<br>${escapeHtml(winner.titulo)}</h1>
-      <p class="lead mt-m" style="margin-left:auto;margin-right:auto;">Bajate la bóveda actualizada.</p>
+      ${marcadorBandHTML()}
+      <p class="lead mt-m" style="margin-left:auto;margin-right:auto;">Se guardó y sincronizó solo.</p>
       <div class="row mt-l">
         <button class="btn btn-primary" id="dlVault">Descargar el club actualizado</button>
         <button class="btn btn-ghost" id="goHome">Volver al inicio</button>
@@ -385,6 +386,7 @@ function screenHarvestEnd(winner){
     </section>
   `);
   renderHonorShelf($('#honorShelf'), { highlightId:winner.id });
+  requestAnimationFrame(()=>animarMarcador());
   $('#dlVault').addEventListener('click', downloadClub);
   $('#goHome').addEventListener('click', ()=>{ Sound.fx.click(); screenHome(); });
 }

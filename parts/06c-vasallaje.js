@@ -121,22 +121,18 @@ function screenVasallajeModes(){
           <div class="vsm-t">Azar puro</div>
           <div class="vsm-d">La bóveda escupe ${VS_NEED*2} y nadie opina.</div>
         </div>
-      </div>
-      <div class="vsm-big" style="width:min(920px,94vw);">
-        <button class="vsm-bigcard ${State.vault.length>=32?'':'dim'}" id="vmG32">
-          <span class="vsm-bigico">🏟️</span>
-          <span class="vsm-bigt">Gran Vasallaje · 32</span>
-          <span class="vsm-bigd">${State.vault.length>=32
-            ? 'Entran 32. Los que sobran se sortean afuera. Cada cruce lo votan ustedes.'
-            : `Necesitás 32 libros — tenés ${State.vault.length}.`}</span>
-        </button>
-        <button class="vsm-bigcard ${State.vault.length>=64?'':'lock'}" id="vmG64">
-          <span class="vsm-bigico">${State.vault.length>=64?'🏟️':'🔒'}</span>
-          <span class="vsm-bigt">Gran Vasallaje · 64</span>
-          <span class="vsm-bigd">${State.vault.length>=64
-            ? 'El torneo total. Entran 64.'
-            : `Se desbloquea con 64 libros — tenés ${State.vault.length}.`}</span>
-        </button>
+        <div class="vsm-card ${State.vault.length>=32?'':'dim'}" id="vm5" style="--i:4">
+          <div class="vsm-n">MODO 05</div><div class="vsm-ico">🏟️</div>
+          <div class="vsm-t">Gran Vasallaje · 32</div>
+          <div class="vsm-d">32 entran al cuadro. Los que sobran se sortean afuera; cada cruce lo votan ustedes.</div>
+          ${State.vault.length>=32?'':`<div class="vsm-warn">Necesitás 32 — tenés ${State.vault.length}.</div>`}
+        </div>
+        <div class="vsm-card ${State.vault.length>=64?'':'dim'}" id="vm6" style="--i:5">
+          <div class="vsm-n">MODO 06</div><div class="vsm-ico">${State.vault.length>=64?'🏟️':'🔒'}</div>
+          <div class="vsm-t">Gran Vasallaje · 64</div>
+          <div class="vsm-d">El torneo total. Entran 64.</div>
+          ${State.vault.length>=64?'':`<div class="vsm-warn">Se desbloquea con 64 — tenés ${State.vault.length}.</div>`}
+        </div>
       </div>
       <div class="row mt-l">
         <button class="btn btn-ghost" id="vsBack">← Volver</button>
@@ -157,8 +153,8 @@ function screenVasallajeModes(){
   go('vm2','trope',    ()=>vsModeTrope());
   go('vm3','quote',    ()=>vsModeQuote());
   go('vm4','random',   ()=>vsModeRandom());
-  if(State.vault.length>=32 && $('#vmG32')) $('#vmG32').addEventListener('click', ()=>{ Sound.fx.chosen(); startGranVasallaje(32); });
-  if(State.vault.length>=64 && $('#vmG64')) $('#vmG64').addEventListener('click', ()=>{ Sound.fx.chosen(); startGranVasallaje(64); });
+  go('vm5','gran32', ()=>startGranVasallaje(32));
+  go('vm6','gran64', ()=>startGranVasallaje(64));
 
   // el azar elige el modo: recorre las tarjetas disponibles y clava una
   $('#vsAny').addEventListener('click', async ()=>{
@@ -1190,7 +1186,8 @@ async function finishVasallaje(winners){
     <div class="center" style="min-height:46vh;justify-content:flex-end;">
       <div class="eyebrow" style="color:#E8C34A;">Vasallaje cerrado</div>
       <h1 class="title" style="font-size:clamp(28px,5vw,50px);">A leer<br>${winners.map(w=>escapeHtml(w.titulo)).join(' + ')}</h1>
-      <p class="lead mt-m" style="margin-left:auto;margin-right:auto;">Bajate la bóveda actualizada.</p>
+      ${marcadorBandHTML()}
+      <p class="lead mt-m" style="margin-left:auto;margin-right:auto;">Se guardó y sincronizó solo.</p>
       <div class="row mt-l">
         <button class="btn btn-primary" id="vsDl">Descargar el club actualizado</button>
         <button class="btn btn-ghost" id="vsHome">Volver al inicio</button>
@@ -1231,6 +1228,7 @@ async function finishVasallaje(winners){
     });
   }
   renderHonorShelf($('#honorShelf'), { highlightId: winners[winners.length-1].id });
+  requestAnimationFrame(()=>animarMarcador());
   $('#vsDl').addEventListener('click', downloadClub);
   $('#vsHome').addEventListener('click', ()=>{ Sound.fx.click(); screenHome(); });
   mostrarPremios(premios);
@@ -1290,20 +1288,21 @@ async function granRuleta(excluidos, participantes, size){
   for(let e=0;e<excluidos.length;e++){
     const target = excluidos[e];
     const tIdx = fila.findIndex(b=>b.id===target.id);
-    const total = 20 + Math.floor(Math.random()*8);
+    // la ruleta DESACELERA y frena justo en el que va a quedar afuera (2 vueltas + tIdx)
+    const total = 2*cells.length + tIdx + 1;
     for(let i=0;i<total;i++){
-      const at = (i < total-1) ? (i % cells.length) : tIdx;   // el último paso cae en el excluido
-      cells.forEach((c,j)=>c.classList.toggle('lit', j===at && !c.classList.contains('out')));
+      const at = i % cells.length;
+      cells.forEach((c,j)=>c.classList.toggle('lit', j===at));
       const c = cells[at]; if(c) c.scrollIntoView({inline:'center', block:'nearest', behavior:'smooth'});
       try{ Sound.fx.tick(i/total); }catch(err){}
-      await sleep(45 + Math.pow(i/total,2.7)*230);
+      await sleep(40 + Math.pow(i/total,2.8)*280);
     }
     cells.forEach(c=>c.classList.remove('lit'));
-    cellOf[target.id].classList.add('out');
+    cellOf[target.id].classList.add('out');   // el mismo en el que frenó
     try{ Sound.fx.drop(); }catch(err){}
     if($('#grSub')) $('#grSub').innerHTML = `«${escapeHtml(target.titulo)}» queda afuera`;
     evPush(target, 'puestos', { fecha:fechaHoy(), quien:`Gran Vasallaje ${size}`, extra:'no entró al sorteo' });
-    await sleep(600);
+    await sleep(750);
   }
   await persist();
   if($('#grSub')) $('#grSub').textContent = '¡A pelear!';
@@ -1314,16 +1313,161 @@ async function granRuleta(excluidos, participantes, size){
 /* ---- una ronda: los cruces los votan ustedes ---- */
 function granRound(books, size){
   if(books.length <= 1) return granChampion(books[0], size);
+  if(books.length === 2) return vsFinalVote(books[0], books[1], `Gran Vasallaje ${size}`, w=>granChampion(w, size));
   const pares = [];
   for(let i=0;i<books.length;i+=2) pares.push({ a:books[i], b:books[i+1]||null, winner:null });
   VS.gran = { size, n:books.length, nombre:granRonda(books.length), pares, decididos:0 };
   screenGranRound();
 }
 
-function granSideHTML(b){
+/* ============================================================
+   ⚔️ LA FINAL NARRATIVA — cada uno dice a quién quiere.
+   Acuerdo → se lee ese. Desacuerdo → ruleta + "carta" al que acertó.
+   El duelo queda en la memoria del club (State.duelos) para las stats.
+   ============================================================ */
+function vsFinalVote(x, z, modoLabel, onWinner){
+  const A = State.players.a, B = State.players.b;
+  const votos = {};
+  const preguntar = (who, next)=>{
+    const quien = who==='a' ? A : B;
+    App.ambient('rgba(232,195,74,.07)', 'rgba(30,26,50,.5)');
+    show(`
+      <div class="center" style="min-height:80vh;justify-content:center;">
+        <div class="eyebrow" style="color:#E8C34A;">⚔️ La final${modoLabel?' · '+escapeHtml(modoLabel):''}</div>
+        <h2 class="serif" style="font-weight:900;font-size:clamp(23px,5vw,40px);margin:2px 0 4px;">${escapeHtml(quien)}, ¿cuál querés que gane?</h2>
+        <p class="lead" style="opacity:.8;">Que no mire el otro. Tocá tu elegido.</p>
+        <div class="gr-matches" id="fvPick" style="margin-top:18px;">
+          <div class="gr-match">
+            <button class="gr-side left" data-w="x">${granSideHTML(x,'left')}</button>
+            <div class="gr-vs">o</div>
+            <button class="gr-side right" data-w="z">${granSideHTML(z,'right')}</button>
+          </div>
+        </div>
+      </div>
+    `);
+    $$('.gr-side', $('#fvPick')).forEach(s=>s.addEventListener('click', ()=>{
+      try{ Sound.fx.chosen(); }catch(e){}
+      votos[who] = s.dataset.w==='x' ? x : z;
+      next();
+    }));
+  };
+  preguntar('a', ()=> vsPassGate(B, ()=> preguntar('b', resolver)));
+
+  function resolver(){
+    const acuerdo = votos.a.id === votos.b.id;
+    const finish = (ganador, linea)=>{
+      const loser = ganador.id===x.id ? z : x;
+      loser._vsPlace = 'final';                 // el finalista perdedor queda como "final"
+      recordDuelo(x, z, votos, ganador, acuerdo, modoLabel);
+      vsFinalReveal(ganador, linea, ()=>onWinner(ganador));
+    };
+    if(acuerdo){
+      finish(votos.a, `Los dos querían «${escapeHtml(short(votos.a.titulo,30))}». Sin ruleta: se lee ese.`);
+    } else {
+      vsFinalRuleta(x, z, votos, (ganador)=>{
+        const quienAcerto = votos.a.id===ganador.id ? A : (votos.b.id===ganador.id ? B : null);
+        const carta = quienAcerto ? ` 🃏 Carta para <b>${escapeHtml(quienAcerto)}</b>: ganó el que elegiste.` : '';
+        finish(ganador, `No hubo acuerdo. La ruleta habló.${carta}`);
+      });
+    }
+  }
+}
+
+function vsPassGate(quien, done){
+  App.ambient();
+  show(`
+    <div class="center" style="min-height:70vh;justify-content:center;">
+      <div class="eyebrow" style="color:var(--grey);">Pasá el teléfono</div>
+      <h2 class="serif" style="font-weight:900;font-size:clamp(26px,6vw,46px);margin:6px 0 16px;">Ahora ${escapeHtml(quien)}</h2>
+      <div class="row"><button class="btn btn-amber" id="pgGo">Listo, soy ${escapeHtml(quien)}</button></div>
+    </div>
+  `);
+  $('#pgGo').addEventListener('click', ()=>{ try{ Sound.fx.click(); }catch(e){} done(); });
+}
+
+async function vsFinalRuleta(x, z, votos, done){
+  App.ambient('rgba(232,195,74,.07)', 'rgba(30,26,50,.5)');
+  const ganador = Math.random()<0.5 ? x : z;
+  show(`
+    <div class="center" style="min-height:78vh;justify-content:center;">
+      <div class="eyebrow" style="color:#E8C34A;">No hubo acuerdo</div>
+      <h2 class="serif" style="font-weight:900;font-size:clamp(23px,5vw,40px);margin:2px 0 4px;">Que decida la suerte</h2>
+      <p class="lead" style="opacity:.85;">${escapeHtml(State.players.a)} quería «${escapeHtml(short(votos.a.titulo,22))}» · ${escapeHtml(State.players.b)} quería «${escapeHtml(short(votos.b.titulo,22))}»</p>
+      <div class="gr-reel-wrap" style="margin-top:20px;"><div class="gr-reel" id="frReel" style="justify-content:center;"></div></div>
+    </div>
+  `);
+  const reel = $('#frReel');
+  const seq = [];
+  for(let i=0;i<9;i++) seq.push(i%2 ? z : x);
+  const cells = seq.map(b=>{
+    ensureColor(b);
+    const c = document.createElement('div');
+    c.className = 'gr-cell';
+    c.style.cssText = b.portada ? `background-image:url('${b.portada.replace(/'/g,'%27')}')` : `background:${(b._color&&b._color.css)||'#26331f'}`;
+    reel.appendChild(c); return c;
+  });
+  await sleep(400);
+  let stopIdx = seq.length-1; while(stopIdx>0 && seq[stopIdx].id!==ganador.id) stopIdx--;
+  for(let i=0;i<=stopIdx;i++){
+    cells.forEach((c,j)=>c.classList.toggle('lit', j===i));
+    cells[i].scrollIntoView({inline:'center', block:'nearest', behavior:'smooth'});
+    try{ Sound.fx.tick(stopIdx?i/stopIdx:1); }catch(e){}
+    await sleep(90 + Math.pow(stopIdx?i/stopIdx:1,2.6)*320);
+  }
+  try{ Sound.fx.reveal(); }catch(e){}
+  await sleep(700);
+  done(ganador);
+}
+
+function vsFinalReveal(winner, linea, done){
+  App.ambient();
+  show(`
+    <div class="center" style="min-height:72vh;justify-content:center;">
+      <div class="eyebrow" style="color:#E8C34A;">La final tiene dueño</div>
+      <div id="fvBook" style="margin:14px 0;"></div>
+      <h2 class="serif" style="font-weight:900;font-size:clamp(24px,5vw,44px);margin:2px 0 6px;">${escapeHtml(winner.titulo)}</h2>
+      <p class="lead" style="max-width:460px;margin:0 auto;">${linea}</p>
+      <div class="row mt-l"><button class="btn btn-amber" id="fvGo">Coronar 🏆</button></div>
+    </div>
+  `);
+  $('#fvBook').appendChild(bookEl(winner, {size:bs(200)}));
+  $('#fvGo').addEventListener('click', ()=>{ try{ Sound.fx.click(); }catch(e){} done(); });
+}
+
+function recordDuelo(x, z, votos, ganador, acuerdo, modoLabel){
+  if(!Array.isArray(State.duelos)) State.duelos = [];
+  const A = State.players.a, B = State.players.b;
+  const cruzado = !acuerdo
+    && (votos.a.traidoPor||'').toLowerCase()===B.toLowerCase()
+    && (votos.b.traidoPor||'').toLowerCase()===A.toLowerCase();
+  State.duelos.push({
+    fecha: fechaHoy(), modo: modoLabel||'Vasallaje',
+    a:{ quien:A, quiso:votos.a.titulo }, b:{ quien:B, quiso:votos.b.titulo },
+    ganador: ganador.titulo, acuerdo, cruzado,
+  });
+  persistDuelos();
+}
+function persistDuelos(){
+  const raw = JSON.stringify(State.duelos||[]);
+  try{ localStorage.setItem('cosecha:duelos', raw); }catch(e){}
+  if(HAS_STORAGE){ try{ window.storage.set('cosecha:duelos', raw); }catch(e){} }
+  if(typeof onLocalChange === 'function') onLocalChange();
+}
+
+function granSideHTML(b, side){
   ensureColor(b);
   const cov = b.portada ? `background-image:url('${b.portada.replace(/'/g,'%27')}')` : `background:${(b._color&&b._color.css)||'#26331f'}`;
-  return `<span class="gr-cover" style="${cov}"></span><span class="gr-t">${escapeHtml(b.titulo)}</span>`;
+  const meta = [b.autor, b.anio, b.pais, b.paginas?b.paginas+' págs':''].filter(Boolean).join(' · ');
+  const syn = (b.sinopsis||'').trim();
+  const synShort = syn.length>110 ? syn.slice(0,108)+'…' : syn;
+  const tropes = (b.tropes||'').split(',').map(t=>t.trim()).filter(Boolean).slice(0,3);
+  return `<span class="gr-cover" style="${cov}"></span>
+    <span class="gr-info">
+      <span class="gr-t">${escapeHtml(b.titulo)}</span>
+      ${meta?`<span class="gr-meta">${escapeHtml(meta)}</span>`:''}
+      ${synShort?`<span class="gr-syn">${escapeHtml(synShort)}</span>`:''}
+      ${tropes.length?`<span class="gr-tropes">${tropes.map(t=>`<i>${escapeHtml(t)}</i>`).join('')}</span>`:''}
+    </span>`;
 }
 
 function screenGranRound(){

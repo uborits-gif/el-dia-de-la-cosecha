@@ -280,6 +280,30 @@ function computeStats(){
 const short = (t,n=26) => !t ? '—' : (t.length>n ? t.slice(0,n-1)+'…' : t);
 const cov = b => b && b.portada ? `style="background-image:url('${b.portada.replace(/'/g,'%27')}')"` : '';
 
+/* marcador compacto para las pantallas de cierre (usa la MISMA fórmula que las stats) */
+function marcadorBandHTML(){
+  try{
+    const S = computeStats();
+    return `<div class="st-band gold mk-band" style="margin:6px auto 2px;max-width:440px;display:inline-flex;gap:12px;align-items:center;justify-content:center;">
+      🏆 Marcador
+      <span style="color:var(--pa)">${escapeHtml(S.A)} <b class="mk-num" data-to="${S.marcador.ptsA}">0</b></span>
+      <span style="color:var(--grey)">—</span>
+      <span style="color:var(--pb)"><b class="mk-num" data-to="${S.marcador.ptsB}">0</b> ${escapeHtml(S.B)}</span></div>`;
+  }catch(e){ return ''; }
+}
+/* cuenta hacia arriba los números del marcador al aparecer */
+function animarMarcador(root){
+  (root||document).querySelectorAll('.mk-num').forEach(el=>{
+    const to = +el.dataset.to || 0, dur = 850, t0 = performance.now();
+    (function step(t){
+      const p = Math.min(1, (t-t0)/dur), e = 1-Math.pow(1-p,3);
+      el.textContent = Math.round(e*to);
+      if(p<1) requestAnimationFrame(step);
+      else el.classList.add('mk-pop');
+    })(t0);
+  });
+}
+
 function renderStats(container){
   const S = computeStats();
   const A = S.A, B = S.B, M = S.marcador;
@@ -574,14 +598,21 @@ function renderStats(container){
         const V = S.vasallaje;
         return `
         ${figs([
-          fig('Torneos jugados', V.jugados, 'la bóveda peleó', 'am'),
-          fig('Campeones', V.campeones.length, V.campeones.length?escapeHtml(short(V.campeones[V.campeones.length-1].titulo,18)):''),
+          fig('Torneos jugados', V.jugados, 'veces peleó la bóveda', 'am'),
+          fig('Último campeón', V.campeones.length?escapeHtml(short(V.campeones[V.campeones.length-1].titulo,16)):'—', V.campeones.length+(V.campeones.length===1?' campeón en total':' campeones en total')),
           V.finalista ? fig('El eterno finalista', V.finalista.n, `final${V.finalista.n>1?'es':''} perdida${V.finalista.n>1?'s':''} · ${escapeHtml(short(V.finalista.b.titulo,18))}`) : null,
           V.semifinalista ? fig('El semifinalista serial', V.semifinalista.n, `vece${V.semifinalista.n>1?'s':''} en semis · ${escapeHtml(short(V.semifinalista.b.titulo,18))}`, 'sm') : null,
           V.convocado ? fig('Carne de cuadro', V.convocado.ps.length, `cuadros jugados · ${escapeHtml(short(V.convocado.b.titulo,18))}`) : null,
           fig('Tasa de rescate', S.boveda.tasaRescate+'%', 'de los caídos vuelve a jugar'),
         ].filter(Boolean))}
-        ${V.modos.length ? `<div class="st-rlab" style="margin:30px 0 16px;">Cómo se armaron los cuadros</div>${bars(V.modos, 'var(--pb)')}` : ''}`;
+        ${V.modos.length ? `<div class="st-rlab" style="margin:30px 0 16px;">Cómo se armaron los cuadros</div>${bars(V.modos, 'var(--pb)')}` : ''}
+        ${(State.duelos && State.duelos.length) ? (()=>{
+          const d = State.duelos[State.duelos.length-1];
+          const cruz = State.duelos.filter(x=>x.cruzado).length;
+          return `<div class="st-rlab" style="margin:30px 0 12px;">El duelo de la final</div>
+            <div class="st-band gold">🎭 Última final: <b>${escapeHtml(d.a.quien)}</b> quería «${escapeHtml(short(d.a.quiso,20))}» y <b>${escapeHtml(d.b.quien)}</b> quería «${escapeHtml(short(d.b.quiso,20))}» — ganó «${escapeHtml(short(d.ganador,20))}»${d.acuerdo?' (se pusieron de acuerdo)':' (lo decidió la ruleta)'}.</div>
+            ${cruz?`<div class="st-band" style="margin-top:8px;">🔀 ${cruz} ${cruz>1?'veces':'vez'} cada uno quiso el libro que trajo el otro. Amor de club.</div>`:''}`;
+        })() : ''}`;
       })() : '<div class="st-hint">Todavía no hubo ningún Vasallaje. La bóveda espera su torneo.</div>'}
     </section>`;
 

@@ -117,6 +117,7 @@ async function aplicarRemoto(d){
       Cartas.mano = club.mazo.mano || { a:[], b:[] };
       Cartas.historial = club.mazo.historial || [];
     }
+    if(Array.isArray(club.duelos)) State.duelos = club.duelos;
     await persist();
     if(typeof persistCartas === 'function') await persistCartas();
   }catch(e){}
@@ -131,6 +132,7 @@ function syncPayload(){
     vault: State.vault,
     players: State.players,
     mazo: { mano: Cartas.mano, historial: Cartas.historial },
+    duelos: State.duelos || [],
   };
   const at = Sync.localAt || Date.now();
   Sync.localAt = at; try{ localStorage.setItem('cosecha:localAt', String(at)); }catch(e){}
