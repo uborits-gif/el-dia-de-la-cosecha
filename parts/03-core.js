@@ -513,6 +513,7 @@ async function restoreUndo(){
   if(!s) return null;
   State.read = s.read.map(migrateBook);
   State.vault = s.vault.map(migrateBook);
+  await persist();                                  // guarda Y sincroniza el estado restaurado
   if(s.cartas && typeof Cartas !== 'undefined'){    // el mazo también vuelve atrás
     Cartas.mano = s.cartas.mano;
     Cartas.historial = s.cartas.historial;

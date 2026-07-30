@@ -158,7 +158,8 @@ function screenVasallajeModes(){
 
   // el azar elige el modo: recorre las tarjetas disponibles y clava una
   $('#vsAny').addEventListener('click', async ()=>{
-    const opts = Object.values(runners);
+    // el Gran Vasallaje (destructivo, saca muchos libros) NO entra en la sorpresa
+    const opts = Object.values(runners).filter(o=>o.mode!=='gran32' && o.mode!=='gran64');
     if(!opts.length) return;
     $('#vsAny').disabled = true; $('#vsBack').disabled = true;
     const pick = opts[Math.floor(Math.random()*opts.length)];
@@ -1254,6 +1255,7 @@ function startGranVasallaje(size){
   const participantes = pool.slice(0, size);
   const excluidos = pool.slice(size);
   VS.all = participantes.slice();
+  State._snapVault = State.vault.map(cleanBook);   // foto para restaurar si se abandona (botón ✕)
   const ids = new Set(participantes.map(b=>b.id));
   State.vault = State.vault.filter(b=>!ids.has(b.id));   // salen mientras dura; vuelven al final
   if(Sound.startMusic) Sound.startMusic('vasallaje');
