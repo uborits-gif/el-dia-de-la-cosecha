@@ -1745,6 +1745,14 @@ h1.title.sz-hero{
 /* marcador que cuenta hacia arriba en las pantallas de cierre */
 .mk-num{font-variant-numeric:tabular-nums;display:inline-block;min-width:.7em;text-align:center;}
 .mk-pop{animation:winPop .5s var(--ease-pop);}
+/* ADN interactivo: listita de libros por trope */
+#adnChips .st-chip[data-trope]{cursor:pointer;transition:.16s;}
+#adnChips .st-chip[data-trope]:hover,#adnChips .st-chip.on{border-color:var(--amber);color:var(--bone);}
+.st-adn-pop{max-height:0;overflow:hidden;transition:max-height .34s ease, margin .34s ease;margin-top:0;
+  display:flex;flex-wrap:wrap;gap:6px 16px;}
+.st-adn-pop.on{max-height:520px;margin-top:14px;}
+.st-adn-h{flex-basis:100%;font-family:'Inter';font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin-bottom:2px;}
+.st-adn-pop span{font-family:'Fraunces',serif;font-size:13.5px;color:var(--bone-dim);}
 
 /* bóveda en modo LISTA */
 .vault-list{display:flex;flex-direction:column;gap:8px;margin-top:16px;}

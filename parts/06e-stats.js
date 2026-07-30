@@ -355,6 +355,10 @@ function renderStats(container){
     </button>`;
   }).join('');
 
+  // qué libros tiene cada trope (para el ADN interactivo)
+  const tropeBooks = {};
+  S.all.forEach(b=> tropesOf(b).forEach(t=>{ (tropeBooks[t]=tropeBooks[t]||[]).push(b.titulo); }));
+
   /* ribbon de géneros: monocromo con acento (nada de arcoíris) */
   const gTop = S.generos.slice(0,5);
   const gTot = gTop.reduce((s,x)=>s+x[1],0) || 1;
@@ -481,8 +485,10 @@ function renderStats(container){
     <section class="st-sec">
       <h3 class="st-h"><em>🧬</em> El ADN del club</h3>
       <div class="st-note" style="margin:-8px 0 16px;">Los tropes que se repiten en toda la biblioteca. Esto son ustedes.</div>
-      <div class="st-chips">${S.tropesAll.slice(0,14).map(([t,n],i)=>
-        `<span class="st-chip ${i<3?'hot big':''}">${escapeHtml(t)} <b>${n}</b></span>`).join('') || '<span class="st-hint">Sin tropes cargados.</span>'}</div>
+      <div class="st-note" style="margin:-8px 0 12px;font-size:11px;opacity:.6;">Pasá o tocá un trope para ver qué libros son.</div>
+      <div class="st-chips" id="adnChips">${S.tropesAll.slice(0,14).map(([t,n],i)=>
+        `<span class="st-chip ${i<3?'hot big':''}" data-trope="${escapeHtml(t)}">${escapeHtml(t)} <b>${n}</b></span>`).join('') || '<span class="st-hint">Sin tropes cargados.</span>'}</div>
+      <div class="st-adn-pop" id="adnPop"></div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:36px;margin-top:34px;">
         <div>
@@ -642,6 +648,24 @@ function renderStats(container){
       const i = list.findIndex(x=>String(x.id)===id);
       if(i>=0){ try{ Sound.fx.click(); }catch(e){}
         showPlacard(list, i, { source: State.read.some(x=>String(x.id)===id) ? 'honor' : 'vault' }); }
+    });
+  });
+  // ADN: pasar o tocar un trope muestra la listita de libros (sutil, sin portadas)
+  const adnPop = $('#adnPop', container);
+  $$('#adnChips .st-chip[data-trope]', container).forEach(chip=>{
+    const t = chip.dataset.trope, titles = tropeBooks[t] || [];
+    const showList = ()=>{
+      if(!adnPop) return;
+      $$('#adnChips .st-chip', container).forEach(c=>c.classList.remove('on'));
+      chip.classList.add('on');
+      adnPop.innerHTML = `<div class="st-adn-h">${escapeHtml(t)} · ${titles.length} libro${titles.length>1?'s':''}</div>`
+        + titles.map(x=>`<span>${escapeHtml(x)}</span>`).join('');
+      adnPop.classList.add('on');
+    };
+    chip.addEventListener('mouseenter', showList);
+    chip.addEventListener('click', ()=>{
+      if(chip.classList.contains('on')){ chip.classList.remove('on'); if(adnPop) adnPop.classList.remove('on'); }
+      else { try{ Sound.fx.click(); }catch(e){} showList(); }
     });
   });
   // animaciones de entrada
