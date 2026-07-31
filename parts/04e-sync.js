@@ -122,7 +122,14 @@ async function aplicarRemoto(d){
     if(typeof persistCartas === 'function') await persistCartas();
   }catch(e){}
   Sync.applying = false;
-  if(document.querySelector('#syncBox')){ try{ screenHome(); }catch(e){} }
+  // sólo repintamos el home si estamos en él y NO se está tipeando/tocando algo
+  // (que la nube no te borre lo que estás escribiendo ni te corte a mitad de un gesto)
+  if(document.querySelector('#syncBox')){
+    const ae = document.activeElement;
+    const ocupado = ae && (ae.tagName==='INPUT' || ae.tagName==='TEXTAREA' || ae.isContentEditable
+                    || (typeof ae.closest==='function' && ae.closest('.ov-back,.overlay')));
+    if(!ocupado){ try{ screenHome(); }catch(e){} }
+  }
 }
 
 /* ---------- subir el club ---------- */

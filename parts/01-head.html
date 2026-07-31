@@ -1388,6 +1388,24 @@ h1.title{
 .sync-t{font-family:"sztos-variable",'Inter',sans-serif;font-variation-settings:"wght" 680,"wdth" 106;font-size:14px;}
 .sync-s{font-size:12px;color:var(--bone-dim);margin-top:2px;overflow:hidden;text-overflow:ellipsis;}
 .sync-actions{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* 🕑 historial de respaldos */
+.hist-list{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow-y:auto;margin:2px -4px 0;padding:2px 4px;}
+.hist-row{display:flex;align-items:stretch;gap:14px;width:100%;text-align:left;cursor:pointer;
+  background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;padding:12px 14px;
+  color:var(--bone);transition:border-color .16s,transform .12s,background .16s;}
+.hist-row:hover:not(.now){border-color:rgba(232,195,74,.45);background:rgba(232,195,74,.06);transform:translateX(2px);}
+.hist-row.now{opacity:.85;cursor:default;border-color:rgba(107,247,166,.35);}
+.hist-when{flex:0 0 66px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border);padding-right:12px;}
+.hist-fecha{font-family:"sztos-variable",'Inter',sans-serif;font-variation-settings:"wght" 640;font-size:12.5px;line-height:1.15;}
+.hist-hora{font-size:11px;color:var(--bone-dim);margin-top:2px;}
+.hist-mid{flex:1;display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;}
+.hist-cnt{font-size:12.5px;color:var(--bone-dim);}
+.hist-cnt b{color:var(--bone);font-weight:700;}
+.hist-go{font-size:11.5px;color:var(--amber);font-weight:600;}
+.hist-tag{font-size:10.5px;color:#6BF7A6;text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
+.hist-empty{color:var(--bone-dim);font-size:13px;text-align:center;padding:24px 0;}
+@media (hover:none){ .hist-row{min-height:56px;} }
 .sync-field{display:flex;flex-direction:column;gap:5px;margin-top:14px;}
 .sync-field b{font-size:12px;color:var(--bone-dim);font-weight:600;}
 .sync-field input{
@@ -1929,6 +1947,8 @@ h1.title.sz-hero{
 }
 .vs-duel-tropes span.on{border-color:rgba(232,195,74,.5);color:#E8C34A;background:rgba(232,195,74,.07);}
 .vs-duel-go{margin-top:16px;}
+.vs-duel-meta{font-size:11px;color:var(--amber-soft);letter-spacing:.02em;margin-top:4px;}
+.vs-duel:not(.epic) .vs-duel-side.right .vs-duel-meta{text-align:right;}
 /* el «vs» clavado en el centro de las tapas, no colgando abajo */
 .vs-vs{
   flex:none;font-family:'Fraunces',serif;font-size:40px;font-weight:900;color:#E8C34A;
@@ -2304,7 +2324,7 @@ h1.title.sz-hero{
 .st-vs-n.r{text-align:left;color:var(--pb);}
 .st-vs-lab{text-align:center;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--grey);font-weight:600;}
 .st-vs-meter{grid-column:1/-1;height:3px;border-radius:2px;background:var(--pb);overflow:hidden;margin-top:-4px;}
-.st-vs-meter i{display:block;height:100%;background:var(--pa);}
+.st-vs-meter i{display:block;height:100%;background:var(--pa);transition:width .9s cubic-bezier(.22,.9,.26,1);}
 
 /* — barras — */
 .st-bars{display:flex;flex-direction:column;gap:12px;}
@@ -2313,9 +2333,24 @@ h1.title.sz-hero{
 .st-bar .stb-l{font-size:12.5px;color:var(--bone);text-transform:capitalize;}
 .st-bar .stb-n{font-family:'Fraunces',serif;font-weight:700;font-size:13px;color:var(--grey);}
 .st-bar .stb-t{grid-column:1/-1;height:4px;border-radius:2px;background:rgba(30,61,38,.55);overflow:hidden;}
-.st-bar .stb-f{display:block;height:100%;border-radius:2px;background:var(--bc,var(--amber));width:0;
-  transition:width 1s cubic-bezier(.22,.9,.26,1);}
+.st-bar .stb-t{position:relative;}
+.st-bar .stb-f{display:block;height:100%;border-radius:2px;width:0;
+  background:linear-gradient(90deg, color-mix(in srgb,var(--bc,var(--amber)) 55%, transparent), var(--bc,var(--amber)));
+  box-shadow:0 0 10px -3px var(--bc,var(--amber));
+  transition:width .95s cubic-bezier(.22,.9,.26,1);}
 .st-bar.top .stb-l{color:var(--amber);font-weight:600;}
+
+/* ── entrada coreografiada: cada bloque y sus hijos suben al entrar en pantalla ── */
+.st-rv{opacity:0;transform:translateY(24px);
+  transition:opacity .62s var(--ease-out), transform .62s var(--ease-out);}
+.st-rv.in{opacity:1;transform:none;}
+.st-rvc{opacity:0;transform:translateY(16px);
+  transition:opacity .5s var(--ease-out), transform .5s var(--ease-out);}
+.st-rvc.in{opacity:1;transform:none;}
+.st-count{font-variant-numeric:tabular-nums;}
+@media (prefers-reduced-motion:reduce){
+  .st-rv,.st-rvc{opacity:1 !important;transform:none !important;transition:none !important;}
+}
 
 /* — récords / salón de la fama — */
 .st-recs{display:flex;flex-direction:column;}
@@ -2412,6 +2447,8 @@ h1.title.sz-hero{
   background:linear-gradient(160deg,rgba(15,25,16,.7),rgba(7,12,8,.82));border:1.5px solid var(--border-soft);
   border-radius:14px;color:inherit;transition:.16s var(--ease-pop);}
 .gr-side.right{flex-direction:row-reverse;text-align:right;}
+.gr-side.blind{align-items:center;justify-content:center;text-align:center;min-height:150px;}
+.gr-blind-q{font-family:"newsreader",'Georgia',serif;font-style:italic;font-size:clamp(15px,2.4vw,20px);line-height:1.4;color:var(--bone);opacity:.94;}
 .gr-side:hover{border-color:#E8C34A;transform:translateY(-1px);}
 .gr-cover{flex:none;width:56px;height:82px;border-radius:6px;background-size:cover;background-position:center;
   box-shadow:0 3px 10px rgba(0,0,0,.5);}
@@ -2471,6 +2508,18 @@ h1.title.sz-hero{
 /* ============================================================
    VASALLAJE — selector de modos
    ============================================================ */
+/* el lugar del torneo: editable arriba de los modos, y mostrado en el cuadro */
+.vsm-lugar{display:inline-flex;align-items:center;gap:8px;margin:14px auto 0;padding:8px 14px;
+  background:rgba(232,195,74,.06);border:1px solid rgba(232,195,74,.22);border-radius:999px;
+  transition:border-color .18s,background .18s;}
+.vsm-lugar:focus-within{border-color:rgba(232,195,74,.5);background:rgba(232,195,74,.1);}
+.vsm-lugar span{font-size:14px;opacity:.85;}
+.vsm-lugar input{background:transparent;border:none;outline:none;color:var(--bone);
+  font-family:'Inter',sans-serif;font-size:13.5px;width:min(260px,60vw);text-align:center;}
+.vsm-lugar input::placeholder{color:var(--bone-dim);opacity:.7;}
+.vs-lugar{font-size:12.5px;color:#E8C34A;letter-spacing:.03em;margin-top:6px;opacity:.9;}
+@media (hover:none){ .vsm-lugar{padding:11px 16px;} .vsm-lugar input{font-size:15px;} }
+
 .vsm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:22px;}
 .vsm-card{
   position:relative;overflow:hidden;cursor:pointer;text-align:left;
@@ -2581,6 +2630,24 @@ h1.title.sz-hero{
 }
 .vs-duel-syn::-webkit-scrollbar{width:5px;}
 .vs-duel-syn::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px;}
+
+/* ⚔️ alegatos: cada libro es una FILA horizontal — portada al lado de la info,
+   no debajo. Los dos libros se apilan; el «vs» queda entre las dos filas. */
+.vs-duel:not(.epic){flex-direction:column;align-items:center;gap:15px;}
+.vs-duel:not(.epic) .vs-duel-side{width:100%;max-width:500px;align-items:stretch;}
+.vs-duel:not(.epic) .vs-duel-body{display:flex;flex-direction:row;align-items:flex-start;gap:16px;width:100%;}
+.vs-duel:not(.epic) .vs-duel-side.right .vs-duel-body{flex-direction:row-reverse;}
+.vs-duel:not(.epic) .vs-duel-cover{flex:none;height:auto;margin-top:0;}
+.vs-duel:not(.epic) .vs-duel-info{flex:1;min-width:0;display:flex;flex-direction:column;text-align:left;}
+.vs-duel:not(.epic) .vs-duel-side.right .vs-duel-info{text-align:right;}
+.vs-duel:not(.epic) .vs-duel-title{text-align:inherit;justify-content:flex-start;min-height:auto;margin-top:2px;font-size:17px;}
+.vs-duel:not(.epic) .vs-duel-side.right .vs-duel-title{justify-content:flex-end;}
+.vs-duel:not(.epic) .vs-duel-tropes{justify-content:flex-start;height:auto;margin-top:7px;}
+.vs-duel:not(.epic) .vs-duel-side.right .vs-duel-tropes{justify-content:flex-end;}
+.vs-duel:not(.epic) .vs-duel-syn{height:auto;max-height:128px;margin-top:9px;}
+.vs-duel:not(.epic) .vs-duel-go{align-self:center;margin-top:14px;}
+.vs-duel:not(.epic) .vs-vs{margin:0 auto;}
+
 /* el VS épico arma su propio duelo: ahí el «vs» sí va al centro */
 .vs-duel.epic{align-items:center;}
 .vs-duel.epic .vs-vs{margin-top:0;}

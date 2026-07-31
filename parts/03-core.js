@@ -167,6 +167,7 @@ async function persist(){
     localStorage.setItem('cosecha:vault', JSON.stringify(State.vault));
     localStorage.setItem('cosecha:names', JSON.stringify(State.players));
   }catch(e){}
+  try{ if(typeof pushSnapshot === 'function') pushSnapshot(); }catch(e){}   // 📸 respaldo local (anillo de fotos)
   if(typeof onLocalChange === 'function') onLocalChange();   // ☁️ sube a la nube (Firestore)
 }
 
@@ -486,8 +487,50 @@ async function saveUndo(etiqueta){
       read: State.read.map(cleanBook), vault: State.vault.map(cleanBook),
       cartas: (typeof Cartas !== 'undefined') ? JSON.parse(JSON.stringify(Cartas)) : null });
     localStorage.setItem('cosecha:undo', raw);
+    localStorage.setItem('cosecha:enCurso', etiqueta);   // partida abierta: si se corta, se revierte al arrancar
     if(HAS_STORAGE){ try{ await window.storage.set('cosecha:undo', raw); }catch(e){} }
   }catch(e){}
+}
+/* la partida terminó (o se abandonó): ya no hay nada abierto que revertir */
+function clearEnCurso(){ try{ localStorage.removeItem('cosecha:enCurso'); }catch(e){} }
+
+/* ============================================================
+   RESPALDO — anillo de fotos con fecha, para volver a cualquier punto.
+   Se guarda una foto en cada cambio real de composición (no en cada
+   tecla). Sobreviven al susto de perder la bóveda: el "Deshacer" es una
+   sola foto; esto son las últimas 30.
+   ============================================================ */
+const SNAP_MAX = 30;
+function loadSnapshots(){ try{ return JSON.parse(localStorage.getItem('cosecha:snapshots')||'[]'); }catch(e){ return []; } }
+const snapFirma = ()=> State.read.length+'/'+State.vault.length+'/'
+  + State.read.map(b=>b.id).join(',')+'|'+State.vault.map(b=>b.id).join(',');
+function pushSnapshot(){
+  try{
+    const snaps = loadSnapshots();
+    const firma = snapFirma();
+    if(snaps.length && snaps[snaps.length-1]._firma === firma) return;   // nada cambió de composición
+    const d = new Date();
+    snaps.push({
+      ts: d.getTime(), fecha: fechaHoy(),
+      hora: d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' }),
+      _firma: firma, nR: State.read.length, nV: State.vault.length,
+      read: State.read.map(cleanBook), vault: State.vault.map(cleanBook),
+      cartas: (typeof Cartas !== 'undefined') ? JSON.parse(JSON.stringify(Cartas)) : null,
+    });
+    while(snaps.length > SNAP_MAX) snaps.shift();
+    localStorage.setItem('cosecha:snapshots', JSON.stringify(snaps));
+  }catch(e){ /* cuota llena: el respaldo no debe romper la app */ }
+}
+async function restoreSnapshot(ts){
+  const s = loadSnapshots().find(x=>x.ts===ts);
+  if(!s) return null;
+  await saveUndo('volver antes de restaurar');     // por si el restaurar tampoco gustó
+  clearEnCurso();
+  State.read = s.read.map(migrateBook);
+  State.vault = s.vault.map(migrateBook);
+  if(s.cartas && typeof Cartas !== 'undefined'){ Cartas.mano = s.cartas.mano; Cartas.historial = s.cartas.historial; if(typeof persistCartas==='function') persistCartas(); }
+  await persist();
+  return s;
 }
 function getUndo(){
   try{ const r = localStorage.getItem('cosecha:undo'); return r ? JSON.parse(r) : null; }
@@ -503,14 +546,36 @@ async function renameUndo(etiqueta){
     localStorage.setItem('cosecha:undo', raw);
     if(HAS_STORAGE){ try{ await window.storage.set('cosecha:undo', raw); }catch(e){} }
   }catch(e){}
+  clearEnCurso();                    // la partida cerró bien: el undo queda, pero ya no hay nada "a medias"
 }
 async function clearUndo(){
   try{ localStorage.removeItem('cosecha:undo'); }catch(e){}
   if(HAS_STORAGE){ try{ await window.storage.delete('cosecha:undo'); }catch(e){} }
+  clearEnCurso();
+}
+/* al arrancar: si la sesión anterior murió a mitad de una partida (cerraron la
+   tab, se colgó, se fue la luz), el estante y la bóveda vuelven a como estaban
+   antes de empezar. La foto la sacó saveUndo al abrir la partida. */
+async function revertirSiQuedoAMedias(){
+  let flag = null;
+  try{ flag = localStorage.getItem('cosecha:enCurso'); }catch(e){}
+  if(!flag) return false;
+  const s = getUndo();
+  if(!s){ clearEnCurso(); return false; }
+  try{
+    State.read  = s.read.map(migrateBook);
+    State.vault = s.vault.map(migrateBook);
+    if(s.cartas && typeof Cartas !== 'undefined'){ Cartas.mano = s.cartas.mano; Cartas.historial = s.cartas.historial; if(typeof persistCartas==='function') await persistCartas(); }
+    await persist();
+  }catch(e){}
+  clearUndo();   // ya se usó, y limpia la marca
+  try{ toast('Quedó ' + flag + ' sin terminar · todo volvió a como estaba'); }catch(e){}
+  return true;
 }
 async function restoreUndo(){
   const s = getUndo();
   if(!s) return null;
+  clearEnCurso();
   State.read = s.read.map(migrateBook);
   State.vault = s.vault.map(migrateBook);
   await persist();                                  // guarda Y sincroniza el estado restaurado

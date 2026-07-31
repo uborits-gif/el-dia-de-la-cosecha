@@ -36,6 +36,7 @@ async function screenHome(){
           <button class="load-btn" id="loadHonor">↑ Cargar el club</button>
           <button class="load-btn" id="dlHonor">↓ Descargar el club</button>
           ${getUndo()?`<button class="load-btn" id="undoBtn" title="Volver a como estaba antes de ${escapeHtml(getUndo().etiqueta)}">↩ Deshacer</button>`:''}
+          ${(typeof loadSnapshots==='function' && loadSnapshots().length>1)?`<button class="load-btn" id="histBtn" title="Volver a cualquier punto guardado">🕑 Historial</button>`:''}
         </div>
       </div>
       <div id="honorShelf"></div>
@@ -189,6 +190,65 @@ async function screenHome(){
       Sound.fx.drop();
       await screenHome();
       toast(`Deshecho: ${s.etiqueta}`);
+    });
+  });
+  if($('#histBtn')) $('#histBtn').addEventListener('click', openHistorial);
+}
+
+/* 🕑 EL RESPALDO — anillo de fotos con fecha. El "Deshacer" vuelve un paso;
+   esto deja volver a cualquier punto de los últimos 30. Mata el miedo a perder todo. */
+function openHistorial(){
+  Sound.fx.click();
+  const snaps = (typeof loadSnapshots==='function' ? loadSnapshots() : []).slice().reverse();
+  const filas = snaps.map((s,idx)=>{
+    const actual = idx===0;
+    return `
+      <button class="hist-row${actual?' now':''}" data-ts="${s.ts}" ${actual?'disabled':''}>
+        <div class="hist-when">
+          <div class="hist-fecha">${escapeHtml(s.fecha||'')}</div>
+          <div class="hist-hora">${escapeHtml(s.hora||'')}</div>
+        </div>
+        <div class="hist-mid">
+          <div class="hist-cnt"><b>${s.nR}</b> en el estante · <b>${s.nV}</b> en la bóveda</div>
+          ${actual?'<div class="hist-tag">ahora</div>':'<div class="hist-go">Volver a este punto →</div>'}
+        </div>
+      </button>`;
+  }).join('');
+  const ov = overlay(`
+    <div class="ov-pop" style="max-width:560px;width:100%;">
+      <div class="eyebrow" style="color:var(--amber);">Respaldo automático</div>
+      <h2 class="serif" style="font-size:26px;font-weight:700;margin:4px 0 2px;">Volver a un punto guardado</h2>
+      <p class="lead" style="font-size:13px;margin:0 0 12px;">Cada vez que algo cambia, se guarda una foto. Elegí a cuál volver — antes de restaurar se saca otra foto, así que no perdés nada.</p>
+      <div class="hist-list">${filas || '<div class="hist-empty">Todavía no hay respaldos.</div>'}</div>
+      <div class="row mt-m" style="justify-content:flex-end;">
+        <button class="btn btn-ghost" data-esc id="histClose">Cerrar</button>
+      </div>
+    </div>`);
+  $('#histClose', ov).addEventListener('click', ()=>{ Sound.fx.click(); closeOverlay(ov); });
+  ov.querySelectorAll('.hist-row:not(.now)').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const ts = +row.getAttribute('data-ts');
+      const s = (typeof loadSnapshots==='function' ? loadSnapshots() : []).find(x=>x.ts===ts);
+      if(!s) return;
+      Sound.fx.click();
+      const cf = overlay(`
+        <div class="ov-pop center" style="max-width:440px;">
+          <div class="eyebrow" style="color:var(--amber);">Restaurar</div>
+          <h2 class="serif" style="font-size:24px;font-weight:700;margin:4px 0 0;">¿Volvemos a este punto?</h2>
+          <p class="lead" style="font-size:13.5px;margin-top:10px;">${escapeHtml(s.fecha)} · ${escapeHtml(s.hora)} — <b>${s.nR}</b> leídos, <b>${s.nV}</b> en la bóveda.</p>
+          <div class="row mt-m">
+            <button class="btn btn-ghost" data-esc id="hcNo">No</button>
+            <button class="btn btn-amber" data-enter id="hcYes">Sí, volver acá</button>
+          </div>
+        </div>`);
+      $('#hcNo', cf).addEventListener('click', ()=>{ Sound.fx.click(); closeOverlay(cf); });
+      $('#hcYes', cf).addEventListener('click', async ()=>{
+        closeOverlay(cf); closeOverlay(ov);
+        await restoreSnapshot(ts);
+        Sound.fx.drop();
+        await screenHome();
+        toast(`Volviste al ${s.fecha} ${s.hora}`);
+      });
     });
   });
 }

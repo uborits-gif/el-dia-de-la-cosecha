@@ -102,7 +102,11 @@ function computeStats(){
   const traicionado = all.filter(nDes).sort((x,y)=>(nDes(y)-nDes(x)) || (nCos(y)-nCos(x)))[0] || null;
   const anulado = all.filter(b=>evCount(b,'anulaciones'))
     .sort((x,y)=>fechaOrd((evLast(y,'anulaciones')||{}).fecha)-fechaOrd((evLast(x,'anulaciones')||{}).fecha))[0] || null;
-  S.fama = { fenix, maldicion, traicionado, anulado };
+  // ⛏ David: cayó a la bóveda, alguien lo rescató, y después salió campeón de un Vasallaje.
+  const esCampeonVasallaje = b => nVasallajes(b) || /vasallaje/i.test(metodoGanador(b));
+  const david = all.filter(b=>evCount(b,'rescates')>=1 && esCampeonVasallaje(b))
+    .sort((x,y)=>evCount(y,'rescates')-evCount(x,'rescates'))[0] || null;
+  S.fama = { fenix, maldicion, traicionado, anulado, david };
 
   /* ---- cómo deciden: cuentan todas las veces que lo eligieron, no la última ---- */
   const critEv = arr => tally(arr.flatMap(b=>evList(b,'elegidos').map(e=>e.quien)));
@@ -150,6 +154,12 @@ function computeStats(){
   const gens = all.map(generoAutor);
   S.autoria = { F: gens.filter(g=>g==='F').length, M: gens.filter(g=>g==='M').length, X: gens.filter(g=>g==='?').length };
   S.anios = all.filter(b=>numOf(b.anio)).map(b=>({ y:numOf(b.anio), b }));
+  // ⏳ el salto en el tiempo: el libro más viejo y el más nuevo del club, y el abismo entre ellos
+  if(S.anios.length>=2){
+    const ordY = S.anios.slice().sort((x,z)=>x.y-z.y);
+    const viejo = ordY[0], nuevo = ordY[ordY.length-1];
+    S.salto = { viejo:viejo.b, nuevo:nuevo.b, yViejo:viejo.y, yNuevo:nuevo.y, anios: nuevo.y-viejo.y };
+  } else S.salto = null;
   const avgYear = arr => arr.length ? Math.round(arr.reduce((s,x)=>s+x,0)/arr.length) : null;
   S.decadas = {
     a: avgYear(all.filter(b=>isA(b.traidoPor) && numOf(b.anio)).map(b=>numOf(b.anio))),
@@ -270,6 +280,8 @@ function computeStats(){
     convocado: conCuadros.slice().sort((x,y)=>y.ps.length-x.ps.length)[0] || null,
     modos: tally(all.flatMap(b=>evList(b,'puestos')
       .map(e=>(String(e.quien||'').match(/\(([^)]+)\)/)||[])[1]).filter(Boolean))),
+    lugares: tally(all.flatMap(b=>evList(b,'puestos')
+      .map(e=>(String(e.quien||'').match(/📍\s*(.+)$/)||[])[1]).filter(Boolean).map(s=>s.trim()))),
   };
   return S;
 }
@@ -310,13 +322,15 @@ function renderStats(container){
   const lead = M.ptsA===M.ptsB ? null : (M.ptsA>M.ptsB ? 'a' : 'b');
 
   /* helpers de composición */
+  // un valor numérico entero cuenta hacia arriba al aparecer; el resto se muestra tal cual
+  const numHTML = v => /^\d+$/.test(String(v)) ? `<span class="st-count" data-to="${v}">0</span>` : String(v);
   const fig = (k, v, u, cls='') => `<div class="st-fig"><div class="k">${k}</div>
-    <div class="v ${cls}">${v}</div>${u?`<div class="u">${u}</div>`:''}</div>`;
+    <div class="v ${cls}">${numHTML(v)}</div>${u?`<div class="u">${u}</div>`:''}</div>`;
   const figs = arr => `<div class="st-figs">${arr.join('')}</div>`;
   const bars = (rows, color) => rows.length ? `<div class="st-bars">${rows.map(([lab,n],i)=>{
       const max = rows[0][1] || 1;
       return `<div class="st-bar ${i===0?'top':''}">
-        <div class="stb-h"><span class="stb-l">${escapeHtml(String(lab))}</span><span class="stb-n">${n}</span></div>
+        <div class="stb-h"><span class="stb-l">${escapeHtml(String(lab))}</span><span class="stb-n">${numHTML(n)}</span></div>
         <div class="stb-t"><i class="stb-f" style="--bc:${color||'var(--amber)'}" data-w="${Math.round(n/max*100)}"></i></div>
       </div>`;
     }).join('')}</div>` : '<div class="st-hint">Todavía sin datos.</div>';
@@ -331,10 +345,10 @@ function renderStats(container){
   const vsRow = (lab, a, b) => {
     const tot = (a+b) || 1;
     return `<div class="st-vs-row">
-      <div class="st-vs-n l">${a}</div>
+      <div class="st-vs-n l"><span class="st-count" data-to="${a}">0</span></div>
       <div class="st-vs-lab">${lab}</div>
-      <div class="st-vs-n r">${b}</div>
-      <div class="st-vs-meter"><i style="width:${a/tot*100}%"></i></div>
+      <div class="st-vs-n r"><span class="st-count" data-to="${b}">0</span></div>
+      <div class="st-vs-meter"><i data-w="${a/tot*100}" style="width:50%"></i></div>
     </div>`;
   };
 
@@ -375,12 +389,12 @@ function renderStats(container){
       <div class="st-score">
         <div class="st-team ${lead==='a'?'lead':''}" style="--pc:var(--pa)">
           <div class="st-tname">${escapeHtml(A)}</div>
-          <div class="st-tnum">${M.ptsA}</div>
+          <div class="st-tnum"><span class="st-count" data-to="${M.ptsA}">0</span></div>
         </div>
         <div class="st-mid"><span>—</span><small>vs</small></div>
         <div class="st-team ${lead==='b'?'lead':''}" style="--pc:var(--pb)">
           <div class="st-tname">${escapeHtml(B)}</div>
-          <div class="st-tnum">${M.ptsB}</div>
+          <div class="st-tnum"><span class="st-count" data-to="${M.ptsB}">0</span></div>
         </div>
       </div>
       ${S.racha.n>=1?`<div class="st-band">🔥 Racha activa · <b>${escapeHtml(S.racha.quien)}</b> con ${S.racha.n} — ${S.racha.libros.map(t=>escapeHtml(short(t,24))).join(' · ')}</div>`:''}
@@ -409,6 +423,10 @@ function renderStats(container){
           const quienes = [...new Set(evList(S.fama.traicionado,'descartes').map(e=>e.quien).filter(q=>q && q!=='?'))];
           return `descartado ${n>1?n+' veces':'una vez'}${quienes.length?' por '+escapeHtml(quienes.join(' y ')):''}`;
         })():'')}
+        ${S.fama.david ? rec('⛏️','David', S.fama.david, (()=>{
+          const n = evCount(S.fama.david,'rescates');
+          return `estuvo en la bóveda, lo rescataron ${n>1?n+' veces':'una vez'} y salió campeón del cuadro`;
+        })()) : ''}
         ${S.fama.anulado ? rec('🚫','El campeón anulado', S.fama.anulado,
           `ganó el ${escapeHtml((evLast(S.fama.anulado,'anulaciones')||{}).fecha||'—')} y decidieron volver a sortear`) : ''}
       </div>
@@ -524,6 +542,7 @@ function renderStats(container){
       <div class="st-rlab" style="margin:34px 0 0;">Línea de tiempo de publicación</div>
       <div class="st-note" style="margin:2px 0 10px;">De lo más viejo a lo más nuevo. Deslizá → · tocá un libro para abrirlo.</div>
       <div class="st-htl">${tline || '<div class="st-hint">Todavía sin años cargados.</div>'}</div>
+      ${S.salto ? `<div class="st-band gold" style="margin-top:14px;">⏳ El salto en el tiempo · <b>${S.salto.anios} años</b> — de «${escapeHtml(short(S.salto.viejo.titulo,22))}» (${S.salto.yViejo}) a «${escapeHtml(short(S.salto.nuevo.titulo,22))}» (${S.salto.yNuevo}).</div>` : ''}
       <div class="st-duel">
         <div class="st-duel-s" style="--pc:var(--pa)">
           <div class="st-duel-y">${S.decadas.a||'—'}</div>
@@ -612,11 +631,12 @@ function renderStats(container){
           fig('Tasa de rescate', S.boveda.tasaRescate+'%', 'de los caídos vuelve a jugar'),
         ].filter(Boolean))}
         ${V.modos.length ? `<div class="st-rlab" style="margin:30px 0 16px;">Cómo se armaron los cuadros</div>${bars(V.modos, 'var(--pb)')}` : ''}
+        ${V.lugares.length ? `<div class="st-rlab" style="margin:30px 0 16px;">Dónde se jugaron los torneos</div>${bars(V.lugares, 'var(--wood-3)')}` : ''}
         ${(State.duelos && State.duelos.length) ? (()=>{
           const d = State.duelos[State.duelos.length-1];
           const cruz = State.duelos.filter(x=>x.cruzado).length;
           return `<div class="st-rlab" style="margin:30px 0 12px;">El duelo de la final</div>
-            <div class="st-band gold">🎭 Última final: <b>${escapeHtml(d.a.quien)}</b> quería «${escapeHtml(short(d.a.quiso,20))}» y <b>${escapeHtml(d.b.quien)}</b> quería «${escapeHtml(short(d.b.quiso,20))}» — ganó «${escapeHtml(short(d.ganador,20))}»${d.acuerdo?' (se pusieron de acuerdo)':' (lo decidió la ruleta)'}.</div>
+            <div class="st-band gold">🎭 Última final${d.lugar?` · 📍${escapeHtml(d.lugar)}`:''}: <b>${escapeHtml(d.a.quien)}</b> quería «${escapeHtml(short(d.a.quiso,20))}» y <b>${escapeHtml(d.b.quien)}</b> quería «${escapeHtml(short(d.b.quiso,20))}» — ganó «${escapeHtml(short(d.ganador,20))}»${d.acuerdo?' (se pusieron de acuerdo)':' (lo decidió la ruleta)'}.</div>
             ${cruz?`<div class="st-band" style="margin-top:8px;">🔀 ${cruz} ${cruz>1?'veces':'vez'} cada uno quiso el libro que trajo el otro. Amor de club.</div>`:''}`;
         })() : ''}`;
       })() : '<div class="st-hint">Todavía no hubo ningún Vasallaje. La bóveda espera su torneo.</div>'}
@@ -668,10 +688,44 @@ function renderStats(container){
       else { try{ Sound.fx.click(); }catch(e){} showList(); }
     });
   });
-  // animaciones de entrada
-  requestAnimationFrame(()=>{
-    $$('.stb-f, .st-geo-bar i, .st-ribbon i', container).forEach(el=>el.style.width = el.dataset.w+'%');
-    $$('.st-scale div', container).forEach(el=>el.style.width = el.dataset.w+'%');
-  });
+  // entrada coreografiada: cada sección sube al entrar en pantalla, con sus hijos escalonados
+  setupStatsReveal(container);
   return S;
+}
+
+/* cuenta un número hacia arriba (una vez) */
+function stCountUp(el, to, dur=900){
+  if(!el) return;
+  if(matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches){ el.textContent = to; return; }
+  const t0 = performance.now();
+  (function step(t){
+    const p = Math.min(1, (t-t0)/dur), e = 1-Math.pow(1-p,3);
+    el.textContent = Math.round(e*to);
+    if(p<1) requestAnimationFrame(step);
+  })(t0);
+}
+
+/* revela las secciones a medida que entran al viewport: fade+rise, hijos en cascada,
+   barras y medidores que se llenan, y números que cuentan. No repetitivo: cada bloque
+   entra cuando lo mirás, no todo de una. */
+function setupStatsReveal(container){
+  const secs = $$('.st-sec', container);
+  const reduce = matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fillW = root => $$('.stb-f, .st-geo-bar i, .st-ribbon i, .st-scale div, .st-vs-meter i', root)
+    .forEach((el,i)=>{ if(el.dataset.w!=null) setTimeout(()=>{ el.style.width = el.dataset.w+'%'; }, reduce?0:60+i*45); });
+  const counts = root => $$('.st-count', root).forEach(el=>stCountUp(el, +el.dataset.to||0, 900));
+  const reveal = sec => {
+    sec.classList.add('in');
+    $$('.st-rvc', sec).forEach((c,i)=>{ c.style.transitionDelay = (reduce?0:i*48)+'ms'; c.classList.add('in'); });
+    fillW(sec); counts(sec);
+  };
+  secs.forEach(sec=>{
+    sec.classList.add('st-rv');
+    $$('.st-fig, .st-bar, .st-rec, .st-vs-row, .st-geo-row', sec).forEach(el=>el.classList.add('st-rvc'));
+  });
+  if(reduce || !('IntersectionObserver' in window)){ secs.forEach(reveal); return; }
+  const io = new IntersectionObserver((ents)=>ents.forEach(e=>{
+    if(e.isIntersecting){ reveal(e.target); io.unobserve(e.target); }
+  }), { rootMargin:'0px 0px -12% 0px', threshold:0.12 });
+  secs.forEach(sec=>io.observe(sec));
 }

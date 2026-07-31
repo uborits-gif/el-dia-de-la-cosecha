@@ -33,6 +33,8 @@ function screenVasallaje(){
   VS.picks = { a:[], b:[] };
   VS.sides = null; VS.grand = null; VS.all = []; VS.phase = null;
   VS.mode = null; VS.modeLabel = ''; VS.blind = false; VS.revealed = false; VS.sideTags = null;
+  // el lugar del torneo: arranca con el último lugar donde cosecharon (se puede cambiar)
+  VS.lugar = (()=>{ try{ return localStorage.getItem('cosecha:vasaLugar') || localStorage.getItem('cosecha:lugar') || ''; }catch(e){ return ''; } })();
   State.vault.forEach(b=>{ delete b._vsOwner; delete b._vsTrope; delete b._vsPlace; });
   return screenVasallajeModes();
 }
@@ -70,7 +72,9 @@ function vsStampPlace(b, place){
   const modo = b._vsTrope ? `trope: ${b._vsTrope}` : (VS.modeLabel || 'los tributos');
   const hoy = fechaHoy();
   if(evTiene(b, 'puestos', hoy)) return;      // un cuadro por día: no se anota dos veces
-  evPush(b, 'puestos', { fecha:hoy, quien:`Vasallaje (${modo})`, extra: VS_PLACE[place] || place });
+  // OJO: '·' y '|' son delimitadores de la bitácora — se sanean para no romper el parseo
+  const lug = (VS.lugar||'').replace(/[·|]/g,'-').trim();
+  evPush(b, 'puestos', { fecha:hoy, quien:`Vasallaje (${modo})${lug?` 📍${lug}`:''}`, extra: VS_PLACE[place] || place });
 }
 /* reparte 8 libros en dos lados de 4 (respeta dueño original si se puede) */
 function vsSplit(books){
@@ -97,6 +101,9 @@ function screenVasallajeModes(){
       <h1 class="title" style="font-size:clamp(30px,5.5vw,52px);">El torneo<br>de la bóveda</h1>
       <p class="lead mt-s" style="margin-left:auto;margin-right:auto;">
         ${VS_NEED*2} libros entran al cuadro. ¿Cómo los elegimos?</p>
+      <label class="vsm-lugar"><span>📍</span>
+        <input id="vsLugar" type="text" maxlength="42" placeholder="¿dónde se juega este torneo?" value="${escapeHtml(VS.lugar||'')}">
+      </label>
       <div class="vsm-grid" style="width:min(920px,94vw);">
         <div class="vsm-card" id="vm1" style="--i:0">
           <div class="vsm-n">MODO 01</div><div class="vsm-ico">🫵</div>
@@ -122,10 +129,10 @@ function screenVasallajeModes(){
           <div class="vsm-d">La bóveda escupe ${VS_NEED*2} y nadie opina.</div>
         </div>
         <div class="vsm-card ${State.vault.length>=32?'':'dim'}" id="vm5" style="--i:4">
-          <div class="vsm-n">MODO 05</div><div class="vsm-ico">🏟️</div>
+          <div class="vsm-n">MODO 05</div><div class="vsm-ico">${State.vault.length>=32?'🏟️':'🔒'}</div>
           <div class="vsm-t">Gran Vasallaje · 32</div>
-          <div class="vsm-d">32 entran al cuadro. Los que sobran se sortean afuera; cada cruce lo votan ustedes.</div>
-          ${State.vault.length>=32?'':`<div class="vsm-warn">Necesitás 32 — tenés ${State.vault.length}.</div>`}
+          <div class="vsm-d">32 al cuadro. Lo que sobra se sortea afuera, y a pelear con alegatos.</div>
+          ${State.vault.length>=32?'':`<div class="vsm-warn">Se desbloquea con 32 — tenés ${State.vault.length}.</div>`}
         </div>
         <div class="vsm-card ${State.vault.length>=64?'':'dim'}" id="vm6" style="--i:5">
           <div class="vsm-n">MODO 06</div><div class="vsm-ico">${State.vault.length>=64?'🏟️':'🔒'}</div>
@@ -142,6 +149,11 @@ function screenVasallajeModes(){
     </div>
   `);
   $('#vsBack').addEventListener('click', ()=>{ Sound.fx.click(); screenHome(); });
+  const lugIn = $('#vsLugar');
+  if(lugIn) lugIn.addEventListener('input', ()=>{
+    VS.lugar = lugIn.value.trim();
+    try{ localStorage.setItem('cosecha:vasaLugar', VS.lugar); }catch(e){}
+  });
   const runners = {};
   const go = (id, mode, fn)=>{
     const el = $('#'+id);
@@ -159,7 +171,7 @@ function screenVasallajeModes(){
   // el azar elige el modo: recorre las tarjetas disponibles y clava una
   $('#vsAny').addEventListener('click', async ()=>{
     // el Gran Vasallaje (destructivo, saca muchos libros) NO entra en la sorpresa
-    const opts = Object.values(runners).filter(o=>o.mode!=='gran32' && o.mode!=='gran64');
+    const opts = Object.values(runners).filter(o=>!/^gran/.test(o.mode));
     if(!opts.length) return;
     $('#vsAny').disabled = true; $('#vsBack').disabled = true;
     const pick = opts[Math.floor(Math.random()*opts.length)];
@@ -476,91 +488,146 @@ function screenVasallajePick(who){
   refresh();
 }
 
-/* ---------- armar el cuadro (8 → 4 → 2 → 1, sin sorteos) ---------- */
+/* ============================================================
+   EL MOTOR DE LLAVES — un solo bracket para 8, 16 y 32
+   VS.rounds[r] = capa de cruces (r=0 la primera, la última es la final).
+   Cada cruce {a,b,winner}. El ganador del cruce i de la capa r llena el
+   slot i de la capa r+1. Layout espejado que crece en alto con N.
+   ============================================================ */
+
+/* de las hojas en orden (par0=cruce0, par1=cruce1…) al árbol de capas */
+function buildRounds(hojas){
+  const N = hojas.length;                       // potencia de 2
+  const capas = [];
+  let cap = [];
+  for(let i=0;i<N;i+=2) cap.push({ a:hojas[i], b:hojas[i+1], winner:null });
+  capas.push(cap);
+  while(cap.length > 1){
+    const sig = [];
+    for(let i=0;i<cap.length;i+=2) sig.push({ a:null, b:null, winner:null });
+    capas.push(sig);
+    cap = sig;
+  }
+  return capas;                                 // capas[K-1] = la final (1 cruce)
+}
+
 function startBracket(){
   VS.all = [...VS.picks.a, ...VS.picks.b];
-  // salen de la bóveda mientras dura el torneo (los caídos vuelven al final)
   const ids = new Set(VS.all.map(b=>b.id));
-  State.vault = State.vault.filter(b=>!ids.has(b.id));
-
+  State.vault = State.vault.filter(b=>!ids.has(b.id));   // salen mientras dura
+  // hojas intercaladas: cada cruce de la 1ª ronda es Maru vs Uri
   const ma = shuffled(VS.picks.a), ub = shuffled(VS.picks.b);
-  const mkSide = (m,u)=>({
-    r1: m.map((bk,i)=>({ a:bk, b:u[i], winner:null })),   // 2 cruces
-    fin:{ a:null, b:null, winner:null },                   // semifinal de ala
-    champ:null,
-  });
-  VS.sides = { L: mkSide(ma.slice(0,2), ub.slice(0,2)), R: mkSide(ma.slice(2,4), ub.slice(2,4)) };
+  const hojas = [];
+  ma.forEach((bk,i)=>{ hojas.push(bk, ub[i]); });
+  armarCuadro(hojas);
+}
+
+/* punto de entrada único: arma el modelo y dibuja */
+function armarCuadro(hojas){
+  VS.rounds = buildRounds(hojas);
+  VS.N = hojas.length;
+  VS.K = Math.log2(hojas.length);               // capas de cruces (la última es la final)
   VS.grand = { a:null, b:null, winners:null };
-  VS.phase = 'r1';
-  Sound.startMusic('vasallaje');
+  VS.finalKeys = null;
+  VS.phase = 0;                                 // índice de la capa activa
+  if(Sound.startMusic) Sound.startMusic('vasallaje');
   screenBracket();
 }
 
-/* ---------- geometría del cuadro ---------- */
-const VSBW = 1060, VSBH = 520;
-function vsCoords(side){
-  const X = x => side==='R' ? VSBW - x : x;
-  return {
-    book: i => ({x:X(92),  y:70 + i*112}),                    // 4 filas
-    w1:   i => ({x:X(268), y:(70+2*i*112 + 70+(2*i+1)*112)/2}),
-    champ:     {x:X(438), y:238},
-  };
+/* nodos por slot: n{r}_{i}. La capa 0 tiene N nodos (los libros); la
+   capa r>0 tiene N/2^r nodos (los ganadores que se van llenando). */
+function bracketLayout(N){
+  const K = Math.log2(N);                       // capas de cruces
+  const VSBW = 1060;
+  const rowMin = 96, topPad = 62;
+  const filas = N/2;                            // nodos de libro por lado en la 1ª col
+  const VSBH = Math.max(520, topPad*2 + filas*rowMin);
+  const marginX = 88, centerGap = 96;
+  const colW = K > 1 ? (VSBW/2 - marginX - centerGap) / (K-1) : 0;
+  const pos = {};                               // key → {x,y, side}
+  // capa 0: los libros. Primer N/2 nodos → izquierda, resto → derecha.
+  const half = N/2;
+  const rowH = (VSBH - topPad*2) / (half - 1 || 1);
+  for(let i=0;i<N;i++){
+    const side = (i < half) ? 'L' : 'R';
+    const row = i % half;
+    const x = side==='L' ? marginX : VSBW - marginX;
+    pos[`n0_${i}`] = { x, y: topPad + row*rowH, side };
+  }
+  // capas siguientes: cada nodo en el centro vertical de sus dos hijos
+  for(let r=1; r<=K; r++){
+    const cnt = N / Math.pow(2,r);
+    for(let i=0;i<cnt;i++){
+      const c1 = pos[`n${r-1}_${2*i}`], c2 = pos[`n${r-1}_${2*i+1}`];
+      const y = (c1.y + c2.y) / 2;
+      let x, side;
+      if(r === K){ x = VSBW/2; side = 'C'; }     // el campeón, al centro
+      else {
+        side = (i < cnt/2) ? 'L' : 'R';
+        x = side==='L' ? marginX + r*colW : VSBW - marginX - r*colW;
+      }
+      pos[`n${r}_${i}`] = { x, y, side };
+    }
+  }
+  return { pos, VSBW, VSBH, K };
 }
-const VS_GWIN = { x:VSBW/2, y:352 };
-const VS_TROPHY = { x:VSBW/2, y:172 };
 
 /* ---------- pantalla del bracket ---------- */
-let vsUI = null;   // { stage, svg, nodes:{}, edges:{} }
+let vsUI = null;   // { stage, svg, nodes:{}, edges:{}, K }
 
 function screenBracket(){
   App.ambient('rgba(232,195,74,.07)', 'rgba(30,26,50,.5)');
+  const L = bracketLayout(VS.N);
+  const nombreTam = VS.N===8 ? 'El cuadro' : `El cuadro de ${VS.N}`;
   show(`
     <div class="center" style="padding-top:0;">
-      <div class="eyebrow" style="color:#E8C34A;">⚔️ Vasallaje${VS.modeLabel?' · '+escapeHtml(VS.modeLabel):''}</div>
-      <h2 class="serif" style="font-weight:900;font-size:clamp(24px,4vw,38px);margin:0;">El cuadro</h2>
+      <div class="eyebrow" style="color:#E8C34A;">⚔️ ${VS.mode==='gran'?'Gran Vasallaje':'Vasallaje'}${VS.modeLabel&&VS.mode!=='gran'?' · '+escapeHtml(VS.modeLabel):''}</div>
+      <h2 class="serif" style="font-weight:900;font-size:clamp(24px,4vw,38px);margin:0;">${nombreTam}</h2>
+      ${VS.lugar?`<div class="vs-lugar">📍 ${escapeHtml(VS.lugar)}</div>`:''}
       <div class="vs-phase" id="vsPhase"></div>
       <div class="vs-stage-wrap"><div class="vs-stage" id="vsStage">
-        <svg class="vs-svg" id="vsSvg" viewBox="0 0 ${VSBW} ${VSBH}"></svg>
+        <svg class="vs-svg" id="vsSvg" viewBox="0 0 ${L.VSBW} ${L.VSBH}"></svg>
       </div></div>
     </div>
   `);
   const stage = $('#vsStage');
-  stage.style.height = VSBH+'px';
-  const availW = Math.min(innerWidth - 24, 1080);
-  const sc = Math.min(1, availW / VSBW);
+  stage.style.width = L.VSBW+'px';
+  stage.style.height = L.VSBH+'px';
+  const availW = Math.min(innerWidth - 16, 1080);
+  const sc = Math.min(1, availW / L.VSBW);
+  stage.style.transformOrigin = 'top center';
   stage.style.transform = `scale(${sc})`;
-  stage.parentElement.style.height = (VSBH*sc + 10)+'px';
+  stage.parentElement.style.height = (L.VSBH*sc + 12)+'px';
 
-  vsUI = { stage, svg: $('#vsSvg'), nodes:{}, edges:{} };
-  const ab = $('#abortBtn'); if(ab) ab.classList.add('on');   // salida de emergencia también acá
+  vsUI = { stage, svg: $('#vsSvg'), nodes:{}, edges:{}, pos:L.pos, K:L.K };
+  const ab = $('#abortBtn'); if(ab) ab.classList.add('on');
 
-  const tags = VS.sideTags || [`LADO ${State.players.a.toUpperCase()}`, `LADO ${State.players.b.toUpperCase()}`];
-  mkSideTag(String(tags[0]).toUpperCase(), {x:92, y:16});
-  mkSideTag(String(tags[1]).toUpperCase(), {x:VSBW-92, y:16});
+  const tags = VS.sideTags;
+  if(tags){
+    mkSideTag(String(tags[0]).toUpperCase(), {x:88, y:20});
+    mkSideTag(String(tags[1]).toUpperCase(), {x:L.VSBW-88, y:20});
+  }
   const trophy = document.createElement('div');
   trophy.className = 'vs-trophy';
-  trophy.style.left = VS_TROPHY.x+'px';
-  trophy.style.top  = VS_TROPHY.y+'px';
+  trophy.style.left = (L.VSBW/2)+'px';
+  trophy.style.top  = Math.max(24, L.pos[`n${L.K}_0`].y - 66)+'px';
   trophy.textContent = '🏆';
   stage.appendChild(trophy);
 
-  ['L','R'].forEach(side=>{
-    const C = vsCoords(side);
-    const S = VS.sides[side];
-    S.r1.forEach((cr,i)=>{
-      mkNode(`${side}-b${2*i}`,   C.book(2*i),   cr.a);
-      mkNode(`${side}-b${2*i+1}`, C.book(2*i+1), cr.b);
-      mkNode(`${side}-w${i}`,     C.w1(i),       null);
-      mkEdge(`${side}-b${2*i}`,   `${side}-w${i}`);
-      mkEdge(`${side}-b${2*i+1}`, `${side}-w${i}`);
-    });
-    mkNode(`${side}-champ`, C.champ, null);
-    mkEdge(`${side}-w0`, `${side}-champ`);
-    mkEdge(`${side}-w1`, `${side}-champ`);
-    mkEdge(`${side}-champ`, 'G-win');
-  });
-  mkNode('G-win', VS_GWIN, null, true);
-
+  // dibujar cada slot como nodo, y las líneas hacia su padre
+  for(let r=0; r<=L.K; r++){
+    const cnt = VS.N / Math.pow(2,r);
+    for(let i=0;i<cnt;i++){
+      const key = `n${r}_${i}`;
+      let book = null;
+      if(r===0){ const m = VS.rounds[0][Math.floor(i/2)]; book = (i%2===0)?m.a:m.b; }
+      mkNode(key, L.pos[key], book, r===L.K);
+      if(r < L.K){                                // línea hacia el nodo padre
+        const parent = `n${r+1}_${Math.floor(i/2)}`;
+        mkEdge(key, parent);
+      }
+    }
+  }
   updatePhase();
   wireClicks();
 }
@@ -618,8 +685,8 @@ function paintFallback(cov, book){
 }
 
 function mkEdge(fromKey, toKey){
-  const p1 = vsUI.nodes[fromKey].pos;
-  const p2 = (toKey==='G-win') ? VS_GWIN : vsUI.nodes[toKey].pos;
+  const p1 = (vsUI.nodes[fromKey] && vsUI.nodes[fromKey].pos) || vsUI.pos[fromKey];
+  const p2 = (vsUI.nodes[toKey] && vsUI.nodes[toKey].pos) || vsUI.pos[toKey];
   const mx = (p1.x+p2.x)/2;
   const d = `M ${p1.x} ${p1.y} C ${mx} ${p1.y}, ${mx} ${p2.y}, ${p2.x} ${p2.y}`;
   const path = document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -655,16 +722,15 @@ function paintEdge(fromKey, toKey, lit){
   }
 }
 
-/* ---------- fases ---------- */
-const VS_PHASE_LABEL = {
-  r1:'Primera ronda — toquen un cruce para el alegato',
-  semi:'Semifinales de ala — un cruce por lado',
-  grand:'⚡ LA GRAN FINAL ⚡ — toquen a los campeones',
-  done:'',
-};
+/* ---------- fases (genéricas: VS.phase = índice de capa, o 'grand') ---------- */
 function updatePhase(){
   const el = $('#vsPhase');
-  if(el) el.textContent = VS_PHASE_LABEL[VS.phase] || '';
+  if(!el) return;
+  if(VS.phase === 'grand'){ el.textContent = '⚡ LA GRAN FINAL ⚡ — toquen a los dos finalistas'; return; }
+  if(VS.phase === 'done'){ el.textContent = ''; return; }
+  const enJuego = VS.N / Math.pow(2, VS.phase);        // libros vivos en esta capa
+  const nombre = granRonda(enJuego);
+  el.textContent = `${nombre} — toquen un cruce para el alegato`;
 }
 
 function clearClickables(){
@@ -674,85 +740,65 @@ function clearClickables(){
   });
 }
 
+/* habilita los cruces de la capa activa (o los dos finalistas si es la gran final) */
 function wireClicks(){
   clearClickables();
-  ['L','R'].forEach(side=>{
-    const S = VS.sides[side];
-    if(VS.phase==='r1'){
-      S.r1.forEach((cr,i)=>{
-        if(cr.winner) return;
-        const open = ()=>openDebate(cr, `cruce ${i+1} · ala ${side==='L'?'izquierda':'derecha'}`, w=>{
-          cr.winner = w;
-          resolveR1(side, i);
-        });
-        [`${side}-b${2*i}`, `${side}-b${2*i+1}`].forEach(k=>{
-          vsUI.nodes[k].el.classList.add('clickable');
-          vsUI.nodes[k].el.onclick = open;
-        });
-      });
-    }
-    if(VS.phase==='semi' && !S.fin.winner){
-      const open = ()=>openDebate(S.fin, `semifinal · ala ${side==='L'?'izquierda':'derecha'}`, w=>{
-        S.fin.winner = w;
-        resolveFin(side);
-      });
-      [`${side}-w0`, `${side}-w1`].forEach(k=>{
-        vsUI.nodes[k].el.classList.add('clickable');
-        vsUI.nodes[k].el.onclick = open;
-      });
-    }
-  });
-  if(VS.phase==='grand' && !VS.grand.winners){
-    ['L-champ','R-champ'].forEach(k=>{
-      vsUI.nodes[k].el.classList.add('clickable');
-      vsUI.nodes[k].el.onclick = openGrandFinal;
+  if(VS.phase === 'grand'){
+    if(VS.grand.winners) return;
+    [VS.finalKeys.a, VS.finalKeys.b].forEach(k=>{
+      const n = vsUI.nodes[k]; if(!n) return;
+      n.el.classList.add('clickable');
+      n.el.onclick = openGrandFinal;
     });
+    return;
   }
+  const r = VS.phase;
+  VS.rounds[r].forEach((cr,m)=>{
+    if(cr.winner || !cr.a || !cr.b) return;
+    const nombre = granRonda(VS.N / Math.pow(2, r));
+    const open = ()=>openDebate(cr, `${nombre} · cruce ${m+1}`, w=>{
+      cr.winner = w;
+      resolveMatch(r, m);
+    });
+    [`n${r}_${2*m}`, `n${r}_${2*m+1}`].forEach(k=>{
+      const n = vsUI.nodes[k]; if(!n) return;
+      n.el.classList.add('clickable');
+      n.el.onclick = open;
+    });
+  });
 }
 
-function resolveR1(side, i){
-  const cr = VS.sides[side].r1[i];
-  const ka = `${side}-b${2*i}`, kb = `${side}-b${2*i+1}`, kt = `${side}-w${i}`;
-  (cr.winner===cr.a ? cr.b : cr.a)._vsPlace = 'r1';
+/* resuelve un cruce: pinta, promueve al ganador y avanza la fase */
+function resolveMatch(r, m){
+  const cr = VS.rounds[r][m];
+  const ka = `n${r}_${2*m}`, kb = `n${r}_${2*m+1}`, kt = `n${r+1}_${m}`;
+  const perdedor = cr.winner===cr.a ? cr.b : cr.a;
+  perdedor._vsPlace = granPlace(VS.N / Math.pow(2, r));   // dónde quedó, por tamaño de ronda
   paintEdge(cr.winner===cr.a ? ka : kb, kt, true);
   paintEdge(cr.winner===cr.a ? kb : ka, kt, false);
   vsUI.nodes[cr.winner===cr.a ? kb : ka].el.classList.add('out');
+  // sube el ganador al slot padre (y al modelo de la capa siguiente)
+  const padre = VS.rounds[r+1] && VS.rounds[r+1][Math.floor(m/2)];
+  if(padre){ if(m%2===0) padre.a = cr.winner; else padre.b = cr.winner; }
   setTimeout(()=>{ fillNode(kt, cr.winner); Sound.fx.reveal(); }, 650);
   setTimeout(checkPhase, 1200);
 }
 
-function resolveFin(side){
-  const S = VS.sides[side];
-  const kw = S.fin.winner === S.fin.a ? `${side}-w0` : `${side}-w1`;
-  const kl = kw===`${side}-w0` ? `${side}-w1` : `${side}-w0`;
-  (S.fin.winner === S.fin.a ? S.fin.b : S.fin.a)._vsPlace = 'semi';
-  paintEdge(kw, `${side}-champ`, true);
-  paintEdge(kl, `${side}-champ`, false);
-  vsUI.nodes[kl].el.classList.add('out');
-  S.champ = S.fin.winner;
-  VS.grand[side==='L'?'a':'b'] = S.champ;
-  setTimeout(()=>{ fillNode(`${side}-champ`, S.champ); Sound.fx.reveal(); }, 650);
-  setTimeout(checkPhase, 1200);
-}
-
 function checkPhase(){
-  const allR1 = ['L','R'].every(s=>VS.sides[s].r1.every(c=>c.winner));
-  if(VS.phase==='r1' && allR1){
-    // preparar las semifinales de ala
-    ['L','R'].forEach(s=>{
-      VS.sides[s].fin.a = VS.sides[s].r1[0].winner;
-      VS.sides[s].fin.b = VS.sides[s].r1[1].winner;
-    });
-    VS.phase='semi'; updatePhase(); wireClicks();
-    return;
-  }
-  const allFin = ['L','R'].every(s=>VS.sides[s].fin.winner);
-  if(VS.phase==='semi' && allFin){
-    VS.phase='grand'; updatePhase(); wireClicks();
+  const r = VS.phase;
+  if(typeof r !== 'number'){ wireClicks(); return; }
+  if(!VS.rounds[r].every(c=>c.winner)){ wireClicks(); return; }   // faltan cruces
+  const next = r + 1;
+  if(next === VS.K - 1){
+    // la capa siguiente es la final: los dos finalistas listos
+    const fin = VS.rounds[next][0];
+    VS.grand.a = fin.a; VS.grand.b = fin.b;
+    VS.finalKeys = { a:`n${next}_0`, b:`n${next}_1`, win:`n${VS.K}_0` };
+    VS.phase = 'grand'; updatePhase(); wireClicks();
     Sound.fx.finalBell();
-    return;
+  } else {
+    VS.phase = next; updatePhase(); wireClicks();
   }
-  wireClicks();
 }
 
 /* ---------- el alegato (con dado de emergencia) ---------- */
@@ -767,35 +813,32 @@ const VS_FLAVOR = [
 /* un lado del alegato con el libro a la vista: cabecera, tapa, título,
    tropes y sinopsis — todo en filas de alto fijo para que las dos columnas
    queden alineadas y el «vs» caiga justo en el centro de las tapas */
-function vsDuelSide(bk){
+function vsDuelSide(bk, side){
+  // side 'a' = izquierda (portada a la izq, info a la der) · 'b' = derecha (espejado)
   const s = document.createElement('div');
-  s.className = 'vs-duel-side';
+  s.className = 'vs-duel-side ' + (side==='b' ? 'right' : 'left');
   const ownerP = bk._vsOwner;
   const head = bk._vsTrope
     ? `<div class="vs-duel-owner" style="color:#E8C34A">🧬 ${escapeHtml(bk._vsTrope)}</div>`
     : `<div class="vs-duel-owner" style="color:${PLAYER_COLOR[ownerP]||'var(--grey)'}">${
         ownerP ? 'de '+escapeHtml(State.players[ownerP]) : ''}</div>`;
-  s.innerHTML = head;
+  const tr = (bk.tropes||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,3);
+  const meta = [bk.autor, bk.anio, bk.pais, bk.paginas?bk.paginas+' págs':''].filter(Boolean).join(' · ');
+  // cuerpo horizontal: portada + info al costado
+  const body = document.createElement('div');
+  body.className = 'vs-duel-body';
   const cov = document.createElement('div');
   cov.className = 'vs-duel-cover';
-  cov.appendChild(bookEl(bk, {size:bs(118)}));
-  s.appendChild(cov);
-  const t = document.createElement('div');
-  t.className = 'vs-duel-title';
-  t.textContent = bk.titulo;
-  s.appendChild(t);
-  // hasta 3 tropes, como en la ficha
-  const tr = (bk.tropes||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,3);
-  if(tr.length){
-    const chips = document.createElement('div');
-    chips.className = 'vs-duel-tropes';
-    chips.innerHTML = tr.map(x=>`<span${bk._vsTrope===x?' class="on"':''}>${escapeHtml(x)}</span>`).join('');
-    s.appendChild(chips);
-  }
-  const syn = document.createElement('div');
-  syn.className = 'vs-duel-syn';
-  syn.textContent = bk.sinopsis || '(sin sinopsis)';
-  s.appendChild(syn);
+  cov.appendChild(bookEl(bk, {size:bs(120)}));
+  const info = document.createElement('div');
+  info.className = 'vs-duel-info';
+  info.innerHTML = head
+    + `<div class="vs-duel-title">${escapeHtml(bk.titulo)}</div>`
+    + (meta ? `<div class="vs-duel-meta">${escapeHtml(meta)}</div>` : '')
+    + (tr.length ? `<div class="vs-duel-tropes">${tr.map(x=>`<span${bk._vsTrope===x?' class="on"':''}>${escapeHtml(x)}</span>`).join('')}</div>` : '')
+    + `<div class="vs-duel-syn">${escapeHtml(bk.sinopsis || '(sin sinopsis)')}</div>`;
+  body.appendChild(cov); body.appendChild(info);
+  s.appendChild(body);
   return s;
 }
 const vsVsEl = ()=>{ const v = document.createElement('div'); v.className = 'vs-vs'; v.textContent = 'vs'; return v; };
@@ -829,7 +872,7 @@ function openDebate(cruce, label, onWin){
         <div class="vq-text">${escapeHtml(vsQuoteOf(bk))}</div>
         <div class="vq-foot">no saben qué libro es</div>`;
     } else {
-      sideEl = vsDuelSide(bk);
+      sideEl = vsDuelSide(bk, i===0?'a':'b');
     }
     sideEl.appendChild(btn);
     duel.appendChild(sideEl);
@@ -882,7 +925,8 @@ function openGrandFinal(){
       <div class="vs-duel mt-s" id="gfDuel"></div>
       <p class="lead" style="font-size:14px;margin-top:14px;">¿Cómo lo resuelven?</p>
       <div class="row mt-m" style="flex-direction:column;align-items:stretch;gap:10px;">
-        <button class="btn btn-primary" id="gfDebate">🗣 Lo debatimos y elegimos</button>
+        <button class="btn btn-primary" id="gfVote">🗳️ Votamos en secreto — cada uno el suyo</button>
+        <button class="btn btn-ghost" id="gfDebate">🗣 Lo debatimos y elegimos</button>
         <button class="btn btn-ghost" id="gfBoth">📚 Leemos los dos — empate de honor</button>
         <button class="btn btn-amber" id="gfEpic">⚡ VS FINAL ÉPICO — que lo decida el destino</button>
       </div>
@@ -905,6 +949,17 @@ function openGrandFinal(){
     if(i===0) duel.appendChild(vsVsEl());
   });
   $('#gfBack', ov).addEventListener('click', ()=>{ Sound.fx.click(); closeOverlay(ov); });
+  $('#gfVote', ov).addEventListener('click', ()=>{
+    closeOverlay(ov);
+    // la final narrativa: cada uno vota en secreto → acuerdo o ruleta + carta.
+    // usa show() (pantalla completa), así que al coronar redibujamos el cuadro
+    // para que la coronación (y el velo a ciegas) tengan dónde pintarse.
+    vsFinalVote(A, B, VS.modeLabel, (w)=>{
+      VS.grand.winners = [w];          // que screenBracket no vuelva a habilitar la final
+      screenBracket();
+      resolveGrand([w]);
+    });
+  });
   $('#gfDebate', ov).addEventListener('click', ()=>{
     closeOverlay(ov);
     openDebate({a:A, b:B}, 'la gran final', w=>resolveGrand([w]));
@@ -993,10 +1048,11 @@ function resolveGrand(winners){
   winners.forEach(w=>w._vsPlace = 'campeon');
   if(!wA) VS.grand.a._vsPlace = 'finalista';
   if(!wB) VS.grand.b._vsPlace = 'finalista';
-  paintEdge('L-champ', 'G-win', wA);
-  paintEdge('R-champ', 'G-win', wB);
-  if(!wA) vsUI.nodes['L-champ'].el.classList.add('out');
-  if(!wB) vsUI.nodes['R-champ'].el.classList.add('out');
+  const FK = VS.finalKeys || { a:'n0_0', b:'n0_1', win:'n1_0' };
+  paintEdge(FK.a, FK.win, wA);
+  paintEdge(FK.b, FK.win, wB);
+  if(!wA && vsUI.nodes[FK.a]) vsUI.nodes[FK.a].el.classList.add('out');
+  if(!wB && vsUI.nodes[FK.b]) vsUI.nodes[FK.b].el.classList.add('out');
   setTimeout(async ()=>{
     // A CIEGAS: acá se cae el velo. Todo el cuadro se revela de golpe.
     if(VS.blind){
@@ -1009,11 +1065,11 @@ function resolveGrand(winners){
       await sleep(700);
       $('#vsPhase') && ($('#vsPhase').textContent = '');
     }
-    fillNode('G-win', winners[0]);
+    fillNode(FK.win, winners[0]);
     if(winners.length>1){
-      const cov = vsUI.nodes['G-win'].el.querySelector('.vsn-cover');
+      const cov = vsUI.nodes[FK.win].el.querySelector('.vsn-cover');
       cov.style.boxShadow = '0 0 24px rgba(232,195,74,.8)';
-      vsUI.nodes['G-win'].el.querySelector('.vsn-lab').textContent =
+      vsUI.nodes[FK.win].el.querySelector('.vsn-lab').textContent =
         winners.map(w=>w.titulo).join('  +  ').slice(0,60);
     }
     Sound.fx.fanfare();
@@ -1047,7 +1103,7 @@ async function drawerReturn(losers, opts={}){
     <div class="center" style="min-height:20vh;justify-content:flex-end;padding-top:40px;">
       <div class="eyebrow" style="color:var(--grey);">${opts.eyebrow||'La cosecha terminó'}</div>
       <h2 class="serif" style="font-weight:900;font-size:clamp(24px,4.5vw,40px);margin:0;">Los caídos vuelven a la bóveda</h2>
-      <p class="lead mt-s" id="vsRetSub">Con honor. Uno por uno.</p>
+      <p class="lead mt-s" id="vsRetSub">${losers.length>10?'Con honor. En bandada.':'Con honor. Uno por uno.'}</p>
     </div>
     <div class="vs-drawer-zone">
       <div class="vs-flyers" id="vsFlyers"></div>
@@ -1067,6 +1123,11 @@ async function drawerReturn(losers, opts={}){
   const targetX = dr.left + dr.width/2 - zone.left;
   const targetY = dr.top + 26 - zone.top;
 
+  // muchos libros (Gran Vasallaje) → vuelan en bandada, solapados y rápido
+  const muchos = losers.length > 10;
+  const gap = muchos ? Math.max(45, 900/losers.length) : 240;
+  const durVuelo = muchos ? 420 : 520;
+  let ultima = null;
   for(let i=0; i<losers.length; i++){
     const b = losers[i];
     const fl = document.createElement('div');
@@ -1082,22 +1143,24 @@ async function drawerReturn(losers, opts={}){
       fl.appendChild(img);
     } else ensureColor(b).then(c=>fl.style.background=c.css);
     flyers.appendChild(fl);
-    fl.animate([{opacity:0, transform:'scale(.4)'},{opacity:1, transform:'scale(1)'}], {duration:180, fill:'forwards'});
-    $('#vsRetSub') && ($('#vsRetSub').innerHTML = `«${escapeHtml(b.titulo)}» vuelve a la bóveda…`);
-    await sleep(240);
-    Sound.noise({dur:.35, vol:.09, lp:3400, hp:500, sweepTo:900, wet:.3});
+    fl.animate([{opacity:0, transform:'scale(.4)'},{opacity:1, transform:'scale(1)'}], {duration:muchos?110:180, fill:'forwards'});
+    $('#vsRetSub') && ($('#vsRetSub').innerHTML = muchos ? `${losers.length-i} volviendo…` : `«${escapeHtml(b.titulo)}» vuelve a la bóveda…`);
+    await sleep(muchos ? 30 : 240);
+    if(!muchos || i%3===0) Sound.noise({dur:.3, vol:.08, lp:3400, hp:500, sweepTo:900, wet:.3});
     const dx = targetX - startX - 48, dy = targetY - startY;   // 48 = mitad del flyer grande
     const anim = fl.animate([
       { transform:'translate(0,0) rotate(0deg) scale(1)', offset:0 },
       { transform:`translate(${dx*0.5}px, ${dy*0.35 - 60}px) rotate(${(Math.random()-.5)*40}deg) scale(.9)`, offset:.5 },
       { transform:`translate(${dx}px, ${dy}px) rotate(${(Math.random()-.5)*70}deg) scale(.3)`, opacity:.9, offset:1 },
-    ], { duration:520, easing:'cubic-bezier(.5,0,.9,.4)', fill:'forwards' });
-    await anim.finished.catch(()=>{});
-    fl.remove();
-    Sound.tone({freq:120 - i*2, dur:.12, type:'sine', vol:.16, glideTo:60});
+    ], { duration:durVuelo, easing:'cubic-bezier(.5,0,.9,.4)', fill:'forwards' });
+    ultima = anim;
+    anim.finished.then(()=>fl.remove()).catch(()=>{});
+    Sound.tone({freq:120 - (i%20)*2, dur:.1, type:'sine', vol:.14, glideTo:60});
     drawer.classList.remove('bump'); void drawer.offsetWidth; drawer.classList.add('bump');
-    await sleep(120);
+    if(!muchos) await anim.finished.catch(()=>{});
+    await sleep(muchos ? gap : 120);
   }
+  if(ultima) await ultima.finished.catch(()=>{});
 
   await sleep(400);
   drawer.classList.add('closed','slam');
@@ -1250,7 +1313,7 @@ function startGranVasallaje(size){
   if(State.vault.length < size){ toast(`Necesitás ${size} libros en la bóveda (tenés ${State.vault.length})`); return; }
   saveUndo('el Gran Vasallaje a medias');
   VS.picks={a:[],b:[]}; VS.sides=null; VS.grand=null; VS.blind=false; VS.revealed=false;
-  VS.mode='gran'; VS.modeLabel=`Gran Vasallaje ${size}`; VS.sideTags=null; VS.phase='gran';
+  VS.mode='gran'; VS.modeLabel=`Gran Vasallaje ${size}`; VS.sideTags=null;
   const pool = shuffled(State.vault.slice());
   const participantes = pool.slice(0, size);
   const excluidos = pool.slice(size);
@@ -1260,8 +1323,9 @@ function startGranVasallaje(size){
   State.vault = State.vault.filter(b=>!ids.has(b.id));   // salen mientras dura; vuelven al final
   if(Sound.startMusic) Sound.startMusic('vasallaje');
   const ab = $('#abortBtn'); if(ab) ab.classList.add('on');
+  // los excluidos se sortean, y después TODOS entran al mismo bracket
   if(excluidos.length) granRuleta(excluidos, participantes, size);
-  else granRound(participantes.slice(), size);
+  else armarCuadro(shuffled(participantes));
 }
 
 /* ---- la ruleta horizontal que sortea a los que no juegan ---- */
@@ -1309,17 +1373,7 @@ async function granRuleta(excluidos, participantes, size){
   await persist();
   if($('#grSub')) $('#grSub').textContent = '¡A pelear!';
   await sleep(700);
-  granRound(participantes.slice(), size);
-}
-
-/* ---- una ronda: los cruces los votan ustedes ---- */
-function granRound(books, size){
-  if(books.length <= 1) return granChampion(books[0], size);
-  if(books.length === 2) return vsFinalVote(books[0], books[1], `Gran Vasallaje ${size}`, w=>granChampion(w, size));
-  const pares = [];
-  for(let i=0;i<books.length;i+=2) pares.push({ a:books[i], b:books[i+1]||null, winner:null });
-  VS.gran = { size, n:books.length, nombre:granRonda(books.length), pares, decididos:0 };
-  screenGranRound();
+  armarCuadro(shuffled(participantes));            // todos al mismo bracket
 }
 
 /* ============================================================
@@ -1327,6 +1381,14 @@ function granRound(books, size){
    Acuerdo → se lee ese. Desacuerdo → ruleta + "carta" al que acertó.
    El duelo queda en la memoria del club (State.duelos) para las stats.
    ============================================================ */
+/* a ciegas: en la final se vota sobre la frase, nunca sobre el título/portada */
+const vsFinalSide = (b, side)=> (VS.blind && !VS.revealed)
+  ? `<span class="gr-blind-q">“${escapeHtml(vsQuoteOf(b))}”</span>`
+  : granSideHTML(b, side);
+const vsFinalLabel = (b, n=22)=> (VS.blind && !VS.revealed)
+  ? `«${escapeHtml(short(vsQuoteOf(b), n+8))}»`
+  : `«${escapeHtml(short(b.titulo, n))}»`;
+
 function vsFinalVote(x, z, modoLabel, onWinner){
   const A = State.players.a, B = State.players.b;
   const votos = {};
@@ -1340,9 +1402,9 @@ function vsFinalVote(x, z, modoLabel, onWinner){
         <p class="lead" style="opacity:.8;">Que no mire el otro. Tocá tu elegido.</p>
         <div class="gr-matches" id="fvPick" style="margin-top:18px;">
           <div class="gr-match">
-            <button class="gr-side left" data-w="x">${granSideHTML(x,'left')}</button>
+            <button class="gr-side left${VS.blind?' blind':''}" data-w="x">${vsFinalSide(x,'left')}</button>
             <div class="gr-vs">o</div>
-            <button class="gr-side right" data-w="z">${granSideHTML(z,'right')}</button>
+            <button class="gr-side right${VS.blind?' blind':''}" data-w="z">${vsFinalSide(z,'right')}</button>
           </div>
         </div>
       </div>
@@ -1364,7 +1426,7 @@ function vsFinalVote(x, z, modoLabel, onWinner){
       vsFinalReveal(ganador, linea, ()=>onWinner(ganador));
     };
     if(acuerdo){
-      finish(votos.a, `Los dos querían «${escapeHtml(short(votos.a.titulo,30))}». Sin ruleta: se lee ese.`);
+      finish(votos.a, `Los dos querían ${vsFinalLabel(votos.a,30)}. Sin ruleta: se lee ese.`);
     } else {
       vsFinalRuleta(x, z, votos, (ganador)=>{
         const quienAcerto = votos.a.id===ganador.id ? A : (votos.b.id===ganador.id ? B : null);
@@ -1394,7 +1456,7 @@ async function vsFinalRuleta(x, z, votos, done){
     <div class="center" style="min-height:78vh;justify-content:center;">
       <div class="eyebrow" style="color:#E8C34A;">No hubo acuerdo</div>
       <h2 class="serif" style="font-weight:900;font-size:clamp(23px,5vw,40px);margin:2px 0 4px;">Que decida la suerte</h2>
-      <p class="lead" style="opacity:.85;">${escapeHtml(State.players.a)} quería «${escapeHtml(short(votos.a.titulo,22))}» · ${escapeHtml(State.players.b)} quería «${escapeHtml(short(votos.b.titulo,22))}»</p>
+      <p class="lead" style="opacity:.85;">${escapeHtml(State.players.a)} quería ${vsFinalLabel(votos.a)} · ${escapeHtml(State.players.b)} quería ${vsFinalLabel(votos.b)}</p>
       <div class="gr-reel-wrap" style="margin-top:20px;"><div class="gr-reel" id="frReel" style="justify-content:center;"></div></div>
     </div>
   `);
@@ -1405,7 +1467,7 @@ async function vsFinalRuleta(x, z, votos, done){
     ensureColor(b);
     const c = document.createElement('div');
     c.className = 'gr-cell';
-    c.style.cssText = b.portada ? `background-image:url('${b.portada.replace(/'/g,'%27')}')` : `background:${(b._color&&b._color.css)||'#26331f'}`;
+    c.style.cssText = (b.portada && !(VS.blind && !VS.revealed)) ? `background-image:url('${b.portada.replace(/'/g,'%27')}')` : `background:${(b._color&&b._color.css)||'#26331f'}`;
     reel.appendChild(c); return c;
   });
   await sleep(400);
@@ -1443,7 +1505,7 @@ function recordDuelo(x, z, votos, ganador, acuerdo, modoLabel){
     && (votos.a.traidoPor||'').toLowerCase()===B.toLowerCase()
     && (votos.b.traidoPor||'').toLowerCase()===A.toLowerCase();
   State.duelos.push({
-    fecha: fechaHoy(), modo: modoLabel||'Vasallaje',
+    fecha: fechaHoy(), modo: modoLabel||'Vasallaje', lugar:(VS.lugar||'').trim(),
     a:{ quien:A, quiso:votos.a.titulo }, b:{ quien:B, quiso:votos.b.titulo },
     ganador: ganador.titulo, acuerdo, cruzado,
   });
@@ -1472,65 +1534,5 @@ function granSideHTML(b, side){
     </span>`;
 }
 
-function screenGranRound(){
-  const G = VS.gran;
-  App.ambient('rgba(232,195,74,.06)', 'rgba(30,26,50,.5)');
-  const cruces = G.pares.filter(p=>p.b).length;
-  show(`
-    <div class="center" style="padding-top:6px;">
-      <div class="eyebrow" style="color:#E8C34A;">🏟️ Gran Vasallaje · ${G.size}</div>
-      <h2 class="serif" style="font-weight:900;font-size:clamp(22px,4vw,36px);margin:2px 0 2px;">${escapeHtml(G.nombre)}</h2>
-      <p class="lead" id="grHint">Toquen al que pasa · <b id="grCount">0</b>/${cruces}</p>
-      <div class="gr-matches" id="grMatches"></div>
-      <div class="row mt-l" id="grNextRow" style="display:none;justify-content:center;">
-        <button class="btn btn-amber" id="grNext">${G.n<=2?'Coronar campeón 🏆':'Siguiente ronda →'}</button>
-      </div>
-    </div>
-  `);
-  const wrap = $('#grMatches');
-  G.pares.forEach(p=>{
-    if(!p.b){ p.winner = p.a; return; }
-    const card = document.createElement('div');
-    card.className = 'gr-match';
-    card.innerHTML = `
-      <button class="gr-side" data-w="a">${granSideHTML(p.a)}</button>
-      <div class="gr-vs">vs</div>
-      <button class="gr-side" data-w="b">${granSideHTML(p.b)}</button>`;
-    wrap.appendChild(card);
-    card.querySelectorAll('.gr-side').forEach(s=>s.addEventListener('click', ()=>{
-      if(card.classList.contains('done')) return;
-      const w = s.dataset.w;
-      p.winner = (w==='a') ? p.a : p.b;
-      const loser = (w==='a') ? p.b : p.a;
-      loser._vsPlace = granPlace(G.n);
-      card.classList.add('done');
-      s.classList.add('win');
-      const otro = card.querySelector(`.gr-side[data-w="${w==='a'?'b':'a'}"]`);
-      if(otro) otro.classList.add('lose');
-      try{ Sound.fx.chosen(); }catch(e){}
-      G.decididos++;
-      if($('#grCount')) $('#grCount').textContent = G.decididos;
-      if(G.decididos >= cruces){
-        $('#grNextRow').style.display = 'flex';
-        if($('#grHint')) $('#grHint').innerHTML = 'Pasan los elegidos.';
-      }
-    }));
-  });
-  if(cruces === 0){ granRound(G.pares.map(p=>p.winner), G.size); return; }
-  $('#grNext').addEventListener('click', ()=>{ try{ Sound.fx.click(); }catch(e){}
-    granRound(G.pares.map(p=>p.winner), G.size); });
-}
-
-/* ---- campeón: retorno rápido (son muchos libros) + festejo reusado ---- */
-async function granChampion(champ, size){
-  champ._vsPlace = 'campeon';
-  VS.modeLabel = `Gran Vasallaje ${size}`;
-  await renameUndo(`el Gran Vasallaje de «${champ.titulo}»`);
-  const losers = VS.all.filter(b=>b.id!==champ.id);
-  losers.forEach(b=>{ stampCosecha(b); vsStampPlace(b, b._vsPlace || granPlace(size)); });
-  const loserIds = new Set(losers.map(b=>b.id));
-  State.vault = State.vault.filter(v=>!loserIds.has(v.id));
-  State.vault.push(...losers.map(cleanBook));
-  await persist();
-  vsCelebrate([champ]);
-}
+/* (screenGranRound / granChampion / granRound eliminados: el Gran Vasallaje
+    ahora usa el mismo bracket visual genérico que el de 8) */
