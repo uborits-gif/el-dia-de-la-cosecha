@@ -533,7 +533,7 @@ function showPlacard(list, startIdx, opts={}){
           <p class="pl2-syn">${escapeHtml(b.sinopsis||'(sin sinopsis)')}</p>
           ${tecRows?`<div class="pl2-sec"><div class="pl2-rows">${tecRows}</div></div>`:''}
           ${tropes.length?`<div class="pl2-sec"><h4 class="pl2-h">Tropes</h4>
-            <div class="pl2-chips">${tropes.map(t=>`<span>${escapeHtml(t)}</span>`).join('')}</div></div>`:''}
+            <div class="pl2-chips" id="plTropes">${tropes.map((t,i)=>`<span class="${i>=6?'pl2-hide':''}">${bookmojiHTML(t)} ${escapeHtml(t)}</span>`).join('')}${tropes.length>6?`<button class="pl2-more" id="plMore">+${tropes.length-6}</button>`:''}</div></div>`:''}
           <div class="pl2-tools" id="plTools">
             <div class="pl2-tool">
               <label class="pt-swatch" title="Color del lomo — tocá el círculo">
@@ -578,7 +578,7 @@ function showPlacard(list, startIdx, opts={}){
           </div>
           <button class="pl2-exp" id="plExpand" aria-label="Ver la ficha completa">⌄</button>
         </div>`;
-    $('.pl2-book', scene).appendChild(bookEl(b, { size:bs(270), baseY:-26 }));
+    $('.pl2-book', scene).appendChild(bookEl(b, { size:bs(270), baseY:-26, detail:true, orbit:true }));
 
     // CARRUSEL: la ficha ENTERA viaja en X hasta salir de cuadro. Cero opacidad.
     const view = $('#plView', ov);
@@ -613,6 +613,11 @@ function showPlacard(list, startIdx, opts={}){
       close();
       if(document.querySelector('#homeCloset')) buildHomeCloset();
       else if(document.querySelector('#closet')) screenVault();
+    });
+    const plMore = $('#plMore', scene);
+    if(plMore) plMore.addEventListener('click', ()=>{ try{ Sound.fx.click(); }catch(e){}
+      $$('#plTropes .pl2-hide', scene).forEach(el=>el.classList.remove('pl2-hide'));
+      plMore.remove();
     });
     wireSpineTools(b, scene);
     wireRatings(b, scene);
@@ -962,16 +967,19 @@ function screenVault(){
       ${State.vault.length?'<button class="btn btn-ghost" id="dlBtn">Descargar el club</button>':''}
     </div>
   `);
-  let vaultModo = 'estante';
+  let vaultModo = 'grande';
   const rebuild = ()=>{
+    $('#vfBig').innerHTML = '';
     if(vaultModo === 'lista'){
-      $('#vfBig').innerHTML = '';
       buildVaultList($('#closet'), State.vault, closetOpts);
       if($('#vaultViewBtn')) $('#vaultViewBtn').textContent = '▦ Ver como estante';
-    } else {
+    } else if(vaultModo === 'estante'){
       buildCloset($('#closet'), State.vault, closetOpts);
       mountVaultFilter($('#vfBig'), ()=>$('#closet'));
       if($('#vaultViewBtn')) $('#vaultViewBtn').textContent = '☰ Ver como lista';
+    } else {
+      buildVaultGrande($('#closet'), State.vault, closetOpts);
+      if($('#vaultViewBtn')) $('#vaultViewBtn').textContent = '▦ Ver como grilla';
     }
   };
   const closetOpts = {
@@ -985,7 +993,9 @@ function screenVault(){
   };
   rebuild();
   if($('#vaultViewBtn')) $('#vaultViewBtn').addEventListener('click', ()=>{
-    Sound.fx.click(); vaultModo = vaultModo === 'estante' ? 'lista' : 'estante'; rebuild();
+    Sound.fx.click();
+    vaultModo = vaultModo === 'grande' ? 'lista' : (vaultModo === 'lista' ? 'estante' : 'grande');
+    rebuild();
   });
   $('#backBtn').addEventListener('click', ()=>{ Sound.fx.click(); screenHome(); });
   if($('#dlBtn')) $('#dlBtn').addEventListener('click', downloadClub);
@@ -1204,6 +1214,162 @@ function buildCloset(container, books, opts={}){
 
   closet.appendChild(detail);
   container.appendChild(closet);
+}
+
+/* ============================================================
+   THE VAULT GRANDE — réplica del "complete shelf" con el CSS del club:
+   · el ESTANTE se desliza (cámara fija) con índice continuo + damping
+   · drag / rueda / flechas del teclado / botones / ticks — todo navega
+   · el libro activo SALE HACIA ADELANTE (translateZ) y gira a tapa,
+     pisando el mismo estante y solapando a los vecinos (sin reflow)
+   · caption abajo-izquierda, flechas circulares al 49%, regla de ticks
+   ============================================================ */
+function buildVaultGrande(container, books, opts={}){
+  container.innerHTML = '';
+  if(!books.length){ container.innerHTML = `<div class="closet-empty">La bóveda está vacía.</div>`; return; }
+  const root = document.createElement('div'); root.className = 'vg2';
+  const total = String(books.length).padStart(2,'0');
+  root.innerHTML = `
+    <div class="vg2-header">
+      <div class="vg2-brand">THE VAULT <i></i> LA BÓVEDA DE LOS CAÍDOS</div>
+      <div class="vg2-meta">${books.length} VOLÚMENES<br>01 ESTANTE CONTINUO</div>
+    </div>
+    <div class="vg2-stage">
+      <div class="vg2-floor"></div>
+      <div class="vg2-viewport" id="vgView"><div class="vg2-shelf" id="vgShelf"></div></div>
+      <div class="vg2-lip"></div>
+    </div>
+    <div class="vg2-fade"></div>
+    <div class="vg2-caption">
+      <div class="vg2-count"><b id="vgIdx">01</b><i></i><span>${total}</span></div>
+      <h1 class="vg2-title serif" id="vgTitle"></h1>
+      <div class="vg2-author" id="vgAuthor"></div>
+      <button class="vg2-inspect" id="vgInspect">Inspeccionar volumen <span>↗</span></button>
+    </div>
+    <button class="vg2-arrow left" id="vgPrev" aria-label="anterior">←</button>
+    <button class="vg2-arrow right" id="vgNext" aria-label="siguiente">→</button>
+    <nav class="vg2-index"><div class="vg2-ticks" id="vgRuler"></div>
+      <div class="vg2-hint">ARRASTRÁ · RUEDITA · FLECHAS</div></nav>`;
+  container.appendChild(root);
+
+  const shelf = $('#vgShelf', root), ruler = $('#vgRuler', root), view = $('#vgView', root);
+  const H = Math.round(Math.min(330, Math.max(220, (innerHeight||760) * 0.38)));
+  const slots = [];
+  books.forEach((book, idx)=>{
+    const h = Math.round(H * (0.9 + (hashStr(book.titulo||book.id) % 12) / 80));
+    const d = Math.round(h * 0.1 + (hashStr(book.id+book.titulo) % 10) + 10);
+    const w = Math.round(h / 1.5);
+    const slot = document.createElement('div'); slot.className = 'vg2-slot';
+    slot.style.setProperty('--h', h+'px'); slot.style.setProperty('--sw', (d+8)+'px');
+    const scene = bookEl(book, { size:w, still:true, tilt:false });
+    scene.style.setProperty('--d', d+'px');
+    const shadow = scene.querySelector('.book-shadow'); if(shadow) shadow.remove();
+    scene._book.style.setProperty('--baseY', '90deg');           // en el estante: lomo afuera
+    scene._w = w;
+    const spine = scene.querySelector('.bf-spine'); spine.classList.add('vb-solid');
+    const st = document.createElement('div'); st.className = 'vb-title';
+    const sp = document.createElement('span'); sp.textContent = book.titulo; st.appendChild(sp);
+    spine.appendChild(st);
+    if(typeof applySpineFont === 'function') applySpineFont(st, book, 1.15);
+    scene._onEdge = (c)=>{
+      if(!c) c = book._color || (typeof fallbackColor==='function' ? fallbackColor(book.titulo||book.id) : {r:60,g:60,b:60});
+      if(typeof spineInkOf === 'function') spine.style.color = spineInkOf(book, c);
+      const lum = 0.299*c.r + 0.587*c.g + 0.114*c.b;
+      spine.classList.toggle('spine-light', lum <= 150);
+    };
+    if(typeof fitSpineTitle === 'function') fitSpineTitle(st, sp, 0);
+    slot._scene = scene; slot._book = book;
+    slot.appendChild(scene);
+    if(opts.deletable) attachDelete(slot, ()=>opts.onDelete(book));
+    shelf.appendChild(slot); slots.push(slot);
+    const tick = document.createElement('button'); tick.className = 'vg2-tick'; tick.title = book.titulo;
+    tick.addEventListener('click', ()=>{ target = idx; });
+    ruler.appendChild(tick);
+  });
+
+  /* ---- la pose del libro: en el estante (lomo) ↔ presentado (tapa al frente) ----
+     como el motor original: extract (sale en Z) → turn (gira a tapa) → settle */
+  const pose = (slot, on)=>{
+    const sc = slot._scene, fw = Math.round(sc._w * 0.42);
+    if(on){
+      sc.style.transition = 'transform .3s cubic-bezier(.45,.05,.55,.95) .12s';
+      sc.style.transform = `translateX(-50%) translateZ(${fw}px) scale(1.035)`;
+      sc._book.style.transition = 'transform .3s cubic-bezier(.45,.05,.55,.95) .26s';
+      sc._book.style.setProperty('--baseY', '0deg');
+    } else {
+      sc._book.style.transition = 'transform .26s cubic-bezier(.45,.05,.55,.95)';
+      sc._book.style.setProperty('--baseY', '90deg');
+      sc.style.transition = 'transform .26s cubic-bezier(.45,.05,.55,.95) .14s';
+      sc.style.transform = 'translateX(-50%)';
+    }
+    slot.classList.toggle('active', on);
+  };
+
+  /* ---- índice continuo con damping (λ 8.5), el estante se desliza ---- */
+  let target = 0, current = -0.001, active = -1, centers = [], lastT = performance.now(), snapT = null;
+  const measure = ()=>{ centers = slots.map(s=>s.offsetLeft + s.offsetWidth/2); };
+  const xAt = (f)=>{
+    const i = Math.max(0, Math.min(centers.length-1, Math.floor(f))), j = Math.min(centers.length-1, i+1);
+    return centers[i] + (centers[j]-centers[i]) * (f - i);
+  };
+  const applyActive = (i)=>{
+    if(i === active) return;
+    if(active >= 0) pose(slots[active], false);
+    active = i; pose(slots[active], true);
+    const bk = books[active];
+    $('#vgTitle', root).textContent = bk.titulo;
+    $('#vgAuthor', root).textContent = bk.autor || '';
+    $('#vgIdx', root).textContent = String(active+1).padStart(2,'0');
+    [...ruler.children].forEach((t,j)=>t.classList.toggle('on', j===active));
+    try{ Sound.fx.click(); }catch(e){}
+  };
+  const clampT = ()=>{ target = Math.max(0, Math.min(books.length-1, target)); };
+  root._dbg = ()=>({ target, current, active });                    // sonda de desarrollo
+  const snapSoon = ()=>{ clearTimeout(snapT); snapT = setTimeout(()=>{ target = Math.round(target); clampT(); }, 260); };
+  (function loop(now){
+    if(!root.isConnected) return;
+    const dt = Math.min(0.05, (now - lastT)/1000); lastT = now;
+    if(!centers.length || centers[centers.length-1]===undefined) measure();
+    current += (target - current) * (1 - Math.exp(-8.5 * dt));
+    if(Math.abs(target - current) < 0.0005) current = target;
+    if(centers.length) shelf.style.transform = `translateX(${Math.round((view.clientWidth*0.62) - xAt(Math.max(0,Math.min(centers.length-1,current))))}px)`;
+    applyActive(Math.max(0, Math.min(books.length-1, Math.round(current))));
+    requestAnimationFrame(loop);
+  })(performance.now());
+  requestAnimationFrame(measure);
+
+  /* ---- entradas: drag · rueda · flechas · teclado · ticks ---- */
+  let dragX = null, travel = 0;
+  view.addEventListener('pointerdown', e=>{ dragX = e.clientX; travel = 0; view.classList.add('drag'); });
+  window.addEventListener('pointermove', e=>{
+    if(dragX === null) return;
+    const dx = e.clientX - dragX; dragX = e.clientX; travel += Math.abs(dx);
+    target -= dx / Math.max(105, view.clientWidth * 0.11); clampT();
+  });
+  window.addEventListener('pointerup', e=>{
+    if(dragX === null) return;
+    view.classList.remove('drag'); dragX = null;
+    if(travel < 7){                                     // fue un CLIC, no un drag
+      const slot = e.target.closest ? e.target.closest('.vg2-slot') : null;
+      if(slot){ const i = slots.indexOf(slot);
+        if(i === active){ if(opts.onPick) opts.onPick(books[i]); } else target = i; }
+    }
+    snapSoon();
+  });
+  root.addEventListener('wheel', e=>{
+    e.preventDefault();
+    const dom = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    target += dom * 0.0024; clampT(); snapSoon();
+  }, { passive:false });
+  const onKey = e=>{
+    if(!root.isConnected){ window.removeEventListener('keydown', onKey); return; }
+    if(e.key === 'ArrowRight'){ target = Math.round(target) + 1; clampT(); }
+    else if(e.key === 'ArrowLeft'){ target = Math.round(target) - 1; clampT(); }
+  };
+  window.addEventListener('keydown', onKey);
+  $('#vgPrev', root).addEventListener('click', ()=>{ target = Math.round(target) - 1; clampT(); });
+  $('#vgNext', root).addEventListener('click', ()=>{ target = Math.round(target) + 1; clampT(); });
+  $('#vgInspect', root).addEventListener('click', ()=>{ if(opts.onPick && active>=0) opts.onPick(books[active]); });
 }
 
 /* ============================================================

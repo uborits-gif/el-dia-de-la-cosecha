@@ -201,6 +201,13 @@ h1.title{
   transition:transform .55s var(--ease-pop);
 }
 .book3d.snappy{transition:transform .18s ease-out;}
+/* giro 360° al abrir la ficha (muestra lomo y contratapa) */
+.book3d.spin360{animation:bookSpin360 1.15s cubic-bezier(.3,.05,.2,1) 1;}
+@keyframes bookSpin360{
+  from{transform:rotateY(var(--baseY)) rotateX(var(--tiltX));}
+  to{transform:rotateY(calc(var(--baseY) + 360deg)) rotateX(var(--tiltX));}
+}
+@media (prefers-reduced-motion:reduce){ .book3d.spin360{animation:none;} }
 .bf{position:absolute;backface-visibility:hidden;}
 .bf-cover{
   inset:0;
@@ -233,6 +240,28 @@ h1.title{
   background:var(--c);filter:brightness(.5) saturate(.85);
   border-radius:8px 2px 2px 8px;
 }
+/* contratapa editorial: mismo color que el lomo (--sc), con la sinopsis */
+.bf-back.bf-back-detail{filter:none;
+  background:linear-gradient(160deg, color-mix(in srgb, var(--sc, var(--c)) 66%, black), color-mix(in srgb, var(--sc, var(--c)) 42%, black));
+  display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.bf-back-in{padding:9% 11%;text-align:left;color:#f3efe6;width:100%;height:100%;display:flex;flex-direction:column;gap:6px;justify-content:center;}
+.bf-back-t{font-family:'Fraunces',serif;font-weight:800;font-size:clamp(11px,1.5vw,15px);line-height:1.15;
+  border-bottom:1px solid rgba(255,255,255,.22);padding-bottom:7px;margin-bottom:2px;}
+.bf-back-syn{font-family:'Newsreader','Georgia',serif;font-size:clamp(9.5px,1.15vw,12px);line-height:1.5;color:rgba(243,239,230,.86);
+  display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;overflow:hidden;}
+.bf-back-meta{margin-top:auto;font-size:9px;letter-spacing:.06em;color:rgba(243,239,230,.55);text-transform:uppercase;}
+/* lomo escrito (título vertical) en la versión grande */
+.bf-spine-detail{padding:5px 0;}
+.bf-spine-t{writing-mode:vertical-rl;font-family:'Fraunces',serif;font-weight:700;
+  font-size:clamp(8px, calc(var(--d) * 0.3), 13px);line-height:1;color:rgba(245,240,230,.94);
+  white-space:nowrap;max-height:90%;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.book-scene.orbit{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;}
+/* nada de degradés pegados al libro: el halo y el brillo viven DENTRO del bloque 3D
+   y giraban con él — fuera en la ficha */
+.book-scene.orbit .bf-glare{display:none;}
+.book-scene.orbit .book-halo{display:none;}
+.book-scene.orbit img{-webkit-user-drag:none;user-drag:none;pointer-events:none;}
+.book-scene.orbit.grabbing{cursor:grabbing;}
 .bf-spine{
   width:var(--d);height:100%;left:calc(var(--d)/-2);top:0;
   transform:rotateY(-90deg);
@@ -332,18 +361,23 @@ h1.title{
 .hbook:hover .hcap{opacity:1;}
 .hcap .hc-t{font-family:'Fraunces',serif;font-size:13px;color:var(--bone);line-height:1.2;}
 .hcap .hc-d{font-size:10.5px;color:var(--grey);margin-top:4px;letter-spacing:.08em;text-transform:uppercase;}
+/* tablón caoba estilo mintdotgg: cara superior clara + canto #5a4132 + moldura #4b3429 */
 .shelf-board{
-  height:16px;border-radius:3px 3px 5px 5px;margin-top:-6px;
-  background:linear-gradient(180deg, var(--wood-3) 0%, var(--wood-1) 22%, var(--wood-2) 100%);
+  height:24px;border-radius:2px 2px 4px 4px;margin-top:-6px;position:relative;
+  background:linear-gradient(180deg, #7d5a41 0%, #66492f 22%, #5a4132 46%, #523a2b 74%, #4b3429 92%, #3c2a20 100%);
   box-shadow:
-    0 1px 0 rgba(255,255,255,.08) inset,
-    0 14px 26px -8px rgba(0,0,0,.65),
-    0 3px 6px rgba(0,0,0,.4);
-  position:relative;
+    0 2px 2px rgba(255,255,255,.1) inset,
+    0 -1px 0 rgba(255,255,255,.07) inset,
+    0 16px 28px -8px rgba(0,0,0,.65),
+    0 3px 7px rgba(0,0,0,.45);
 }
-.shelf-board::after{ /* veta */
-  content:'';position:absolute;inset:0;border-radius:inherit;opacity:.35;
-  background:repeating-linear-gradient(90deg, transparent 0 34px, rgba(0,0,0,.25) 34px 36px, transparent 36px 90px);
+.shelf-board::before{ /* filo de la moldura frontal */
+  content:'';position:absolute;left:0;right:0;bottom:6px;height:1px;background:rgba(255,255,255,.09);
+}
+.shelf-board::after{ /* veta de la madera */
+  content:'';position:absolute;inset:0;border-radius:inherit;opacity:.4;
+  background:repeating-linear-gradient(90deg, transparent 0 3px, rgba(0,0,0,.08) 3px 5px, transparent 5px 13px),
+    repeating-linear-gradient(90deg, transparent 0 34px, rgba(0,0,0,.22) 34px 36px, transparent 36px 90px);
 }
 
 /* ============================================================
@@ -1558,8 +1592,15 @@ h1.title.sz-hero{
   box-shadow:0 0 16px color-mix(in srgb, var(--pc, #888) 55%, transparent);
 }
 .pl2-who{font-family:'Fraunces',serif;font-weight:700;font-size:21px;line-height:1;}
-.pl2-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
-.pl2-chips span{font-size:10.5px;padding:4px 11px;border:1px solid var(--border);border-radius:999px;color:var(--bone-dim);white-space:nowrap;}
+.pl2-chips{display:flex;flex-wrap:wrap;gap:12px 20px;margin-top:12px;}
+.pl2-chips span{display:inline-flex;align-items:center;gap:9px;font-size:12.5px;color:var(--bone-dim);white-space:nowrap;
+  border:none;background:none;padding:0;}
+.pl2-chips span .bmj{width:40px;height:40px;flex:none;}
+.pl2-chips .pl2-hide{display:none;}
+.pl2-more{font-size:10.5px;padding:4px 12px;border:1px solid rgba(232,195,74,.4);border-radius:999px;
+  background:rgba(232,195,74,.07);color:#E8C34A;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;
+  transition:background .18s,border-color .18s;}
+.pl2-more:hover{background:rgba(232,195,74,.15);border-color:#E8C34A;}
 .pl2-pill{
   grid-column:1 / -1;grid-row:2;justify-self:center;
   display:flex;align-items:center;gap:15px;
@@ -1763,6 +1804,26 @@ h1.title.sz-hero{
 /* marcador que cuenta hacia arriba en las pantallas de cierre */
 .mk-num{font-variant-numeric:tabular-nums;display:inline-block;min-width:.7em;text-align:center;}
 .mk-pop{animation:winPop .5s var(--ease-pop);}
+
+/* 🏆 scoreboard grande Uri vs Maru (pantallas de cierre) */
+.mk-eyebrow{font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--grey);font-weight:700;margin:18px 0 4px;}
+.mk-score{display:inline-grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;
+  margin:2px auto 0;padding:7px;border-radius:22px;border:1px solid var(--border-soft);
+  background:linear-gradient(180deg,rgba(232,195,74,.05),rgba(0,0,0,0));
+  opacity:0;transform:translateY(16px) scale(.95);transition:opacity .55s var(--ease-out),transform .55s var(--ease-out);}
+.mk-score.mk-in{opacity:1;transform:none;}
+.mk-team{position:relative;overflow:hidden;padding:16px clamp(22px,4vw,40px);border-radius:17px;text-align:center;min-width:118px;
+  transition:transform .45s var(--ease-pop),box-shadow .45s;}
+.mk-team::before{content:'';position:absolute;inset:0;opacity:.12;background:radial-gradient(90% 90% at 50% 125%,var(--pc),transparent 70%);}
+.mk-team.lead::before{opacity:.3;}
+.mk-team.lead{box-shadow:0 0 0 1px color-mix(in srgb,var(--pc) 45%,transparent), 0 20px 44px -20px var(--pc);}
+.mk-team.mk-glow{transform:translateY(-3px) scale(1.04);}
+.mk-name{position:relative;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--pc);font-weight:700;}
+.mk-n{position:relative;font-family:'Fraunces',serif;font-weight:900;font-size:clamp(46px,8vw,74px);line-height:.92;
+  color:var(--pc);letter-spacing:-.03em;margin-top:4px;text-shadow:0 0 42px color-mix(in srgb,var(--pc) 42%,transparent);}
+.mk-mid span{font-family:'Fraunces',serif;font-weight:900;font-size:26px;color:var(--grey);opacity:.55;}
+.mk-lead{font-size:13px;color:var(--bone-dim);margin-top:10px;letter-spacing:.02em;}
+@media (prefers-reduced-motion:reduce){.mk-score{opacity:1;transform:none;}.mk-team.mk-glow{transform:none;}}
 /* ADN interactivo: listita de libros por trope */
 #adnChips .st-chip[data-trope]{cursor:pointer;transition:.16s;}
 #adnChips .st-chip[data-trope]:hover,#adnChips .st-chip.on{border-color:var(--amber);color:var(--bone);}
@@ -1868,7 +1929,15 @@ h1.title.sz-hero{
 .vault-slot.vs-locked{pointer-events:none;}
 
 /* ---- el bracket ---- */
-.vs-stage-wrap{width:100%;display:flex;justify-content:center;overflow:hidden;margin-top:6px;}
+.vs-next-btn{margin:8px auto 0;display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:13px;
+  padding:9px 20px;border-radius:999px;cursor:pointer;color:#0A1209;background:var(--amber);border:none;
+  box-shadow:0 10px 24px -8px rgba(201,248,57,.55);transition:transform .2s var(--ease-pop),box-shadow .2s;}
+.vs-next-btn:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 16px 30px -8px rgba(201,248,57,.7);}
+@media (hover:none){ .vs-next-btn{padding:12px 22px;font-size:15px;} }
+
+/* full-bleed: el cuadro rompe el margen de la página y usa TODO el ancho de la ventana;
+   el alto entra en la pantalla (sin scroll vertical). */
+.vs-stage-wrap{width:100vw;margin-left:calc(50% - 50vw);display:flex;justify-content:center;overflow-x:hidden;overflow-y:visible;margin-top:4px;}
 .vs-stage{position:relative;width:1060px;height:560px;transform-origin:top center;flex:none;}
 .vs-svg{position:absolute;inset:0;pointer-events:none;overflow:visible;}
 .vs-svg .base{stroke:rgba(242,245,236,.13);stroke-width:1.6;fill:none;}
@@ -1886,9 +1955,10 @@ h1.title.sz-hero{
   transition:.4s;
 }
 .vs-node .vsn-cover{
-  width:58px;height:87px;border-radius:4px;overflow:hidden;position:relative;
+  width:var(--vsn-w,58px);height:var(--vsn-h,87px);border-radius:4px;overflow:hidden;position:relative;
   background:var(--card-hi);box-shadow:0 8px 18px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08);
 }
+.vs-stage.dense .vs-node .vsn-lab{display:none;}   /* cuadro grande: sólo portadas */
 .vs-node .vsn-cover img{width:100%;height:100%;object-fit:cover;display:block;}
 .vs-node .vsn-lab{
   font-size:9px;color:var(--bone-dim);max-width:112px;text-align:center;
@@ -1942,10 +2012,12 @@ h1.title.sz-hero{
   overflow:hidden;margin-top:5px;
 }
 .vs-duel-tropes span{
-  font-size:9.5px;letter-spacing:.04em;padding:3px 9px;border-radius:999px;
-  border:1px solid var(--border);color:var(--grey);white-space:nowrap;
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:11px;letter-spacing:.03em;padding:0;border:none;background:none;color:var(--grey);white-space:nowrap;
 }
-.vs-duel-tropes span.on{border-color:rgba(232,195,74,.5);color:#E8C34A;background:rgba(232,195,74,.07);}
+.vs-duel-tropes span .bmj{width:32px;height:32px;flex:none;}
+.vs-duel-owner .bmj{width:26px;height:26px;vertical-align:-7px;margin-right:4px;}
+.vs-duel-tropes span.on{color:#E8C34A;font-weight:700;}
 .vs-duel-go{margin-top:16px;}
 .vs-duel-meta{font-size:11px;color:var(--amber-soft);letter-spacing:.02em;margin-top:4px;}
 .vs-duel:not(.epic) .vs-duel-side.right .vs-duel-meta{text-align:right;}
@@ -2365,6 +2437,112 @@ h1.title.sz-hero{
 .st-rcov{width:34px;height:51px;border-radius:3px;flex:none;background-size:cover;background-position:center;
   background-color:var(--card-hi);box-shadow:0 5px 12px rgba(0,0,0,.55);}
 
+/* — ilustraciones de tropes (bookmoji monocromas) — */
+.bmj{display:inline-flex;align-items:center;justify-content:center;width:1em;height:1em;flex:none;line-height:0;color:inherit;}
+.bmj svg{width:100%;height:100%;display:block;}
+/* íconos de los tropes en la gama del verde del club */
+.pl2-chips span .bmj, .vs-duel-tropes span .bmj{color:#C9F738;}
+
+/* — THE VAULT GRANDE: réplica del "complete shelf" (posiciones del original, CSS del club) — */
+.vg2{position:relative;width:100vw;margin-left:calc(50% - 50vw);margin-top:6px;overflow:hidden;
+  padding-bottom:70px;user-select:none;-webkit-user-select:none;}
+/* header como el original: brand a la izquierda con filete, meta a la derecha en dos líneas */
+.vg2-header{position:absolute;z-index:20;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;
+  padding:26px clamp(22px,3.4vw,56px);pointer-events:none;}
+.vg2-brand{display:flex;align-items:center;gap:14px;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--bone);font-weight:700;}
+.vg2-brand i{width:34px;height:1px;background:var(--border);}
+.vg2-meta{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--grey);text-align:right;line-height:1.7;}
+/* escenario: el estante SE DESLIZA, la cámara está fija.
+   Orden de capas: PISO (atrás, se va hacia arriba/atrás) → LIBROS parados encima → FILO (adelante) */
+.vg2-stage{position:relative;overflow:hidden;--lip:15px;}
+.vg2-viewport{position:relative;z-index:2;padding:118px 0 var(--lip);cursor:grab;
+  perspective:2800px;perspective-origin:50% 60%;}      /* perspectiva SUAVE, como la cámara lejana del original */
+.vg2-viewport.drag{cursor:grabbing;}
+.vg2-shelf{display:flex;align-items:flex-end;gap:4px;width:max-content;transform-style:preserve-3d;will-change:transform;}
+/* nada de brillos ni pliegues pegados a la tapa: eran los "degradés" que giraban con el libro */
+.vg2 .bf-glare,.vg2 .bf-hinge{display:none;}
+.vg2-slot{position:relative;width:var(--sw);height:var(--h);flex:none;transform-style:preserve-3d;}
+.vg2-slot .book-scene{position:absolute;bottom:0;left:50%;transform:translateX(-50%);}
+.vg2-slot.active{z-index:8;}
+.vg2-slot.active .book-scene{filter:drop-shadow(0 24px 34px rgba(0,0,0,.5));}
+.vg2 .book-halo{opacity:0 !important;}     /* sin degradados sueltos detrás de los libros */
+/* EL PISO: la tabla de caoba que se va hacia ARRIBA Y ATRÁS en perspectiva.
+   Vive DETRÁS de los libros (z-index 1), así ellos quedan parados encima. */
+.vg2-floor{position:absolute;z-index:1;left:-8%;right:-8%;bottom:var(--lip);
+  height:clamp(210px,30vh,340px);transform-origin:bottom center;
+  transform:perspective(900px) rotateX(61deg);
+  background:
+    linear-gradient(90deg, rgba(246,241,231,.10), transparent 42%),
+    linear-gradient(180deg, #4a3529 0%, #58402f 34%, #66492f 72%, #6f5138 100%);
+  box-shadow:0 -1px 0 rgba(255,255,255,.06) inset;}
+/* sombra de contacto: donde los libros apoyan sobre la tabla */
+.vg2-floor::after{content:'';position:absolute;left:0;right:0;bottom:0;height:34px;
+  background:linear-gradient(180deg,transparent,rgba(10,7,4,.5));}
+/* EL FILO: el canto del tablón, adelante y debajo de los libros */
+.vg2-lip{position:absolute;z-index:3;left:0;right:0;bottom:0;height:var(--lip);
+  background:linear-gradient(180deg,#6a4c36 0,#503a2b 42%,#3d2b21 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14), 0 12px 22px rgba(0,0,0,.5);}
+/* aire entre el estante y la regla */
+.vg2-index{margin-top:0;}
+/* la BANDA horizontal que sostiene la caption sobre los lomos (como en el original) */
+.vg2-fade{position:absolute;z-index:10;left:0;bottom:96px;height:min(40vh,300px);width:min(58vw,660px);pointer-events:none;
+  background:linear-gradient(90deg, color-mix(in srgb,var(--bg) 94%,transparent) 42%, color-mix(in srgb,var(--bg) 60%,transparent) 72%, transparent);}
+/* caption: misma posición que el original (abajo-izquierda) */
+.vg2-caption{position:absolute;z-index:16;bottom:clamp(118px,17vh,188px);left:clamp(24px,5.4vw,92px);
+  width:min(430px,36vw);pointer-events:none;}
+.vg2-caption > *{pointer-events:auto;}
+.vg2-count{display:flex;align-items:center;gap:12px;font-size:12px;letter-spacing:.18em;color:var(--grey);font-weight:700;}
+.vg2-count b{font-family:'Fraunces',serif;font-size:15px;color:var(--bone);}
+.vg2-count i{width:38px;height:1px;background:var(--border);}
+.vg2-title{font-weight:900;font-size:clamp(34px,4.4vw,62px);line-height:.98;letter-spacing:-.02em;margin:12px 0 0;color:var(--bone);}
+.vg2-author{font-family:'Newsreader','Georgia',serif;font-style:italic;font-size:clamp(14px,1.5vw,18px);color:var(--bone-dim);margin-top:10px;}
+.vg2-inspect{margin-top:22px;border:none;background:none;cursor:pointer;color:var(--amber);font-weight:700;
+  font-size:12px;letter-spacing:.18em;text-transform:uppercase;border-bottom:1px solid var(--amber);padding:0 2px 7px;transition:.2s;}
+.vg2-inspect span{font-size:13px;}
+.vg2-inspect:hover{color:var(--amber-soft);border-color:var(--amber-soft);}
+/* flechas circulares de 50px al 49% de alto, en los bordes (como el original) */
+.vg2-arrow{position:absolute;z-index:17;top:49%;transform:translateY(-50%);width:50px;height:50px;border-radius:50%;
+  border:1px solid var(--border);background:rgba(8,15,9,.68);color:var(--bone);font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:.2s;}
+.vg2-arrow.left{left:clamp(12px,1.8vw,32px);}
+.vg2-arrow.right{right:clamp(12px,1.8vw,32px);}
+.vg2-arrow:hover{border-color:var(--amber);color:var(--amber);}
+/* la regla de posición: ticks en grilla + hint (DRAG · SCROLL · ARROW KEYS) */
+.vg2-index{position:absolute;z-index:19;left:clamp(24px,5vw,82px);right:clamp(24px,5vw,82px);bottom:20px;
+  display:flex;align-items:flex-end;gap:22px;}
+.vg2-ticks{flex:1;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;height:21px;align-items:end;position:relative;}
+.vg2-ticks::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--border);}  /* la línea base de la regla */
+.vg2-tick{position:relative;height:100%;border:none;background:none;cursor:pointer;padding:0;min-width:0;}
+.vg2-tick::after{content:'';position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+  width:1px;height:8px;background:var(--border);transition:.22s;}
+.vg2-tick:hover::after{background:var(--bone-dim);height:14px;}
+.vg2-tick.on::after{background:var(--amber);width:2px;height:18px;box-shadow:0 0 8px rgba(201,248,57,.55);}
+.vg2-hint{flex:none;font-size:9px;letter-spacing:.22em;color:var(--grey);padding-bottom:3px;}
+@media (max-width:640px){
+  .vg2-caption{position:static;width:auto;padding:14px 22px 0;}
+  .vg2-fade{display:none;}
+  .vg2-viewport{padding-top:74px;perspective-origin:50% 58%;}
+  .vg2-hint{display:none;}
+}
+
+/* — ADN: grilla de tiles con ilustración — */
+.adn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;}
+.adn-tile{display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 8px 12px;
+  background:#0A130B;border:1px solid var(--border-soft);border-radius:14px;cursor:pointer;text-align:center;
+  color:var(--bone);transition:border-color .2s, transform .2s, background .2s;}
+.adn-tile:hover{border-color:rgba(232,195,74,.4);transform:translateY(-3px);background:#0E1A10;}
+.adn-tile.on{border-color:#E8C34A;background:rgba(232,195,74,.09);}
+.adn-tile .bmj{width:58px;height:58px;transition:transform .25s;}
+.adn-tile.hot .bmj{color:var(--amber);opacity:1;}
+.adn-tile:hover .bmj,.adn-tile.on .bmj{transform:scale(1.1);}
+.adn-tile.on .bmj{color:var(--amber);}
+.adn-tile-t{font-size:10.5px;line-height:1.2;color:var(--bone-dim);text-transform:capitalize;}
+.adn-tile.hot .adn-tile-t{color:var(--bone);}
+.adn-tile-n{font-family:'Fraunces',serif;font-weight:800;font-size:14px;color:var(--grey);}
+.adn-tile.hot .adn-tile-n{color:var(--amber);}
+.st-adn-h .bmj{width:16px;height:16px;color:var(--amber);vertical-align:-2px;margin-right:2px;}
+
 /* — tropes — */
 .st-chips{display:flex;flex-wrap:wrap;gap:8px;}
 .st-chip{
@@ -2376,6 +2554,7 @@ h1.title.sz-hero{
 .st-chip.hot b{color:var(--amber);}
 .st-chip.cand{border-color:rgba(232,195,74,.35);color:#E8C34A;background:rgba(232,195,74,.05);}
 .st-chip.big{font-size:14px;padding:8px 16px;}
+.st-chip .bmj{width:30px;height:30px;}
 
 /* — geo — */
 .st-geo{display:flex;flex-direction:column;gap:11px;}
@@ -2553,14 +2732,25 @@ h1.title.sz-hero{
 .vt-slot.done{border-color:rgba(232,195,74,.6);box-shadow:0 34px 70px -26px rgba(0,0,0,.85), 0 0 42px -6px rgba(232,195,74,.28);}
 .vt-lab{position:relative;z-index:1;font-size:12px;letter-spacing:.26em;text-transform:uppercase;
   color:var(--grey);font-weight:700;}
+/* el icono del trope: el protagonista de la ruleta */
+.vt-ico{position:relative;z-index:1;width:clamp(104px,22vw,168px);height:clamp(104px,22vw,168px);
+  margin:20px auto 8px;color:var(--bone);opacity:.97;--bmj-ink:currentColor;
+  filter:drop-shadow(0 10px 26px rgba(0,0,0,.55));transition:color .3s;}
+.vt-slot.spinning .vt-ico{animation:vtFlick .11s steps(1) infinite;}
+.vt-slot.landed .vt-ico,.vt-slot.done .vt-ico{color:#E8C34A;filter:drop-shadow(0 0 30px rgba(232,195,74,.45));}
+.vt-ico.pop{animation:vtPop .55s var(--ease-pop);}
+@keyframes vtFlick{0%{transform:scale(.94) rotate(-2deg);opacity:.72;}100%{transform:scale(1.02) rotate(2deg);opacity:.9;}}
+@keyframes vtPop{0%{transform:scale(.55);}55%{transform:scale(1.14);}100%{transform:scale(1);}}
+@media (prefers-reduced-motion:reduce){ .vt-slot.spinning .vt-ico,.vt-ico.pop{animation:none;} }
 .vt-win{
   position:relative;z-index:1;
-  font-family:'Fraunces',serif;font-weight:900;color:var(--bone);line-height:1.05;margin:22px 0 26px;
-  font-size:clamp(30px,6vw,58px);min-height:1.1em;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;text-shadow:0 6px 26px rgba(0,0,0,.6);
+  font-family:'Fraunces',serif;font-weight:900;color:var(--bone);line-height:1.05;margin:6px 0 24px;
+  font-size:clamp(24px,4.6vw,44px);min-height:1.1em;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-shadow:0 6px 26px rgba(0,0,0,.6);text-transform:capitalize;
 }
-.vt-slot.done .vt-win{color:#E8C34A;text-shadow:0 0 34px rgba(232,195,74,.35);}
-.vt-win.spin{opacity:.72;filter:blur(.5px);}
+.vt-slot.done .vt-win,.vt-slot.landed .vt-win{color:#E8C34A;text-shadow:0 0 34px rgba(232,195,74,.35);}
+.vt-slot.spinning .vt-win{opacity:.6;filter:blur(.5px);}
+.vt-taken .bmj{width:15px;height:15px;color:#E8C34A;vertical-align:-2px;}
 .vt-win small{display:block;font-family:'Inter';font-size:13px;font-weight:500;
   color:var(--grey);margin-top:14px;letter-spacing:.04em;}
 .vt-go{
@@ -2631,29 +2821,41 @@ h1.title.sz-hero{
 .vs-duel-syn::-webkit-scrollbar{width:5px;}
 .vs-duel-syn::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px;}
 
-/* ⚔️ alegatos: cada libro es una FILA horizontal — portada al lado de la info,
-   no debajo. Los dos libros se apilan; el «vs» queda entre las dos filas. */
-.vs-duel:not(.epic){flex-direction:column;align-items:center;gap:15px;}
-.vs-duel:not(.epic) .vs-duel-side{width:100%;max-width:500px;align-items:stretch;}
+/* ⚔️ alegatos: los dos libros LADO A LADO, portadas hacia el centro (junto al «vs»)
+   e info hacia afuera; cada libro es portada + info en fila, espejado. */
+.vs-duel:not(.epic){flex-direction:row;align-items:flex-start;justify-content:center;gap:clamp(10px,2.4vw,34px);}
+.vs-duel:not(.epic) .vs-duel-side{width:auto;max-width:none;flex:1 1 0;min-width:0;align-items:stretch;}
 .vs-duel:not(.epic) .vs-duel-body{display:flex;flex-direction:row;align-items:flex-start;gap:16px;width:100%;}
-.vs-duel:not(.epic) .vs-duel-side.right .vs-duel-body{flex-direction:row-reverse;}
+.vs-duel:not(.epic) .vs-duel-side.left .vs-duel-body{flex-direction:row-reverse;}   /* la portada mira al centro */
 .vs-duel:not(.epic) .vs-duel-cover{flex:none;height:auto;margin-top:0;}
-.vs-duel:not(.epic) .vs-duel-info{flex:1;min-width:0;display:flex;flex-direction:column;text-align:left;}
-.vs-duel:not(.epic) .vs-duel-side.right .vs-duel-info{text-align:right;}
-.vs-duel:not(.epic) .vs-duel-title{text-align:inherit;justify-content:flex-start;min-height:auto;margin-top:2px;font-size:17px;}
-.vs-duel:not(.epic) .vs-duel-side.right .vs-duel-title{justify-content:flex-end;}
-.vs-duel:not(.epic) .vs-duel-tropes{justify-content:flex-start;height:auto;margin-top:7px;}
-.vs-duel:not(.epic) .vs-duel-side.right .vs-duel-tropes{justify-content:flex-end;}
-.vs-duel:not(.epic) .vs-duel-syn{height:auto;max-height:128px;margin-top:9px;}
-.vs-duel:not(.epic) .vs-duel-go{align-self:center;margin-top:14px;}
-.vs-duel:not(.epic) .vs-vs{margin:0 auto;}
+.vs-duel:not(.epic) .vs-duel-info{flex:1;min-width:0;display:flex;flex-direction:column;}
+.vs-duel:not(.epic) .vs-duel-side.left .vs-duel-info{text-align:right;align-items:flex-end;}
+.vs-duel:not(.epic) .vs-duel-side.right .vs-duel-info{text-align:left;align-items:flex-start;}
+/* título/meta/sinopsis como bloque que HEREDA el text-align del lado (no centrado) */
+.vs-duel:not(.epic) .vs-duel-title{display:block;text-align:inherit;min-height:auto;margin-top:2px;font-size:clamp(17px,2vw,22px);}
+.vs-duel:not(.epic) .vs-duel-meta{text-align:inherit;}
+.vs-duel:not(.epic) .vs-duel-syn{height:auto;max-height:150px;margin-top:10px;text-align:inherit;}
+.vs-duel:not(.epic) .vs-duel-tropes{height:auto;margin-top:8px;}
+.vs-duel:not(.epic) .vs-duel-side.left .vs-duel-tropes{justify-content:flex-end;}
+.vs-duel:not(.epic) .vs-duel-side.right .vs-duel-tropes{justify-content:flex-start;}
+.vs-duel:not(.epic) .vs-duel-go{align-self:center;margin-top:16px;}
+/* el «vs» clavado a la altura del centro de las PORTADAS (no del bloque entero) */
+.vs-duel:not(.epic){align-items:flex-start;}
+.vs-duel:not(.epic) .vs-duel-cover{align-self:flex-start;}
+.vs-duel:not(.epic) .vs-vs{align-self:flex-start;margin-top:calc(var(--dcH,182px)/2 - 26px);}
 
 /* el VS épico arma su propio duelo: ahí el «vs» sí va al centro */
 .vs-duel.epic{align-items:center;}
 .vs-duel.epic .vs-vs{margin-top:0;}
 @media (max-width:600px){
   .vs-duel{flex-direction:column;align-items:center;--dcH:150px;}
+  .vs-duel:not(.epic){flex-direction:column;align-items:stretch;gap:14px;}
   .vs-duel-side{width:min(280px,86vw);max-width:86vw;}
+  .vs-duel:not(.epic) .vs-duel-side{width:100%;max-width:100%;}
+  .vs-duel:not(.epic) .vs-duel-side.left .vs-duel-body{flex-direction:row;}   /* mobile: portada a la izq siempre */
+  .vs-duel:not(.epic) .vs-duel-side.left .vs-duel-info{text-align:left;align-items:flex-start;}
+  .vs-duel:not(.epic) .vs-duel-side.left .vs-duel-title,
+  .vs-duel:not(.epic) .vs-duel-side.left .vs-duel-tropes{justify-content:flex-start;}
   .vs-vs{margin-top:0;}
 }
 

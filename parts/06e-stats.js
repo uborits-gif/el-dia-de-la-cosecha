@@ -292,21 +292,34 @@ function computeStats(){
 const short = (t,n=26) => !t ? '—' : (t.length>n ? t.slice(0,n-1)+'…' : t);
 const cov = b => b && b.portada ? `style="background-image:url('${b.portada.replace(/'/g,'%27')}')"` : '';
 
-/* marcador compacto para las pantallas de cierre (usa la MISMA fórmula que las stats) */
+/* el marcador Uri vs Maru de las pantallas de cierre: scoreboard grande y animado */
 function marcadorBandHTML(){
   try{
-    const S = computeStats();
-    return `<div class="st-band gold mk-band" style="margin:6px auto 2px;max-width:440px;display:inline-flex;gap:12px;align-items:center;justify-content:center;">
-      🏆 Marcador
-      <span style="color:var(--pa)">${escapeHtml(S.A)} <b class="mk-num" data-to="${S.marcador.ptsA}">0</b></span>
-      <span style="color:var(--grey)">—</span>
-      <span style="color:var(--pb)"><b class="mk-num" data-to="${S.marcador.ptsB}">0</b> ${escapeHtml(S.B)}</span></div>`;
+    const S = computeStats(), M = S.marcador;
+    const lead = M.ptsA===M.ptsB ? null : (M.ptsA>M.ptsB ? 'a' : 'b');
+    const leadTxt = lead ? `🔥 ${escapeHtml(lead==='a'?S.A:S.B)} va arriba`
+                         : (M.ptsA===0 ? 'Todo por jugarse' : '🤝 Van igualados');
+    return `<div class="mk-eyebrow">🏆 El marcador</div>
+      <div class="mk-score">
+        <div class="mk-team${lead==='a'?' lead':''}" style="--pc:var(--pa)">
+          <div class="mk-name">${escapeHtml(S.A)}</div>
+          <div class="mk-n mk-num" data-to="${M.ptsA}">0</div>
+        </div>
+        <div class="mk-mid"><span>—</span></div>
+        <div class="mk-team${lead==='b'?' lead':''}" style="--pc:var(--pb)">
+          <div class="mk-name">${escapeHtml(S.B)}</div>
+          <div class="mk-n mk-num" data-to="${M.ptsB}">0</div>
+        </div>
+      </div>
+      <div class="mk-lead">${leadTxt}</div>`;
   }catch(e){ return ''; }
 }
-/* cuenta hacia arriba los números del marcador al aparecer */
+/* aparece con escala, cuenta hacia arriba y el líder brilla */
 function animarMarcador(root){
-  (root||document).querySelectorAll('.mk-num').forEach(el=>{
-    const to = +el.dataset.to || 0, dur = 850, t0 = performance.now();
+  const r = root || document;
+  const card = r.querySelector('.mk-score'); if(card) requestAnimationFrame(()=>card.classList.add('mk-in'));
+  r.querySelectorAll('.mk-num').forEach(el=>{
+    const to = +el.dataset.to || 0, dur = 1000, t0 = performance.now();
     (function step(t){
       const p = Math.min(1, (t-t0)/dur), e = 1-Math.pow(1-p,3);
       el.textContent = Math.round(e*to);
@@ -314,6 +327,8 @@ function animarMarcador(root){
       else el.classList.add('mk-pop');
     })(t0);
   });
+  const lead = r.querySelector('.mk-team.lead');
+  if(lead) setTimeout(()=>lead.classList.add('mk-glow'), 1000);
 }
 
 function renderStats(container){
@@ -503,9 +518,13 @@ function renderStats(container){
     <section class="st-sec">
       <h3 class="st-h"><em>🧬</em> El ADN del club</h3>
       <div class="st-note" style="margin:-8px 0 16px;">Los tropes que se repiten en toda la biblioteca. Esto son ustedes.</div>
-      <div class="st-note" style="margin:-8px 0 12px;font-size:11px;opacity:.6;">Pasá o tocá un trope para ver qué libros son.</div>
-      <div class="st-chips" id="adnChips">${S.tropesAll.slice(0,14).map(([t,n],i)=>
-        `<span class="st-chip ${i<3?'hot big':''}" data-trope="${escapeHtml(t)}">${escapeHtml(t)} <b>${n}</b></span>`).join('') || '<span class="st-hint">Sin tropes cargados.</span>'}</div>
+      <div class="st-note" style="margin:-8px 0 14px;font-size:11px;opacity:.6;">Pasá o tocá un trope para ver qué libros son.</div>
+      <div class="adn-grid" id="adnChips">${S.tropesAll.slice(0,18).map(([t,n],i)=>
+        `<button class="adn-tile ${i<4?'hot':''}" data-trope="${escapeHtml(t)}">
+          ${bookmojiHTML(t)}
+          <span class="adn-tile-t">${escapeHtml(t)}</span>
+          <span class="adn-tile-n">${n}</span>
+        </button>`).join('') || '<span class="st-hint">Sin tropes cargados.</span>'}</div>
       <div class="st-adn-pop" id="adnPop"></div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:36px;margin-top:34px;">
@@ -565,7 +584,7 @@ function renderStats(container){
       <h3 class="st-h"><em>🧪</em> La fórmula del ganador</h3>
       ${S.formula.tropes.length ? `
         <div class="st-note" style="margin:-8px 0 16px;">Lo que comparten los ${S.formula.total} libros que ganaron.</div>
-        <div class="st-chips">${S.formula.tropes.map(([t,n])=>`<span class="st-chip hot big">${escapeHtml(t)} <b>${n}/${S.formula.total}</b></span>`).join('')}</div>
+        <div class="st-chips">${S.formula.tropes.map(([t,n])=>`<span class="st-chip hot big">${bookmojiHTML(t)} ${escapeHtml(t)} <b>${n}/${S.formula.total}</b></span>`).join('')}</div>
         ${S.formula.candidatos.length ? `
           <div class="st-rlab" style="margin:28px 0 14px;">🔮 Candidatos científicos en la bóveda</div>
           <div class="st-chips">${S.formula.candidatos.map(c=>`<span class="st-chip cand">${escapeHtml(short(c.b.titulo,24))} <b>${c.hits}</b></span>`).join('')}</div>
@@ -672,13 +691,13 @@ function renderStats(container){
   });
   // ADN: pasar o tocar un trope muestra la listita de libros (sutil, sin portadas)
   const adnPop = $('#adnPop', container);
-  $$('#adnChips .st-chip[data-trope]', container).forEach(chip=>{
+  $$('#adnChips .adn-tile[data-trope]', container).forEach(chip=>{
     const t = chip.dataset.trope, titles = tropeBooks[t] || [];
     const showList = ()=>{
       if(!adnPop) return;
-      $$('#adnChips .st-chip', container).forEach(c=>c.classList.remove('on'));
+      $$('#adnChips .adn-tile', container).forEach(c=>c.classList.remove('on'));
       chip.classList.add('on');
-      adnPop.innerHTML = `<div class="st-adn-h">${escapeHtml(t)} · ${titles.length} libro${titles.length>1?'s':''}</div>`
+      adnPop.innerHTML = `<div class="st-adn-h">${bookmojiHTML(t)} ${escapeHtml(t)} · ${titles.length} libro${titles.length>1?'s':''}</div>`
         + titles.map(x=>`<span>${escapeHtml(x)}</span>`).join('');
       adnPop.classList.add('on');
     };

@@ -204,6 +204,7 @@ async function vsModeTrope(){
       <h2 class="serif" style="font-weight:900;font-size:clamp(24px,4vw,40px);margin:0 0 20px;">El ADN decide</h2>
       <div class="vt-slot" id="vtSlot">
         <div class="vt-lab" id="vtLab">TU TROPE ES</div>
+        <div class="vt-ico bmj" id="vtIco"></div>
         <div class="vt-win" id="vtWin">?</div>
         <button class="vt-go" id="vtGo">Girá el trope</button>
         <div class="vt-taken" id="vtTaken"></div>
@@ -211,8 +212,9 @@ async function vsModeTrope(){
       <p class="lead mt-m" id="vtSub" style="margin:auto;font-size:13px;">Lo que salga, se lee.</p>
     </div>
   `);
-  const win = $('#vtWin'), go = $('#vtGo'), lab = $('#vtLab'), sub = $('#vtSub');
-  const chip = t => `<span>${escapeHtml(t.trope)}<b>${t.books.length}</b></span>`;
+  const win = $('#vtWin'), go = $('#vtGo'), lab = $('#vtLab'), sub = $('#vtSub'), ico = $('#vtIco');
+  const setFace = t => { ico.innerHTML = bookmojiSVG(t); win.textContent = t; };
+  const chip = t => `<span>${bookmojiHTML(t.trope)} ${escapeHtml(t.trope)}<b>${t.books.length}</b></span>`;
 
   async function spin(){
     go.disabled = true;
@@ -229,21 +231,24 @@ async function vsModeTrope(){
     Sound.startMusic('vasallaje');
     const target = pool[Math.floor(Math.random()*pool.length)];
     const total = 22 + Math.floor(Math.random()*10);
-    win.classList.add('spin');
+    $('#vtSlot').classList.add('spinning');
     for(let i=0;i<total;i++){
-      win.textContent = pool[Math.floor(Math.random()*pool.length)].t;
+      setFace(pool[Math.floor(Math.random()*pool.length)].t);
       Sound.fx.tick(i/total);
       await sleep(55 + Math.pow(i/total, 2.7)*300);
     }
-    win.classList.remove('spin');
+    $('#vtSlot').classList.remove('spinning');
     Sound.fx.chosen();
     Sound.stopMusic();
-    const r = win.getBoundingClientRect();
-    sparkleAt(r.left + r.width/2, r.top + r.height/2, 10);
+    const r = ico.getBoundingClientRect();
+    sparkleAt(r.left + r.width/2, r.top + r.height/2, 12);
 
     // ¿es de los gordos? entonces se lleva el cuadro entero
     const solo = !taken.length && target.libres.length >= VS_NEED*2;
     const cuantos = solo ? VS_NEED*2 : Math.min(need, VS_NEED);
+    setFace(target.t);
+    $('#vtSlot').classList.add('landed');
+    ico.classList.add('pop');
     win.innerHTML = `${escapeHtml(target.t)}<small>${target.libres.length} libros${
       solo ? ' — le sobra' : ` — pone ${cuantos}`}</small>`;
     const books = shuffled(target.libres).slice(0, cuantos);
@@ -257,6 +262,8 @@ async function vsModeTrope(){
     if(enJuego.length < VS_NEED*2){
       lab.textContent = 'TU SEGUNDO TROPE ES';
       win.textContent = '?';
+      ico.innerHTML = ''; ico.classList.remove('pop');
+      $('#vtSlot').classList.remove('landed');
       go.textContent = 'Girá el segundo';
       go.disabled = false;
       sub.innerHTML = `<b style="color:#E8C34A">${escapeHtml(taken[0].trope)}</b> puso ${taken[0].books.length}. Falta el otro lado.`;
@@ -536,22 +543,33 @@ function armarCuadro(hojas){
 
 /* nodos por slot: n{r}_{i}. La capa 0 tiene N nodos (los libros); la
    capa r>0 tiene N/2^r nodos (los ganadores que se van llenando). */
-function bracketLayout(N){
+/* el cuadro se dibuja DIRECTO al área disponible (boxW×boxH), sin escalar:
+   ocupa todo el ancho y alto, las portadas se dimensionan a la fila. */
+/* fit-to-height: el cuadro ENTRA en el alto de pantalla (no scrollea para abajo)
+   y se estira a lo ANCHO rompiendo el margen. Las portadas se dimensionan a la fila. */
+function bracketLayout(N, boxW, boxH){
   const K = Math.log2(N);                       // capas de cruces
-  const VSBW = 1060;
-  const rowMin = 96, topPad = 62;
-  const filas = N/2;                            // nodos de libro por lado en la 1ª col
-  const VSBH = Math.max(520, topPad*2 + filas*rowMin);
-  const marginX = 88, centerGap = 96;
-  const colW = K > 1 ? (VSBW/2 - marginX - centerGap) / (K-1) : 0;
+  const half = N/2;
+  const mid = N>=16, big = N>=32;
+  const dense = big;                            // sin títulos en el cuadro grande (sólo portadas)
+  const labelH = big?0 : mid?14 : 20;
+  const gap = big?10 : 16;
+  // dos pasadas: portada tan grande como entre en la fila, sin cortar ni solapar
+  let rowH = (boxH - 24) / (half - 1 || 1);
+  let coverH = Math.max(20, Math.min(N<=8?178:130, Math.round(rowH - labelH - gap)));
+  const topPad = Math.max(12, Math.round(coverH/2 + 8));
+  rowH = (boxH - topPad*2) / (half - 1 || 1);
+  coverH = Math.max(20, Math.min(coverH, Math.round(rowH - labelH - 6)));
+  const coverW = Math.round(coverH*0.66);
+  const marginX = Math.round(coverW/2 + 16);
+  const centerGap = Math.min(200, Math.round(boxW*0.05));
+  const colW = K > 1 ? (boxW/2 - marginX - centerGap) / (K-1) : 0;
   const pos = {};                               // key → {x,y, side}
   // capa 0: los libros. Primer N/2 nodos → izquierda, resto → derecha.
-  const half = N/2;
-  const rowH = (VSBH - topPad*2) / (half - 1 || 1);
   for(let i=0;i<N;i++){
     const side = (i < half) ? 'L' : 'R';
     const row = i % half;
-    const x = side==='L' ? marginX : VSBW - marginX;
+    const x = side==='L' ? marginX : boxW - marginX;
     pos[`n0_${i}`] = { x, y: topPad + row*rowH, side };
   }
   // capas siguientes: cada nodo en el centro vertical de sus dos hijos
@@ -561,15 +579,15 @@ function bracketLayout(N){
       const c1 = pos[`n${r-1}_${2*i}`], c2 = pos[`n${r-1}_${2*i+1}`];
       const y = (c1.y + c2.y) / 2;
       let x, side;
-      if(r === K){ x = VSBW/2; side = 'C'; }     // el campeón, al centro
+      if(r === K){ x = boxW/2; side = 'C'; }     // el campeón, al centro
       else {
         side = (i < cnt/2) ? 'L' : 'R';
-        x = side==='L' ? marginX + r*colW : VSBW - marginX - r*colW;
+        x = side==='L' ? marginX + r*colW : boxW - marginX - r*colW;
       }
       pos[`n${r}_${i}`] = { x, y, side };
     }
   }
-  return { pos, VSBW, VSBH, K };
+  return { pos, VSBW:boxW, VSBH:boxH, K, coverH, coverW, dense };
 }
 
 /* ---------- pantalla del bracket ---------- */
@@ -577,7 +595,10 @@ let vsUI = null;   // { stage, svg, nodes:{}, edges:{}, K }
 
 function screenBracket(){
   App.ambient('rgba(232,195,74,.07)', 'rgba(30,26,50,.5)');
-  const L = bracketLayout(VS.N);
+  // full-bleed: usa TODO el ancho de la ventana; el alto ENTRA en la pantalla (sin scroll)
+  const boxW = Math.max(320, (innerWidth||1200) - 20);
+  const boxH = Math.max(320, (innerHeight||760) - 210);   // título + eyebrow + fase + botón
+  const L = bracketLayout(VS.N, boxW, boxH);
   const nombreTam = VS.N===8 ? 'El cuadro' : `El cuadro de ${VS.N}`;
   show(`
     <div class="center" style="padding-top:0;">
@@ -585,6 +606,7 @@ function screenBracket(){
       <h2 class="serif" style="font-weight:900;font-size:clamp(24px,4vw,38px);margin:0;">${nombreTam}</h2>
       ${VS.lugar?`<div class="vs-lugar">📍 ${escapeHtml(VS.lugar)}</div>`:''}
       <div class="vs-phase" id="vsPhase"></div>
+      <button class="vs-next-btn" id="vsNext">Siguiente alegato →</button>
       <div class="vs-stage-wrap"><div class="vs-stage" id="vsStage">
         <svg class="vs-svg" id="vsSvg" viewBox="0 0 ${L.VSBW} ${L.VSBH}"></svg>
       </div></div>
@@ -593,11 +615,12 @@ function screenBracket(){
   const stage = $('#vsStage');
   stage.style.width = L.VSBW+'px';
   stage.style.height = L.VSBH+'px';
-  const availW = Math.min(innerWidth - 16, 1080);
-  const sc = Math.min(1, availW / L.VSBW);
-  stage.style.transformOrigin = 'top center';
-  stage.style.transform = `scale(${sc})`;
-  stage.parentElement.style.height = (L.VSBH*sc + 12)+'px';
+  stage.style.setProperty('--vsn-w', L.coverW+'px');
+  stage.style.setProperty('--vsn-h', L.coverH+'px');
+  if(L.dense) stage.classList.add('dense');
+  // ya está dibujado al tamaño del área: sin escalar
+  stage.style.transform = 'none';
+  stage.parentElement.style.height = (L.VSBH + 12)+'px';
 
   vsUI = { stage, svg: $('#vsSvg'), nodes:{}, edges:{}, pos:L.pos, K:L.K };
   const ab = $('#abortBtn'); if(ab) ab.classList.add('on');
@@ -630,6 +653,21 @@ function screenBracket(){
   }
   updatePhase();
   wireClicks();
+  const nb = $('#vsNext'); if(nb) nb.addEventListener('click', openNextAlegato);
+}
+
+/* abre el alegato del próximo cruce sin resolver (o la gran final) */
+function openNextAlegato(){
+  if(VS.phase === 'grand'){ if(VS.grand && !VS.grand.winners) openGrandFinal(); return; }
+  if(typeof VS.phase !== 'number') return;
+  const r = VS.phase;
+  const m = VS.rounds[r].findIndex(cr=>!cr.winner && cr.a && cr.b);
+  if(m < 0) return;
+  const cr = VS.rounds[r][m];
+  const nombre = granRonda(VS.N / Math.pow(2, r));
+  // resalta el cruce un instante y abre su alegato
+  [`n${r}_${2*m}`, `n${r}_${2*m+1}`].forEach(k=>{ const n=vsUI.nodes[k]; if(n){ n.el.classList.remove('pop'); void n.el.offsetWidth; n.el.classList.add('pop'); } });
+  openDebate(cr, `${nombre} · cruce ${m+1}`, w=>{ cr.winner = w; resolveMatch(r, m); });
 }
 
 function mkSideTag(txt, pos){
@@ -725,12 +763,16 @@ function paintEdge(fromKey, toKey, lit){
 /* ---------- fases (genéricas: VS.phase = índice de capa, o 'grand') ---------- */
 function updatePhase(){
   const el = $('#vsPhase');
+  const nb = $('#vsNext');
+  const showNext = on => { if(nb) nb.style.display = on ? '' : 'none'; };
   if(!el) return;
-  if(VS.phase === 'grand'){ el.textContent = '⚡ LA GRAN FINAL ⚡ — toquen a los dos finalistas'; return; }
-  if(VS.phase === 'done'){ el.textContent = ''; return; }
+  if(VS.phase === 'grand'){ el.textContent = '⚡ LA GRAN FINAL ⚡ — toquen a los dos finalistas'; showNext(!(VS.grand&&VS.grand.winners)); if(nb) nb.textContent='Abrir la gran final →'; return; }
+  if(VS.phase === 'done'){ el.textContent = ''; showNext(false); return; }
   const enJuego = VS.N / Math.pow(2, VS.phase);        // libros vivos en esta capa
   const nombre = granRonda(enJuego);
-  el.textContent = `${nombre} — toquen un cruce para el alegato`;
+  const rem = VS.rounds[VS.phase].filter(c=>!c.winner).length;
+  el.textContent = `${nombre} — ${rem} ${rem===1?'cruce':'cruces'} por jugar`;
+  showNext(rem>0); if(nb) nb.textContent = `Siguiente alegato · ${rem} →`;
 }
 
 function clearClickables(){
@@ -819,7 +861,7 @@ function vsDuelSide(bk, side){
   s.className = 'vs-duel-side ' + (side==='b' ? 'right' : 'left');
   const ownerP = bk._vsOwner;
   const head = bk._vsTrope
-    ? `<div class="vs-duel-owner" style="color:#E8C34A">🧬 ${escapeHtml(bk._vsTrope)}</div>`
+    ? `<div class="vs-duel-owner" style="color:#E8C34A">${bookmojiHTML(bk._vsTrope)} ${escapeHtml(bk._vsTrope)}</div>`
     : `<div class="vs-duel-owner" style="color:${PLAYER_COLOR[ownerP]||'var(--grey)'}">${
         ownerP ? 'de '+escapeHtml(State.players[ownerP]) : ''}</div>`;
   const tr = (bk.tropes||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,3);
@@ -835,7 +877,7 @@ function vsDuelSide(bk, side){
   info.innerHTML = head
     + `<div class="vs-duel-title">${escapeHtml(bk.titulo)}</div>`
     + (meta ? `<div class="vs-duel-meta">${escapeHtml(meta)}</div>` : '')
-    + (tr.length ? `<div class="vs-duel-tropes">${tr.map(x=>`<span${bk._vsTrope===x?' class="on"':''}>${escapeHtml(x)}</span>`).join('')}</div>` : '')
+    + (tr.length ? `<div class="vs-duel-tropes">${tr.map(x=>`<span${bk._vsTrope===x?' class="on"':''}>${bookmojiHTML(x)} ${escapeHtml(x)}</span>`).join('')}</div>` : '')
     + `<div class="vs-duel-syn">${escapeHtml(bk.sinopsis || '(sin sinopsis)')}</div>`;
   body.appendChild(cov); body.appendChild(info);
   s.appendChild(body);
@@ -846,7 +888,7 @@ const vsVsEl = ()=>{ const v = document.createElement('div'); v.className = 'vs-
 function openDebate(cruce, label, onWin){
   Sound.fx.click();
   const ov = overlay(`
-    <div class="ov-pop center" style="max-width:640px;">
+    <div class="ov-pop center" style="max-width:min(1040px,94vw);">
       <div class="eyebrow" style="color:#E8C34A;">Alegatos · ${escapeHtml(label)}</div>
       <div class="vs-duel mt-s" id="vsDuel"></div>
       <p class="vs-flavor mt-s">${VS_FLAVOR[Math.floor(Math.random()*VS_FLAVOR.length)]}</p>
@@ -920,7 +962,7 @@ function openGrandFinal(){
   Sound.fx.click();
   const A = VS.grand.a, B = VS.grand.b;
   const ov = overlay(`
-    <div class="ov-pop center" style="max-width:640px;">
+    <div class="ov-pop center" style="max-width:min(1040px,94vw);">
       <div class="eyebrow" style="color:#E8C34A;">⚡ La Gran Final ⚡</div>
       <div class="vs-duel mt-s" id="gfDuel"></div>
       <p class="lead" style="font-size:14px;margin-top:14px;">¿Cómo lo resuelven?</p>
@@ -1350,25 +1392,29 @@ async function granRuleta(excluidos, participantes, size){
     reel.appendChild(c); cellOf[b.id]=c;
   });
   const cells = fila.map(b=>cellOf[b.id]);
-  await sleep(450);
+  await sleep(300);
+  // UN barrido rápido de calentamiento (independiente de cuántos libros haya)
+  const warm = 26;
+  for(let i=0;i<warm;i++){
+    const at = i % cells.length;
+    cells.forEach((c,j)=>c.classList.toggle('lit', j===at));
+    const c = cells[at]; if(c) c.scrollIntoView({inline:'center', block:'nearest', behavior:'auto'});
+    try{ Sound.fx.tick(i/warm); }catch(err){}
+    await sleep(26 + Math.pow(i/warm,2.6)*150);
+  }
+  cells.forEach(c=>c.classList.remove('lit'));
+  // eliminación en CASCADA rápida: total acotado (~1.6s máx sin importar la cantidad)
+  const step = Math.max(70, Math.min(320, Math.round(1600/Math.max(1,excluidos.length))));
   for(let e=0;e<excluidos.length;e++){
     const target = excluidos[e];
-    const tIdx = fila.findIndex(b=>b.id===target.id);
-    // la ruleta DESACELERA y frena justo en el que va a quedar afuera (2 vueltas + tIdx)
-    const total = 2*cells.length + tIdx + 1;
-    for(let i=0;i<total;i++){
-      const at = i % cells.length;
-      cells.forEach((c,j)=>c.classList.toggle('lit', j===at));
-      const c = cells[at]; if(c) c.scrollIntoView({inline:'center', block:'nearest', behavior:'smooth'});
-      try{ Sound.fx.tick(i/total); }catch(err){}
-      await sleep(40 + Math.pow(i/total,2.8)*280);
-    }
-    cells.forEach(c=>c.classList.remove('lit'));
-    cellOf[target.id].classList.add('out');   // el mismo en el que frenó
+    const c = cellOf[target.id];
+    if(c){ c.classList.add('lit'); c.scrollIntoView({inline:'center', block:'nearest', behavior:'auto'}); }
+    await sleep(Math.min(step, 140));
+    if(c){ c.classList.remove('lit'); c.classList.add('out'); }
     try{ Sound.fx.drop(); }catch(err){}
-    if($('#grSub')) $('#grSub').innerHTML = `«${escapeHtml(target.titulo)}» queda afuera`;
+    if($('#grSub')) $('#grSub').innerHTML = `«${escapeHtml(short(target.titulo,26))}» queda afuera <b style="color:var(--grey)">· ${e+1}/${excluidos.length}</b>`;
     evPush(target, 'puestos', { fecha:fechaHoy(), quien:`Gran Vasallaje ${size}`, extra:'no entró al sorteo' });
-    await sleep(750);
+    await sleep(step);
   }
   await persist();
   if($('#grSub')) $('#grSub').textContent = '¡A pelear!';

@@ -813,6 +813,7 @@ function bookEl(book, opts={}){
     img.src = book.portada;
     img.alt = book.titulo;
     img.loading = 'lazy';
+    img.draggable = false;                     // que arrastrar no "levante" la imagen (cursor X)
     img.onerror = ()=>{ img.remove(); cover.appendChild(noImgCover(book)); };
     cover.appendChild(img);
   } else {
@@ -826,6 +827,29 @@ function bookEl(book, opts={}){
   const pages = document.createElement('div'); pages.className='bf bf-pages';
   const top   = document.createElement('div'); top.className='bf bf-top';
   const bottom= document.createElement('div'); bottom.className='bf bf-bottom';
+
+  // contratapa editorial: la sinopsis atrás, como un libro real (sólo en la ficha)
+  if(opts.detail){
+    back.classList.add('bf-back-detail');
+    back.innerHTML = `<div class="bf-back-in">
+      <div class="bf-back-t">${escapeHtml(book.titulo)}</div>
+      <div class="bf-back-syn">${escapeHtml(book.sinopsis||'(sin sinopsis)')}</div>
+      <div class="bf-back-meta">${[book.autor, book.anio, book.paginas?book.paginas+' págs':''].filter(Boolean).map(escapeHtml).join(' · ')}</div>
+    </div>`;
+    // el lomo escrito: MISMA tipografía y color que en la vault cerrada
+    spine.classList.add('vb-solid');
+    const st = document.createElement('div'); st.className = 'vb-title';
+    const stSpan = document.createElement('span'); stSpan.textContent = book.titulo;
+    st.appendChild(stSpan); spine.appendChild(st);
+    if(typeof applySpineFont === 'function') applySpineFont(st, book, 1.35);
+    scene._onEdge = (c)=>{
+      if(!c) c = book._color || (typeof fallbackColor==='function' ? fallbackColor(book.titulo||book.id) : {r:60,g:60,b:60});
+      if(typeof spineInkOf === 'function') spine.style.color = spineInkOf(book, c);
+      const lum = 0.299*c.r + 0.587*c.g + 0.114*c.b;
+      spine.classList.toggle('spine-light', lum <= 150);
+    };
+    if(typeof fitSpineTitle === 'function') setTimeout(()=>fitSpineTitle(st, stSpan, 0), 0);
+  }
 
   b.append(halo, back, spine, pages, top, bottom, cover, hinge, glare);
 
@@ -857,7 +881,8 @@ function bookEl(book, opts={}){
     if(scene._onEdge) scene._onEdge(c);
   });
 
-  if(opts.tilt !== false) attachTilt(scene, b, glare);
+  if(opts.orbit) attachOrbit(scene, b, glare);
+  else if(opts.tilt !== false) attachTilt(scene, b, glare);
 
   if(opts.onClick){
     scene.style.cursor='pointer';
@@ -895,6 +920,38 @@ function attachTilt(scene, b, glare){
     b.style.setProperty('--tiltY', '0deg');
     b.style.setProperty('--tiltX', '0deg');
     if(glare) glare.style.setProperty('--glare', '0');
+  });
+}
+
+/* orbit: arrastrar para girar el libro 360° (y verle la contra con la sinopsis) */
+function attachOrbit(scene, b, glare){
+  let base = parseFloat(b.style.getPropertyValue('--baseY')) || 0;
+  let tx = 0, dragging = false, lastX = 0, lastY = 0, moved = false;
+  scene.classList.add('orbit');
+  const move = (e)=>{
+    if(!dragging) return;
+    base += (e.clientX - lastX) * 0.6;
+    tx = Math.max(-32, Math.min(32, tx - (e.clientY - lastY) * 0.3));
+    lastX = e.clientX; lastY = e.clientY; moved = true;
+    b.style.setProperty('--baseY', base + 'deg');
+    b.style.setProperty('--tiltX', tx + 'deg');
+    // ¿estamos mirando la contra? (baseY cerca de 180°) → apagar el brillo de la tapa
+    if(glare){ const face = ((base % 360) + 360) % 360; glare.style.setProperty('--glare', (face>90 && face<270) ? '0' : '0.16'); }
+  };
+  const up = ()=>{ if(!dragging) return; dragging=false; b.classList.add('snappy'); scene.classList.toggle('grabbing', false);
+    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); };
+  scene.addEventListener('dragstart', e=>e.preventDefault());   // nada de arrastrar la imagen
+  scene.addEventListener('pointerdown', (e)=>{
+    e.preventDefault();
+    dragging = true; moved = false; lastX = e.clientX; lastY = e.clientY;
+    b.classList.remove('snappy'); scene.classList.add('grabbing');
+    document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+  });
+  // un toque/clic (sin arrastrar) da vuelta el libro media vuelta: tapa ↔ contra
+  scene.addEventListener('click', ()=>{
+    if(moved) return;
+    base += 180; b.classList.add('snappy'); b.style.setProperty('--baseY', base + 'deg');
+    if(glare){ const face = ((base % 360) + 360) % 360; glare.style.setProperty('--glare', (face>90 && face<270) ? '0' : '0.16'); }
   });
 }
 
