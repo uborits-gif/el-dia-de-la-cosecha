@@ -633,6 +633,9 @@ function renderStats(container){
             <div class="st-tlmeta">${c.libros} libros${c.lugar?' · 📍 '+escapeHtml(c.lugar):''}${c.metodo?' · 🎲 '+escapeHtml(c.metodo):''}${c.ganadores.length>1?' · 🤝 empate de honor':''}</div>
           </div>
         </div>`).join('') || '<div class="st-hint">Todavía no hay cosechas registradas.</div>'}</div>
+      <div style="text-align:center;margin-top:20px;">
+        <button class="load-btn" id="verHistoria">📜 Ver la historia completa →</button>
+      </div>
     </section>
 
     <!-- ═══ VASALLAJE ═══ -->
@@ -644,9 +647,16 @@ function renderStats(container){
         ${figs([
           fig('Torneos jugados', V.jugados, 'veces peleó la bóveda', 'am'),
           fig('Último campeón', V.campeones.length?escapeHtml(short(V.campeones[V.campeones.length-1].titulo,16)):'—', V.campeones.length+(V.campeones.length===1?' campeón en total':' campeones en total')),
-          V.finalista ? fig('El eterno finalista', V.finalista.n, `final${V.finalista.n>1?'es':''} perdida${V.finalista.n>1?'s':''} · ${escapeHtml(short(V.finalista.b.titulo,18))}`) : null,
-          V.semifinalista ? fig('El semifinalista serial', V.semifinalista.n, `vece${V.semifinalista.n>1?'s':''} en semis · ${escapeHtml(short(V.semifinalista.b.titulo,18))}`, 'sm') : null,
-          V.convocado ? fig('Carne de cuadro', V.convocado.ps.length, `cuadros jugados · ${escapeHtml(short(V.convocado.b.titulo,18))}`) : null,
+          // los apodos ("eterno", "serial", "carne de cuadro") sólo tienen gracia si SE REPITE:
+          // con una sola vez se cuenta el hecho, sin título grandilocuente.
+          V.finalista ? fig(V.finalista.n>1?'El eterno finalista':'Llegó a la final',
+            escapeHtml(short(V.finalista.b.titulo,22)),
+            V.finalista.n>1 ? `perdió ${V.finalista.n} finales` : 'y la perdió', 'sm') : null,
+          V.semifinalista ? fig(V.semifinalista.n>1?'El semifinalista serial':'Llegó a semifinales',
+            escapeHtml(short(V.semifinalista.b.titulo,22)),
+            V.semifinalista.n>1 ? `${V.semifinalista.n} veces en semis` : 'una vez', 'sm') : null,
+          (V.convocado && V.convocado.ps.length>1) ? fig('Carne de cuadro', V.convocado.ps.length,
+            `cuadros jugados · ${escapeHtml(short(V.convocado.b.titulo,20))}`) : null,
           fig('Tasa de rescate', S.boveda.tasaRescate+'%', 'de los caídos vuelve a jugar'),
         ].filter(Boolean))}
         ${V.modos.length ? `<div class="st-rlab" style="margin:30px 0 16px;">Cómo se armaron los cuadros</div>${bars(V.modos, 'var(--pb)')}` : ''}
@@ -707,9 +717,142 @@ function renderStats(container){
       else { try{ Sound.fx.click(); }catch(e){} showList(); }
     });
   });
+  const vh = $('#verHistoria', container);
+  if(vh) vh.addEventListener('click', ()=>{ try{ Sound.fx.click(); }catch(e){} screenHistoria(); });
   // entrada coreografiada: cada sección sube al entrar en pantalla, con sus hijos escalonados
   setupStatsReveal(container);
   return S;
+}
+
+/* ============================================================
+   📜 LA HISTORIA COMPLETA — cada jornada del club, desglosada:
+   quién trajo qué, por qué se eligió, quién rescató, quién descartó,
+   hasta dónde llegó cada uno y quién ganó. Todo sale de la bitácora.
+   ============================================================ */
+function construirHistoria(){
+  const all = [...(State.read||[]), ...(State.vault||[])];
+  const dias = new Map();                       // fecha → jornada
+  const dia = f => {
+    if(!dias.has(f)) dias.set(f, { fecha:f, tipo:'cosecha', lugar:'', modo:'', metodo:'',
+      libros:new Map(), campeon:null, ganadores:[] });
+    return dias.get(f);
+  };
+  const parte = (j, b) => {
+    if(!j.libros.has(b.id)) j.libros.set(b.id, { b, traidoPor:b.traidoPor||'', marcas:[] });
+    return j.libros.get(b.id);
+  };
+  all.forEach(b=>{
+    const ev = (k)=> (typeof evList==='function' ? evList(b,k) : []);
+    ev('cosechas').forEach(e=>{
+      if(!e.fecha || (typeof EV_NOFECHA!=='undefined' && e.fecha===EV_NOFECHA)) return;
+      const j = dia(e.fecha); parte(j,b);
+      const lug = (typeof evVal==='function' ? evVal(e.quien) : e.quien) || '';
+      if(lug && !j.lugar) j.lugar = lug;
+    });
+    ev('puestos').forEach(e=>{
+      if(!e.fecha) return;
+      const j = dia(e.fecha); const p = parte(j,b);
+      j.tipo = 'vasallaje';
+      const q = String(e.quien||'');
+      const m = q.match(/\(([^)]+)\)/); if(m && !j.modo) j.modo = m[1];
+      const lug = (q.match(/📍\s*(.+)$/)||[])[1]; if(lug && !j.lugar) j.lugar = lug.trim();
+      p.puesto = e.extra || '';
+      if(/ganador|campe/i.test(p.puesto)) j.campeon = b;
+    });
+    ev('elegidos').forEach(e=>{ if(!e.fecha) return; parte(dia(e.fecha), b).elegido = e.quien||''; });
+    ev('rescates').forEach(e=>{ if(!e.fecha) return; parte(dia(e.fecha), b).rescatadoPor = e.quien||'?'; });
+    ev('descartes').forEach(e=>{ if(!e.fecha) return; parte(dia(e.fecha), b).descartadoPor = e.quien||'?'; });
+    ev('victorias').forEach(e=>{
+      if(!e.fecha) return;
+      const j = dia(e.fecha); const p = parte(j,b);
+      p.gano = true; p.empate = /empate/i.test(e.extra||'');
+      if(!j.metodo) j.metodo = e.quien||'';
+      if(!j.ganadores.some(x=>x.id===b.id)) j.ganadores.push(b);
+    });
+    ev('anulaciones').forEach(e=>{ if(!e.fecha) return; parte(dia(e.fecha), b).anulado = true; });
+  });
+  return [...dias.values()]
+    .map(j=>({ ...j, libros:[...j.libros.values()] }))
+    .sort((x,y)=>fechaOrd(y.fecha)-fechaOrd(x.fecha));      // la más reciente arriba
+}
+
+function screenHistoria(){
+  const H = construirHistoria();
+  const A = State.players.a, B = State.players.b;
+  const esA = n => n && n.toLowerCase()===A.toLowerCase();
+  const colorDe = n => esA(n) ? 'var(--pa)' : (n ? 'var(--pb)' : 'var(--grey)');
+  const nLibros = new Set(H.flatMap(j=>j.libros.map(p=>p.b.id))).size;
+
+  const chip = (p)=>{
+    const b = p.b, c = colorDe(p.traidoPor);
+    const marcas = [];
+    if(p.elegido)       marcas.push(`<i class="hx-ojo">👁 lo eligieron por ${escapeHtml(p.elegido)}</i>`);
+    if(p.rescatadoPor)  marcas.push(`<i class="hx-res">⛏ lo rescató ${escapeHtml(p.rescatadoPor)}</i>`);
+    if(p.descartadoPor) marcas.push(`<i class="hx-des">🗡 lo descartó ${escapeHtml(p.descartadoPor)}</i>`);
+    if(p.puesto && !p.gano) marcas.push(`<i class="hx-pue">⚔ ${escapeHtml(p.puesto)}</i>`);
+    if(p.anulado)       marcas.push(`<i class="hx-anu">🚫 anulado</i>`);
+    const gano = p.gano || (p.puesto && /ganador|campe/i.test(p.puesto));
+    return `<div class="hx-book${gano?' win':''}" data-id="${escapeHtml(String(b.id))}" style="--pc:${c}">
+      <div class="hx-cov" ${cov(b)}></div>
+      <div class="hx-main">
+        <div class="hx-t">${gano?'🏆 ':''}${escapeHtml(b.titulo)}</div>
+        <div class="hx-who">${p.traidoPor?`lo trajo ${escapeHtml(p.traidoPor)}`:'sin dueño'}${p.empate?' · 🤝 empate de honor':''}</div>
+        ${marcas.length?`<div class="hx-marks">${marcas.join('')}</div>`:''}
+      </div></div>`;
+  };
+
+  show(`
+    <div class="center" style="padding-top:6px;">
+      <div class="eyebrow" style="color:#E8C34A;">📜 El progreso del club</div>
+      <h1 class="title" style="font-size:clamp(30px,5vw,52px);">La historia completa</h1>
+      <p class="lead mt-s" style="margin:auto;">${H.length} jornada${H.length===1?'':'s'} · ${nLibros} libros que pasaron por la mesa.</p>
+      <div class="row mt-m"><button class="btn btn-ghost" id="hxBack">← Volver</button></div>
+    </div>
+    <div class="hx-line" id="hxLine">
+      ${H.map((j,i)=>{
+        const gan = j.ganadores.length ? j.ganadores : (j.campeon?[j.campeon]:[]);
+        const porDueno = { a:[], b:[], x:[] };
+        j.libros.forEach(p=>{ (esA(p.traidoPor)?porDueno.a:(p.traidoPor?porDueno.b:porDueno.x)).push(p); });
+        const bloque = (arr, nom, c)=> arr.length ? `<div class="hx-side">
+            <div class="hx-side-h" style="color:${c}">${escapeHtml(nom)} · ${arr.length}</div>
+            ${arr.map(chip).join('')}</div>` : '';
+        return `<section class="hx-day" style="--i:${i}">
+          <div class="hx-dot"></div>
+          <div class="hx-card">
+            <div class="hx-head">
+              <div class="hx-fecha">${escapeHtml(j.fecha)}</div>
+              <div class="hx-tipo ${j.tipo}">${j.tipo==='vasallaje'?'⚔️ Vasallaje':'🌾 Cosecha'}${j.modo?' · '+escapeHtml(j.modo):''}</div>
+            </div>
+            <div class="hx-meta">${[j.lugar?'📍 '+escapeHtml(j.lugar):'', j.metodo?'🎲 '+escapeHtml(j.metodo):'',
+              `${j.libros.length} libros`].filter(Boolean).join(' · ')}</div>
+            ${gan.length?`<div class="hx-winner">🏆 Ganó <b>${gan.map(g=>escapeHtml(g.titulo)).join(' + ')}</b>${gan.length>1?' — empate de honor':''}</div>`:''}
+            <div class="hx-sides">
+              ${bloque(porDueno.a, A, 'var(--pa)')}
+              ${bloque(porDueno.b, B, 'var(--pb)')}
+              ${bloque(porDueno.x, 'Sin dueño', 'var(--grey)')}
+            </div>
+          </div>
+        </section>`;
+      }).join('') || '<div class="st-hint" style="text-align:center;padding:40px;">Todavía no hay historia. Jueguen la primera cosecha.</div>'}
+    </div>
+  `);
+  $('#hxBack').addEventListener('click', ()=>{ Sound.fx.click(); screenHome(); });
+  // tocar un libro abre su ficha
+  $$('.hx-book', document).forEach(el=>el.addEventListener('click', ()=>{
+    const id = el.dataset.id;
+    const list = [...State.read, ...State.vault];
+    const i = list.findIndex(x=>String(x.id)===id);
+    if(i>=0){ try{ Sound.fx.click(); }catch(e){}
+      showPlacard(list, i, { source: State.read.some(x=>String(x.id)===id)?'honor':'vault' }); }
+  }));
+  // aparecen al scrollear
+  const dias = $$('.hx-day', document);
+  if('IntersectionObserver' in window && !(matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)){
+    const io = new IntersectionObserver(es=>es.forEach(e=>{
+      if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+    }), { rootMargin:'0px 0px -8% 0px', threshold:0.08 });
+    dias.forEach(d=>io.observe(d));
+  } else dias.forEach(d=>d.classList.add('in'));
 }
 
 /* cuenta un número hacia arriba (una vez) */

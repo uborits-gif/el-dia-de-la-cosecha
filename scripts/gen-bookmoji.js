@@ -13,8 +13,8 @@ function toGreen(hex){
   if(!/^[0-9a-f]{6}$/i.test(h)) return hex;
   const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
   const lum=(0.299*r+0.587*g+0.114*b)/255;              // 0..1
-  const L=0.32 + lum*0.50;                               // claridad
-  return hslToHex(76, 0.72, L);                          // verde-LIMA de la web (--amber #C9F839)
+  const L=0.36 + lum*0.42;                               // claridad
+  return hslToHex(73, 0.92, L);                          // el verde-lima de la web (--amber #C9F839)
 }
 function clean(svg){
   svg = svg.replace(/<\?xml[^>]*\?>/g,'').replace(/<!--[\s\S]*?-->/g,'');
@@ -37,7 +37,11 @@ const map={};
 files.forEach(f=>{ const k=norm(f.replace('botm-bookmoji-','').replace('.svg','')); map[k]=clean(fs.readFileSync(dir+'/'+f,'utf8')); });
 
 // verdes de la paleta (para los iconos propios)
-const G_LIGHT='#cdf25a', G_MID='#8fc23a', G_DARK='#46662a';
+const G_LIGHT='#dcfb72', G_MID='#a9dd2e', G_DARK='#4d7314';
+// found family: tres figuras juntas (una familia elegida)
+map.familychosen = `<svg viewBox="0 0 64 64"><circle cx="32" cy="18" r="8" fill="${G_LIGHT}"/><path d="M20 44a12 12 0 0 1 24 0z" fill="${G_LIGHT}"/><circle cx="13" cy="27" r="6.5" fill="${G_MID}"/><path d="M4 48a9 9 0 0 1 18 0z" fill="${G_MID}"/><circle cx="51" cy="27" r="6.5" fill="${G_MID}"/><path d="M42 48a9 9 0 0 1 18 0z" fill="${G_MID}"/><path d="M8 52h48v4H8z" fill="${G_DARK}"/></svg>`;
+// suspenseful: reloj a punto de estallar (tensión)
+map.suspense = `<svg viewBox="0 0 64 64"><circle cx="32" cy="35" r="21" fill="${G_LIGHT}"/><circle cx="32" cy="35" r="16" fill="${G_DARK}"/><path d="M31 22h2v14h-2z" fill="${G_LIGHT}"/><path d="M32 34l9 7-1.6 2.2L31 36z" fill="${G_LIGHT}"/><rect x="27" y="8" width="10" height="5" rx="2" fill="${G_MID}"/><path d="M30 13h4v4h-4z" fill="${G_MID}"/><path d="M49 17l5-5 3 3-5 5z" fill="${G_MID}"/></svg>`;
 // velita de cumpleaños = coming of age
 map.comingofage = `<svg viewBox="0 0 64 64"><path d="M32 6c3.4 3.6 5 6.4 5 9a5 5 0 0 1-10 0c0-2.6 1.6-5.4 5-9z" fill="${G_LIGHT}"/><rect x="26" y="22" width="12" height="30" rx="2" fill="${G_MID}"/><rect x="31" y="16" width="2" height="6" fill="${G_DARK}"/><rect x="26" y="30" width="12" height="3" fill="${G_DARK}"/><rect x="26" y="38" width="12" height="3" fill="${G_DARK}"/><rect x="20" y="52" width="24" height="5" rx="2.5" fill="${G_DARK}"/></svg>`;
 // +400 manuscrito = 400+ pages
@@ -47,12 +51,12 @@ const ALIAS={
   '400pages':'400', addictionthemes:'drugsandalcohol', amnesia:'cerebral', atmospheric:'creepy',
   characterdriven:'literary', dark:'creepy', darkhumor:'snarky', drugalcoholuse:'drugsandalcohol',
   dualtimelines:'nonlineartimeline', famousauthor:'wellknown', femalefriendships:'femalefriendship',
-  firstperson:'literary', foundfamily:'familydrama', graphicviolence:'graphiccontent', grief:'sad',
+  firstperson:'literary', foundfamily:'familychosen', graphicviolence:'graphiccontent', grief:'sad',
   gritty:'rugged', identity:'cerebral', magicalrealism:'magical', multigenerational:'familydrama',
   murdermystery:'whodunit', periodismo:'academic', rebelion:'war', revenge:'murder',
   romancesubplot:'romance', satirical:'snarky', secta:'creepy', serialkiller:'murder',
   sisterdynamic:'siblings', strongfemalelead:'feminist', suburbandrama:'suburban',
-  suspenseful:'catandmouse', tearjerker:'sad', techworld:'techie', teens:'teen', twisty:'puzzle',
+  suspenseful:'suspense', tearjerker:'sad', techworld:'techie', teens:'teen', twisty:'puzzle',
   under200pages:'under200', unhinged:'scary', wittybanter:'snarky'
 };
 const helper = `

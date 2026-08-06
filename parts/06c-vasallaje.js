@@ -562,7 +562,7 @@ function bracketLayout(N, boxW, boxH){
   coverH = Math.max(20, Math.min(coverH, Math.round(rowH - labelH - 6)));
   const coverW = Math.round(coverH*0.66);
   const marginX = Math.round(coverW/2 + 16);
-  const centerGap = Math.min(200, Math.round(boxW*0.05));
+  const centerGap = Math.min(240, Math.round(boxW*0.085));   // aire para que el campeón no pise a los semis
   const colW = K > 1 ? (boxW/2 - marginX - centerGap) / (K-1) : 0;
   const pos = {};                               // key → {x,y, side}
   // capa 0: los libros. Primer N/2 nodos → izquierda, resto → derecha.
@@ -587,7 +587,20 @@ function bracketLayout(N, boxW, boxH){
       pos[`n${r}_${i}`] = { x, y, side };
     }
   }
-  return { pos, VSBW:boxW, VSBH:boxH, K, coverH, coverW, dense };
+  // cuantos MENOS libros quedan, más grandes se dibujan: cada capa tiene el doble
+  // de aire vertical que la anterior, así que la portada crece ronda a ronda.
+  const coverAt = [];
+  // ...pero sin pisarse: el ancho también está limitado por la separación entre columnas
+  // (y en la final, por el aire hasta el campeón).
+  const maxW = Math.max(26, Math.min(colW || 999, centerGap) - 18);
+  for(let r=0; r<=K; r++){
+    const aire = rowH * Math.pow(2, r);                       // alto disponible por nodo en esa capa
+    let h = Math.max(coverH, Math.min(190, Math.round(aire - labelH - 14)));
+    let w = Math.round(h*0.66);
+    if(w > maxW){ w = maxW; h = Math.round(w/0.66); }          // el tope horizontal manda
+    coverAt.push({ h, w });
+  }
+  return { pos, VSBW:boxW, VSBH:boxH, K, coverH, coverW, dense, coverAt };
 }
 
 /* ---------- pantalla del bracket ---------- */
@@ -595,9 +608,11 @@ let vsUI = null;   // { stage, svg, nodes:{}, edges:{}, K }
 
 function screenBracket(){
   App.ambient('rgba(232,195,74,.07)', 'rgba(30,26,50,.5)');
-  // full-bleed: usa TODO el ancho de la ventana; el alto ENTRA en la pantalla (sin scroll)
-  const boxW = Math.max(320, (innerWidth||1200) - 20);
-  const boxH = Math.max(320, (innerHeight||760) - 210);   // título + eyebrow + fase + botón
+  // full-bleed: usa TODO el ancho útil (clientWidth NO cuenta la barra de scroll; 100vw sí,
+  // y por eso el cuadro se corría y la primera columna quedaba fuera de pantalla)
+  const vw = document.documentElement.clientWidth || innerWidth || 1200;
+  const boxW = Math.max(320, vw - 24);
+  const boxH = Math.max(320, (innerHeight||760) - 232);   // título + eyebrow + fase + contador + botón
   const L = bracketLayout(VS.N, boxW, boxH);
   const nombreTam = VS.N===8 ? 'El cuadro' : `El cuadro de ${VS.N}`;
   show(`
@@ -606,6 +621,7 @@ function screenBracket(){
       <h2 class="serif" style="font-weight:900;font-size:clamp(24px,4vw,38px);margin:0;">${nombreTam}</h2>
       ${VS.lugar?`<div class="vs-lugar">📍 ${escapeHtml(VS.lugar)}</div>`:''}
       <div class="vs-phase" id="vsPhase"></div>
+      <div class="vs-tally" id="vsTally"></div>
       <button class="vs-next-btn" id="vsNext">Siguiente alegato →</button>
       <div class="vs-stage-wrap"><div class="vs-stage" id="vsStage">
         <svg class="vs-svg" id="vsSvg" viewBox="0 0 ${L.VSBW} ${L.VSBH}"></svg>
@@ -620,7 +636,20 @@ function screenBracket(){
   if(L.dense) stage.classList.add('dense');
   // ya está dibujado al tamaño del área: sin escalar
   stage.style.transform = 'none';
-  stage.parentElement.style.height = (L.VSBH + 12)+'px';
+  const wrapEl = stage.parentElement;
+  wrapEl.style.height = (L.VSBH + 12)+'px';
+  // FULL-BLEED A MANO: el truco CSS (100vw + margin negativo) sólo sale bien si el
+  // contenedor está perfectamente centrado. Medimos y corregimos, así el cuadro
+  // arranca SIEMPRE en el borde y ninguna columna se sale de pantalla.
+  const fitBleed = ()=>{
+    if(!wrapEl.isConnected) return;
+    wrapEl.style.width = (document.documentElement.clientWidth || innerWidth)+'px';
+    wrapEl.style.marginLeft = '0px';
+    const r = wrapEl.getBoundingClientRect();
+    wrapEl.style.marginLeft = (-r.left)+'px';
+  };
+  fitBleed();
+  requestAnimationFrame(fitBleed);        // otra vez cuando ya se asentó el layout
 
   vsUI = { stage, svg: $('#vsSvg'), nodes:{}, edges:{}, pos:L.pos, K:L.K };
   const ab = $('#abortBtn'); if(ab) ab.classList.add('on');
@@ -644,7 +673,11 @@ function screenBracket(){
       const key = `n${r}_${i}`;
       let book = null;
       if(r===0){ const m = VS.rounds[0][Math.floor(i/2)]; book = (i%2===0)?m.a:m.b; }
-      mkNode(key, L.pos[key], book, r===L.K);
+      const n = mkNode(key, L.pos[key], book, r===L.K);
+      if(L.coverAt && L.coverAt[r]){        // portadas más grandes a medida que quedan menos
+        n.style.setProperty('--vsn-w', L.coverAt[r].w+'px');
+        n.style.setProperty('--vsn-h', L.coverAt[r].h+'px');
+      }
       if(r < L.K){                                // línea hacia el nodo padre
         const parent = `n${r+1}_${Math.floor(i/2)}`;
         mkEdge(key, parent);
@@ -764,15 +797,28 @@ function paintEdge(fromKey, toKey, lit){
 function updatePhase(){
   const el = $('#vsPhase');
   const nb = $('#vsNext');
+  const tally = $('#vsTally');
   const showNext = on => { if(nb) nb.style.display = on ? '' : 'none'; };
   if(!el) return;
-  if(VS.phase === 'grand'){ el.textContent = '⚡ LA GRAN FINAL ⚡ — toquen a los dos finalistas'; showNext(!(VS.grand&&VS.grand.winners)); if(nb) nb.textContent='Abrir la gran final →'; return; }
-  if(VS.phase === 'done'){ el.textContent = ''; showNext(false); return; }
+  // total de alegatos del torneo y cuántos faltan en TODO el cuadro
+  const totalTorneo = VS.N ? VS.N - 1 : 0;
+  const jugados = (VS.rounds||[]).reduce((n,capa)=>n + capa.filter(c=>c.winner).length, 0);
+  const setTally = (txt)=>{ if(tally) tally.innerHTML = txt; };
+  if(VS.phase === 'grand'){
+    el.textContent = '⚡ LA GRAN FINAL ⚡ — toquen a los dos finalistas';
+    setTally(`<b>1</b> alegato · la final <span>${jugados} de ${totalTorneo} jugados en el torneo</span>`);
+    showNext(!(VS.grand&&VS.grand.winners)); if(nb) nb.textContent = 'Abrir la gran final →';
+    return;
+  }
+  if(VS.phase === 'done'){ el.textContent = ''; setTally(''); showNext(false); return; }
   const enJuego = VS.N / Math.pow(2, VS.phase);        // libros vivos en esta capa
   const nombre = granRonda(enJuego);
-  const rem = VS.rounds[VS.phase].filter(c=>!c.winner).length;
-  el.textContent = `${nombre} — ${rem} ${rem===1?'cruce':'cruces'} por jugar`;
-  showNext(rem>0); if(nb) nb.textContent = `Siguiente alegato · ${rem} →`;
+  const capa = VS.rounds[VS.phase];
+  const totalCapa = capa.length, rem = capa.filter(c=>!c.winner).length;
+  el.textContent = nombre;
+  setTally(`Faltan <b>${rem}</b> de <b>${totalCapa}</b> alegatos de esta ronda`
+    + `<span>${jugados} de ${totalTorneo} jugados en todo el cuadro</span>`);
+  showNext(rem>0); if(nb) nb.textContent = 'Siguiente alegato →';
 }
 
 function clearClickables(){
@@ -829,7 +875,7 @@ function resolveMatch(r, m){
 function checkPhase(){
   const r = VS.phase;
   if(typeof r !== 'number'){ wireClicks(); return; }
-  if(!VS.rounds[r].every(c=>c.winner)){ wireClicks(); return; }   // faltan cruces
+  if(!VS.rounds[r].every(c=>c.winner)){ updatePhase(); wireClicks(); return; }   // faltan cruces: el contador baja
   const next = r + 1;
   if(next === VS.K - 1){
     // la capa siguiente es la final: los dos finalistas listos
