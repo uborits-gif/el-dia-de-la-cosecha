@@ -2560,40 +2560,87 @@ body.demo #app{padding-top:20px;}
 /* — 📜 LA HISTORIA COMPLETA: línea de tiempo vertical — */
 .hx-line{position:relative;max-width:900px;margin:34px auto 60px;padding-left:34px;}
 .hx-line::before{content:'';position:absolute;left:9px;top:6px;bottom:6px;width:2px;border-radius:2px;
-  background:linear-gradient(180deg,var(--amber),rgba(232,195,74,.35) 30%,var(--border) 100%);}
+  background:var(--border-soft);
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 6%,#000 94%,transparent);
+  mask-image:linear-gradient(180deg,transparent,#000 6%,#000 94%,transparent);}
+/* el haz que se llena a medida que bajás por la historia */
+.hx-beam{position:absolute;left:9px;top:6px;width:2px;border-radius:2px;height:0;z-index:1;
+  background:linear-gradient(180deg,#6BF7A6,var(--amber) 42%,#E8C34A 100%);
+  box-shadow:0 0 12px rgba(201,248,57,.5);transition:height .12s linear;
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 6%,#000 100%);
+  mask-image:linear-gradient(180deg,transparent,#000 6%,#000 100%);}
 .hx-day{position:relative;margin-bottom:22px;opacity:0;transform:translateY(26px);
   transition:opacity .6s var(--ease-out),transform .6s var(--ease-out);}
 .hx-day.in{opacity:1;transform:none;}
 .hx-dot{position:absolute;left:-30px;top:22px;width:14px;height:14px;border-radius:50%;
   background:var(--bg);border:2px solid var(--amber);box-shadow:0 0 12px rgba(232,195,74,.5);}
 .hx-card{background:linear-gradient(165deg,#0d1a0e,#0a130b);border:1px solid var(--border-soft);
-  border-radius:16px;padding:18px 20px;}
-.hx-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;}
-.hx-fecha{font-family:'Fraunces',serif;font-weight:800;font-size:19px;color:var(--bone);}
-.hx-tipo{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:var(--amber);}
-.hx-tipo.vasallaje{color:#E8C34A;}
-.hx-meta{font-size:12px;color:var(--grey);margin-top:5px;}
-.hx-winner{margin-top:12px;padding:9px 13px;border-radius:10px;font-size:13px;color:var(--bone-dim);
+  border-radius:16px;padding:16px 18px 18px;}
+.hx-card.vasa{background:linear-gradient(165deg,#171407,#0b0d07);border-color:rgba(232,195,74,.24);}
+.hx-card.seed{background:linear-gradient(165deg,#0f1710,#0a130b);border-color:rgba(107,247,166,.25);}
+.hx-dot.vasa{border-color:#E8C34A;}
+/* cabecera: fecha+lugar · JUEGO con icono grande · tipo de jornada */
+.hx-top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+.hx-when{flex:1;min-width:150px;}
+.hx-fecha{font-family:'Fraunces',serif;font-weight:800;font-size:21px;color:var(--bone);line-height:1.1;}
+.hx-sub{font-size:11.5px;color:var(--grey);margin-top:3px;}
+.hx-game{display:flex;align-items:center;gap:9px;padding:6px 13px 6px 8px;border-radius:12px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border-soft);}
+.hx-game-ico{font-size:26px;line-height:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));}
+.hx-game-n{font-family:'Fraunces',serif;font-weight:700;font-size:12.5px;color:var(--bone);max-width:130px;line-height:1.15;}
+.hx-tipo{font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;white-space:nowrap;}
+.hx-tipo.cos{color:var(--amber);} .hx-tipo.vasa{color:#E8C34A;}
+.hx-seed-txt{margin-top:12px;font-size:12.5px;color:var(--bone-dim);font-style:italic;}
+/* equipos: los libros de cada uno en UNA sola fila, dentro de su marco */
+.hx-teams{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;}
+.hx-team{flex:1 1 260px;min-width:0;}
+.hx-team-box{display:flex;gap:7px;padding:10px;border-radius:14px;border:1.5px solid var(--pc,var(--border));
+  overflow-x:auto;scrollbar-width:none;}
+.hx-team-box::-webkit-scrollbar{display:none;}
+.hx-team.a{--pc:var(--pa);} .hx-team.b{--pc:var(--pb);} .hx-team.x{--pc:var(--border);}
+.hx-team-n{text-align:center;font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;
+  color:var(--pc,var(--grey));margin-top:7px;}
+/* la celda: grilla de filas FIJAS — tapa · criterio · título · estado.
+   Cada franja mide siempre lo mismo, así nada se desnivela aunque falte texto. */
+.hx-cell{width:62px;flex:none;cursor:pointer;text-align:center;transition:transform .18s;
+  display:grid;grid-template-rows:93px 13px 24px 12px;row-gap:4px;align-content:start;}
+.hx-cell:hover{transform:translateY(-3px);}
+.hx-mini{position:relative;width:62px;height:93px;border-radius:4px;background-size:cover;background-position:center;
+  background-color:var(--card-hi);box-shadow:0 6px 14px rgba(0,0,0,.6);border:1.5px solid transparent;}
+.hx-cell.win .hx-mini{border-color:#E8C34A;box-shadow:0 0 0 3px rgba(232,195,74,.22), 0 8px 18px rgba(0,0,0,.6);}
+.hx-cell.out .hx-mini{filter:grayscale(.75) brightness(.55);border-color:rgba(255,120,120,.5);}
+.hx-cell.resc .hx-mini{border-color:rgba(107,247,166,.6);}
+.hx-cell.nadie .hx-mini{opacity:.42;}
+.hx-crown{position:absolute;top:-9px;right:-7px;font-size:16px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.7));}
+.hx-crit{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);line-height:13px;overflow:hidden;}
+.hx-name{font-family:'Fraunces',serif;font-size:9.5px;line-height:1.2;color:var(--bone-dim);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.hx-flag{font-size:8.5px;letter-spacing:.06em;line-height:12px;overflow:hidden;}
+.hx-cell.mini{grid-template-rows:45px;row-gap:0;}
+.hx-flag b{font-weight:700;}
+.hx-flag .f-win{color:#E8C34A;} .hx-flag .f-out{color:#ff9a9a;}
+.hx-flag .f-res{color:#6BF7A6;} .hx-flag .f-anu{color:var(--grey);}
+/* el vasallaje: EL CUADRO en miniatura, con sus llaves */
+.hx-treewrap{margin-top:14px;overflow-x:auto;scrollbar-width:none;display:flex;justify-content:center;}
+.hx-treewrap::-webkit-scrollbar{display:none;}
+.hx-tree{position:relative;flex:none;}
+.hx-tree svg{position:absolute;inset:0;overflow:visible;}
+.hx-tree svg path{fill:none;stroke-width:1.2;}
+.hx-tree svg path.up{stroke:rgba(232,195,74,.75);}
+.hx-tree svg path.dn{stroke:rgba(120,140,120,.22);}
+.hx-tn{position:absolute;width:var(--cw);height:var(--ch);transform:translate(-50%,-50%);
+  border-radius:2.5px;background-size:cover;background-position:center;background-color:var(--card-hi);
+  box-shadow:0 3px 8px rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.1);}
+.hx-tn.champ{border:1.5px solid #E8C34A;box-shadow:0 0 0 3px rgba(232,195,74,.2),0 6px 16px rgba(0,0,0,.7);z-index:3;}
+.hx-tn-crown{position:absolute;top:-11px;left:50%;transform:translateX(-50%);font-size:14px;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.8));}
+.hx-winner{margin-top:14px;padding:9px 13px;border-radius:10px;font-size:13px;color:var(--bone-dim);
   background:linear-gradient(90deg,rgba(232,195,74,.12),transparent);border-left:2px solid #E8C34A;}
 .hx-winner b{color:var(--bone);}
-.hx-sides{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin-top:16px;}
-.hx-side-h{font-size:10px;letter-spacing:.2em;text-transform:uppercase;font-weight:700;margin-bottom:9px;}
-.hx-book{display:flex;gap:11px;align-items:flex-start;padding:8px;border-radius:11px;cursor:pointer;
-  border:1px solid transparent;transition:background .18s,border-color .18s,transform .18s;}
-.hx-book:hover{background:rgba(255,255,255,.04);border-color:var(--border);transform:translateX(2px);}
-.hx-book.win{background:rgba(232,195,74,.09);border-color:rgba(232,195,74,.4);}
-.hx-cov{width:34px;height:51px;border-radius:3px;flex:none;background-size:cover;background-position:center;
-  background-color:var(--card-hi);box-shadow:0 5px 12px rgba(0,0,0,.55);border-left:2px solid var(--pc,var(--grey));}
-.hx-main{flex:1;min-width:0;}
-.hx-t{font-family:'Fraunces',serif;font-weight:700;font-size:13.5px;line-height:1.2;color:var(--bone);}
-.hx-who{font-size:10.5px;color:var(--pc,var(--grey));margin-top:2px;}
-.hx-marks{display:flex;flex-direction:column;gap:2px;margin-top:5px;}
-.hx-marks i{font-style:normal;font-size:10.5px;color:var(--bone-dim);}
-.hx-marks .hx-res{color:#6BF7A6;}
-.hx-marks .hx-des{color:#ff9a9a;}
-.hx-marks .hx-pue{color:#E8C34A;}
-.hx-marks .hx-anu{color:var(--grey);}
-@media (max-width:560px){ .hx-line{padding-left:26px;margin-top:24px;} .hx-dot{left:-24px;} .hx-card{padding:15px;} }
+@media (max-width:560px){
+  .hx-line{padding-left:26px;margin-top:24px;} .hx-dot{left:-24px;} .hx-card{padding:14px;}
+  .hx-teams{flex-direction:column;} .hx-game-ico{font-size:22px;}
+}
 
 /* — ADN: grilla de tiles con ilustración — */
 .adn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;}

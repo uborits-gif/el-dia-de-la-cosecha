@@ -776,29 +776,113 @@ function construirHistoria(){
     .sort((x,y)=>fechaOrd(y.fecha)-fechaOrd(x.fecha));      // la más reciente arriba
 }
 
+/* el juego con el que se definió: icono grande del catálogo */
+function juegoDe(metodo){
+  const m = String(metodo||'').toLowerCase().replace(/^vasallaje\s*·?\s*/,'').trim();
+  if(!m) return null;
+  if(typeof GAMES !== 'undefined'){
+    const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    const g = GAMES.find(x=>norm(x.name)===norm(m))
+           || GAMES.find(x=>norm(x.name).includes(norm(m)) || norm(m).includes(norm(x.name)));
+    if(g) return { icon:g.icon, name:g.name };
+  }
+  return { icon:'🎲', name:metodo };
+}
+const HX_RANK = p => /ganador|campe/i.test(p||'') ? 4 : /^final$/i.test(p||'') ? 3 : /semi/i.test(p||'') ? 2 : 1;
+
 function screenHistoria(){
   const H = construirHistoria();
   const A = State.players.a, B = State.players.b;
   const esA = n => n && n.toLowerCase()===A.toLowerCase();
-  const colorDe = n => esA(n) ? 'var(--pa)' : (n ? 'var(--pb)' : 'var(--grey)');
   const nLibros = new Set(H.flatMap(j=>j.libros.map(p=>p.b.id))).size;
 
-  const chip = (p)=>{
-    const b = p.b, c = colorDe(p.traidoPor);
-    const marcas = [];
-    if(p.elegido)       marcas.push(`<i class="hx-ojo">👁 lo eligieron por ${escapeHtml(p.elegido)}</i>`);
-    if(p.rescatadoPor)  marcas.push(`<i class="hx-res">⛏ lo rescató ${escapeHtml(p.rescatadoPor)}</i>`);
-    if(p.descartadoPor) marcas.push(`<i class="hx-des">🗡 lo descartó ${escapeHtml(p.descartadoPor)}</i>`);
-    if(p.puesto && !p.gano) marcas.push(`<i class="hx-pue">⚔ ${escapeHtml(p.puesto)}</i>`);
-    if(p.anulado)       marcas.push(`<i class="hx-anu">🚫 anulado</i>`);
+  /* una celda de libro: tapa de tamaño FIJO + por qué se eligió + qué le pasó */
+  const celda = (p, chico)=>{
+    const b = p.b;
     const gano = p.gano || (p.puesto && /ganador|campe/i.test(p.puesto));
-    return `<div class="hx-book${gano?' win':''}" data-id="${escapeHtml(String(b.id))}" style="--pc:${c}">
-      <div class="hx-cov" ${cov(b)}></div>
-      <div class="hx-main">
-        <div class="hx-t">${gano?'🏆 ':''}${escapeHtml(b.titulo)}</div>
-        <div class="hx-who">${p.traidoPor?`lo trajo ${escapeHtml(p.traidoPor)}`:'sin dueño'}${p.empate?' · 🤝 empate de honor':''}</div>
-        ${marcas.length?`<div class="hx-marks">${marcas.join('')}</div>`:''}
-      </div></div>`;
+    const cls = ['hx-cell', chico?'mini':'', gano?'win':'', p.descartadoPor?'out':'',
+                 p.rescatadoPor?'resc':'', (!p.elegido && !gano && !p.puesto && !p.descartadoPor && !p.rescatadoPor)?'nadie':''].filter(Boolean).join(' ');
+    const flag = gano ? `<b class="f-win">🏆 ganó</b>`
+      : p.descartadoPor ? `<b class="f-out">🗡 descartado</b>`
+      : p.rescatadoPor  ? `<b class="f-res">⛏ rescatado</b>`
+      : p.anulado       ? `<b class="f-anu">🚫 anulado</b>` : '';
+    // las cuatro franjas SIEMPRE se emiten (aunque vayan vacías): así nada se desnivela
+    if(chico) return `<div class="${cls}" data-id="${escapeHtml(String(b.id))}" title="${escapeHtml(b.titulo)}">
+      <div class="hx-mini" ${cov(b)}>${gano?'<span class="hx-crown">🏆</span>':''}</div></div>`;
+    return `<div class="${cls}" data-id="${escapeHtml(String(b.id))}" title="${escapeHtml(b.titulo)}">
+      <div class="hx-mini" ${cov(b)}>${gano?'<span class="hx-crown">🏆</span>':''}</div>
+      <div class="hx-crit">${p.elegido?'por '+escapeHtml(p.elegido):''}</div>
+      <div class="hx-name">${escapeHtml(short(b.titulo,22))}</div>
+      <div class="hx-flag">${flag}</div>
+    </div>`;
+  };
+
+  /* EL CUADRO EN MINIATURA: el mismo árbol de llaves del vasallaje, quieto.
+     Se reconstruye desde los puestos (siembra clásica: campeón y finalista caen
+     en mitades opuestas) y se propaga el ganador de cada cruce hacia el centro. */
+  const miniCuadro = (j)=>{
+    const ps = j.libros.slice();
+    const rk = p => HX_RANK(p && p.puesto);
+    let N = 1; while(N < ps.length) N *= 2;
+    const K = Math.log2(N);
+    const byRank = ps.slice().sort((a,b)=>rk(b)-rk(a));
+    while(byRank.length < N) byRank.push(null);
+    let seed = [1];
+    while(seed.length < N){ const m = seed.length*2 + 1; seed = seed.flatMap(x=>[x, m-x]); }
+    const capas = [ seed.map(s=>byRank[s-1]) ];
+    for(let r=1; r<=K; r++){
+      const prev = capas[r-1], nxt = [];
+      for(let i=0;i<prev.length;i+=2){
+        const a = prev[i], b = prev[i+1];
+        nxt.push(!a ? b : !b ? a : (rk(a) >= rk(b) ? a : b));
+      }
+      capas.push(nxt);
+    }
+    const cw = N>16 ? 13 : N>8 ? 17 : 23, ch = Math.round(cw*1.5);
+    const rowH = ch + (N>16 ? 4 : 7), half = N/2;
+    const W = 520, H = half*rowH + 20;
+    const mX = cw/2 + 12, gap = 54;
+    const colW = K>1 ? (W/2 - mX - gap)/(K-1) : 0;
+    const pos = {};
+    for(let i=0;i<N;i++){
+      const row = i % half;
+      pos[`n0_${i}`] = { x: (i<half) ? mX : W - mX, y: 12 + ch/2 + row*rowH };
+    }
+    for(let r=1; r<=K; r++){
+      const cnt = N/Math.pow(2,r);
+      for(let i=0;i<cnt;i++){
+        const c1 = pos[`n${r-1}_${2*i}`], c2 = pos[`n${r-1}_${2*i+1}`];
+        const y = (c1.y + c2.y)/2;
+        const x = (r===K) ? W/2 : (i < cnt/2 ? mX + r*colW : W - mX - r*colW);
+        pos[`n${r}_${i}`] = { x, y };
+      }
+    }
+    const paths = [];
+    for(let r=0; r<K; r++){
+      const cnt = N/Math.pow(2,r);
+      for(let i=0;i<cnt;i++){
+        const a = pos[`n${r}_${i}`], b = pos[`n${r+1}_${Math.floor(i/2)}`];
+        const mx = (a.x + b.x)/2;
+        const paso = capas[r][i] && capas[r][i] === capas[r+1][Math.floor(i/2)];
+        paths.push(`<path d="M ${a.x} ${a.y} C ${mx} ${a.y}, ${mx} ${b.y}, ${b.x} ${b.y}" class="${paso?'up':'dn'}"/>`);
+      }
+    }
+    const nodos = [];
+    for(let r=0; r<=K; r++){
+      const cnt = N/Math.pow(2,r);
+      for(let i=0;i<cnt;i++){
+        const p2 = capas[r][i]; if(!p2) continue;
+        const p = pos[`n${r}_${i}`], champ = (r===K), bk = p2.b;
+        nodos.push(`<div class="hx-tn${champ?' champ':''}" data-id="${escapeHtml(String(bk.id))}"
+          title="${escapeHtml(bk.titulo)}${p2.puesto?' · '+escapeHtml(p2.puesto):''}"
+          style="left:${p.x}px;top:${p.y}px;--cw:${champ?Math.round(cw*1.6):cw}px;--ch:${champ?Math.round(ch*1.6):ch}px;${
+          bk.portada?`background-image:url('${bk.portada.replace(/'/g,'%27')}')`:''}">${
+          champ?'<span class="hx-tn-crown">🏆</span>':''}</div>`);
+      }
+    }
+    return `<div class="hx-treewrap"><div class="hx-tree" style="width:${W}px;height:${H}px;">
+      <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${paths.join('')}</svg>
+      ${nodos.join('')}</div></div>`;
   };
 
   show(`
@@ -809,28 +893,35 @@ function screenHistoria(){
       <div class="row mt-m"><button class="btn btn-ghost" id="hxBack">← Volver</button></div>
     </div>
     <div class="hx-line" id="hxLine">
+      <div class="hx-beam" id="hxBeam"></div>
       ${H.map((j,i)=>{
         const gan = j.ganadores.length ? j.ganadores : (j.campeon?[j.campeon]:[]);
-        const porDueno = { a:[], b:[], x:[] };
-        j.libros.forEach(p=>{ (esA(p.traidoPor)?porDueno.a:(p.traidoPor?porDueno.b:porDueno.x)).push(p); });
-        const bloque = (arr, nom, c)=> arr.length ? `<div class="hx-side">
-            <div class="hx-side-h" style="color:${c}">${escapeHtml(nom)} · ${arr.length}</div>
-            ${arr.map(chip).join('')}</div>` : '';
+        const jg = juegoDe(j.tipo==='vasallaje' ? (j.modo||'') : j.metodo);
+        const esVasa = j.tipo==='vasallaje';
+        // la jornada fundacional: sin método y sin cuadro
+        const fundacional = !esVasa && !j.metodo && j.libros.length<=2;
+        const A_ = [], B_ = [], X_ = [];
+        j.libros.forEach(p=>{ (esA(p.traidoPor)?A_:(p.traidoPor?B_:X_)).push(p); });
+        const equipo = (arr, nom, lado)=> arr.length ? `<div class="hx-team ${lado}">
+            <div class="hx-team-box">${arr.map(p=>celda(p,false)).join('')}</div>
+            <div class="hx-team-n">Libros de ${escapeHtml(nom)}</div></div>` : '';
         return `<section class="hx-day" style="--i:${i}">
-          <div class="hx-dot"></div>
-          <div class="hx-card">
-            <div class="hx-head">
-              <div class="hx-fecha">${escapeHtml(j.fecha)}</div>
-              <div class="hx-tipo ${j.tipo}">${j.tipo==='vasallaje'?'⚔️ Vasallaje':'🌾 Cosecha'}${j.modo?' · '+escapeHtml(j.modo):''}</div>
+          <div class="hx-dot${esVasa?' vasa':''}"></div>
+          <div class="hx-card${esVasa?' vasa':''}${fundacional?' seed':''}">
+            <div class="hx-top">
+              <div class="hx-when">
+                <div class="hx-fecha">${escapeHtml(j.fecha)}</div>
+                <div class="hx-sub">${[j.lugar?'📍 '+escapeHtml(j.lugar):'', `${j.libros.length} libro${j.libros.length===1?'':'s'}`].filter(Boolean).join(' · ')}</div>
+              </div>
+              ${jg ? `<div class="hx-game"><div class="hx-game-ico">${jg.icon}</div>
+                <div class="hx-game-n">${escapeHtml(jg.name)}</div></div>` : ''}
+              <div class="hx-tipo ${esVasa?'vasa':'cos'}">${fundacional?'🌱 El comienzo':(esVasa?'⚔️ Vasallaje':'🌾 Cosecha')}</div>
             </div>
-            <div class="hx-meta">${[j.lugar?'📍 '+escapeHtml(j.lugar):'', j.metodo?'🎲 '+escapeHtml(j.metodo):'',
-              `${j.libros.length} libros`].filter(Boolean).join(' · ')}</div>
-            ${gan.length?`<div class="hx-winner">🏆 Ganó <b>${gan.map(g=>escapeHtml(g.titulo)).join(' + ')}</b>${gan.length>1?' — empate de honor':''}</div>`:''}
-            <div class="hx-sides">
-              ${bloque(porDueno.a, A, 'var(--pa)')}
-              ${bloque(porDueno.b, B, 'var(--pb)')}
-              ${bloque(porDueno.x, 'Sin dueño', 'var(--grey)')}
-            </div>
+            ${fundacional ? `<div class="hx-seed-txt">Acá empezó todo. Antes de las cosechas, antes de la bóveda: el libro fundacional del club.</div>` : ''}
+            ${esVasa ? miniCuadro(j) : `<div class="hx-teams">
+                ${equipo(A_, A, 'a')}${equipo(B_, B, 'b')}${equipo(X_, 'la bóveda', 'x')}
+              </div>`}
+            ${gan.length && !esVasa ? `<div class="hx-winner">🏆 Se leyó <b>${gan.map(g=>escapeHtml(g.titulo)).join(' + ')}</b>${gan.length>1?' — empate de honor':''}</div>` : ''}
           </div>
         </section>`;
       }).join('') || '<div class="st-hint" style="text-align:center;padding:40px;">Todavía no hay historia. Jueguen la primera cosecha.</div>'}
@@ -838,13 +929,28 @@ function screenHistoria(){
   `);
   $('#hxBack').addEventListener('click', ()=>{ Sound.fx.click(); screenHome(); });
   // tocar un libro abre su ficha
-  $$('.hx-book', document).forEach(el=>el.addEventListener('click', ()=>{
+  $$('.hx-cell', document).forEach(el=>el.addEventListener('click', ()=>{
     const id = el.dataset.id;
     const list = [...State.read, ...State.vault];
     const i = list.findIndex(x=>String(x.id)===id);
     if(i>=0){ try{ Sound.fx.click(); }catch(e){}
       showPlacard(list, i, { source: State.read.some(x=>String(x.id)===id)?'honor':'vault' }); }
   }));
+  // la línea se va llenando a medida que bajás (el progreso de toda la historia)
+  const linea = $('#hxLine'), beam = $('#hxBeam');
+  if(linea && beam){
+    let tick = false;
+    const pintar = ()=>{
+      tick = false;
+      if(!linea.isConnected){ window.removeEventListener('scroll', onScroll); return; }
+      const r = linea.getBoundingClientRect();
+      const avance = (innerHeight*0.55 - r.top) / Math.max(1, r.height);
+      beam.style.height = Math.max(0, Math.min(1, avance))*100 + '%';
+    };
+    const onScroll = ()=>{ if(!tick){ tick = true; requestAnimationFrame(pintar); } };
+    window.addEventListener('scroll', onScroll, { passive:true });
+    pintar();
+  }
   // aparecen al scrollear
   const dias = $$('.hx-day', document);
   if('IntersectionObserver' in window && !(matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)){
