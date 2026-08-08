@@ -36,16 +36,55 @@ const files=fs.readdirSync(dir).filter(f=>f.endsWith('.svg'));
 const map={};
 files.forEach(f=>{ const k=norm(f.replace('botm-bookmoji-','').replace('.svg','')); map[k]=clean(fs.readFileSync(dir+'/'+f,'utf8')); });
 
+/* ── los bookmoji DISEÑADOS POR URI: ya vienen con la paleta del club
+   (contorno #8db207 + relleno #d4f852), así que NO se recolorean. ── */
+const DIR2 = 'C:/Users/urika/Downloads/bookmoji-nuevos';
+const FIX = {   // nombres de archivo con typo → la clave que usa la app
+  seriallkiller:'serialkiller', comingtoage:'comingofage', foundfamilu:'foundfamily',
+  murdermistery:'murdermystery', revange:'revenge',
+};
+const SALTEAR = new Set(['recurso21','wittybanter2']);   // sobrantes del export
+const DE_URI = new Set();
+let nuevos = 0;
+if(fs.existsSync(DIR2)){
+  fs.readdirSync(DIR2).filter(f=>f.endsWith('.svg')).forEach(f=>{
+    let k = norm(f.replace('.svg',''));
+    if(SALTEAR.has(k)) return;
+    k = FIX[k] || k;
+    let svg = fs.readFileSync(DIR2+'/'+f,'utf8');
+    svg = svg.replace(/<\?xml[^>]*\?>/g,'').replace(/<!--[\s\S]*?-->/g,'');
+    // los grises sueltos del export NO son de la paleta: van al verde oscuro del contorno
+    svg = svg.replace(/#(?:5[34][0-9a-f]{4}|121112)/gi, '#8db207');
+    // El <style> se CONSERVA entero (si sólo copiara el fill se pierden los stroke y
+    // el dibujo queda como una mancha). Se renombran las clases con el nombre del
+    // icono para que no choquen entre los SVG inline del documento.
+    const sm = svg.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+    let estilo = '';
+    if(sm){
+      estilo = sm[1].replace(/\.([\w-]+)/g, (m,c)=>'.bmj-'+k+'-'+c);
+      svg = svg.replace(/\sclass="([^"]*)"/g, (m,cs)=>' class="'+cs.trim().split(/\s+/).map(c=>'bmj-'+k+'-'+c).join(' ')+'"');
+    }
+    svg = svg.replace(/<defs>[\s\S]*?<\/defs>/gi,'').replace(/<style[^>]*>[\s\S]*?<\/style>/gi,'');
+    if(estilo) svg = svg.replace(/(<svg[^>]*>)/, '$1<style>'+estilo.replace(/\s+/g,' ').trim()+'</style>');
+    svg = svg.replace(/<svg([^>]*)>/,(m,a)=>{ a=a.replace(/\s(width|height|id|version|data-name)="[^"]*"/g,''); return `<svg${a}>`; });
+    // OJO: NADA de redondear decimales acá — el export de Illustrator usa notación
+    // compacta (1.5-1.9) y al redondear se desarman los paths.
+    map[k] = svg.replace(/>\s+</g,'><').replace(/\s{2,}/g,' ').trim();
+    DE_URI.add(k); nuevos++;
+  });
+}
+console.log('bookmoji propios de Uri cargados:', nuevos);
+
 // verdes de la paleta (para los iconos propios)
 const G_LIGHT='#dcfb72', G_MID='#a9dd2e', G_DARK='#4d7314';
 // found family: tres figuras juntas (una familia elegida)
-map.familychosen = `<svg viewBox="0 0 64 64"><circle cx="32" cy="18" r="8" fill="${G_LIGHT}"/><path d="M20 44a12 12 0 0 1 24 0z" fill="${G_LIGHT}"/><circle cx="13" cy="27" r="6.5" fill="${G_MID}"/><path d="M4 48a9 9 0 0 1 18 0z" fill="${G_MID}"/><circle cx="51" cy="27" r="6.5" fill="${G_MID}"/><path d="M42 48a9 9 0 0 1 18 0z" fill="${G_MID}"/><path d="M8 52h48v4H8z" fill="${G_DARK}"/></svg>`;
+if(!DE_URI.has('familychosen')) map.familychosen = `<svg viewBox="0 0 64 64"><circle cx="32" cy="18" r="8" fill="${G_LIGHT}"/><path d="M20 44a12 12 0 0 1 24 0z" fill="${G_LIGHT}"/><circle cx="13" cy="27" r="6.5" fill="${G_MID}"/><path d="M4 48a9 9 0 0 1 18 0z" fill="${G_MID}"/><circle cx="51" cy="27" r="6.5" fill="${G_MID}"/><path d="M42 48a9 9 0 0 1 18 0z" fill="${G_MID}"/><path d="M8 52h48v4H8z" fill="${G_DARK}"/></svg>`;
 // suspenseful: reloj a punto de estallar (tensión)
-map.suspense = `<svg viewBox="0 0 64 64"><circle cx="32" cy="35" r="21" fill="${G_LIGHT}"/><circle cx="32" cy="35" r="16" fill="${G_DARK}"/><path d="M31 22h2v14h-2z" fill="${G_LIGHT}"/><path d="M32 34l9 7-1.6 2.2L31 36z" fill="${G_LIGHT}"/><rect x="27" y="8" width="10" height="5" rx="2" fill="${G_MID}"/><path d="M30 13h4v4h-4z" fill="${G_MID}"/><path d="M49 17l5-5 3 3-5 5z" fill="${G_MID}"/></svg>`;
+if(!DE_URI.has('suspense')) map.suspense = `<svg viewBox="0 0 64 64"><circle cx="32" cy="35" r="21" fill="${G_LIGHT}"/><circle cx="32" cy="35" r="16" fill="${G_DARK}"/><path d="M31 22h2v14h-2z" fill="${G_LIGHT}"/><path d="M32 34l9 7-1.6 2.2L31 36z" fill="${G_LIGHT}"/><rect x="27" y="8" width="10" height="5" rx="2" fill="${G_MID}"/><path d="M30 13h4v4h-4z" fill="${G_MID}"/><path d="M49 17l5-5 3 3-5 5z" fill="${G_MID}"/></svg>`;
 // velita de cumpleaños = coming of age
-map.comingofage = `<svg viewBox="0 0 64 64"><path d="M32 6c3.4 3.6 5 6.4 5 9a5 5 0 0 1-10 0c0-2.6 1.6-5.4 5-9z" fill="${G_LIGHT}"/><rect x="26" y="22" width="12" height="30" rx="2" fill="${G_MID}"/><rect x="31" y="16" width="2" height="6" fill="${G_DARK}"/><rect x="26" y="30" width="12" height="3" fill="${G_DARK}"/><rect x="26" y="38" width="12" height="3" fill="${G_DARK}"/><rect x="20" y="52" width="24" height="5" rx="2.5" fill="${G_DARK}"/></svg>`;
+if(!DE_URI.has('comingofage')) map.comingofage = `<svg viewBox="0 0 64 64"><path d="M32 6c3.4 3.6 5 6.4 5 9a5 5 0 0 1-10 0c0-2.6 1.6-5.4 5-9z" fill="${G_LIGHT}"/><rect x="26" y="22" width="12" height="30" rx="2" fill="${G_MID}"/><rect x="31" y="16" width="2" height="6" fill="${G_DARK}"/><rect x="26" y="30" width="12" height="3" fill="${G_DARK}"/><rect x="26" y="38" width="12" height="3" fill="${G_DARK}"/><rect x="20" y="52" width="24" height="5" rx="2.5" fill="${G_DARK}"/></svg>`;
 // +400 manuscrito = 400+ pages
-map['400'] = `<svg viewBox="0 0 64 64"><rect x="12" y="10" width="40" height="44" rx="3" fill="${G_MID}"/><rect x="16" y="14" width="32" height="36" rx="2" fill="${G_LIGHT}"/><text x="32" y="38" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-weight="800" font-size="19" fill="${G_DARK}">400+</text><rect x="20" y="43" width="24" height="2.4" rx="1.2" fill="${G_MID}"/></svg>`;
+if(!DE_URI.has('400')) map['400'] = `<svg viewBox="0 0 64 64"><rect x="12" y="10" width="40" height="44" rx="3" fill="${G_MID}"/><rect x="16" y="14" width="32" height="36" rx="2" fill="${G_LIGHT}"/><text x="32" y="38" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-weight="800" font-size="19" fill="${G_DARK}">400+</text><rect x="20" y="43" width="24" height="2.4" rx="1.2" fill="${G_MID}"/></svg>`;
 
 const ALIAS={
   '400pages':'400', addictionthemes:'drugsandalcohol', amnesia:'cerebral', atmospheric:'creepy',
@@ -71,6 +110,35 @@ function bookmojiSVG(trope){
   return BOOKMOJI.literary || Object.values(BOOKMOJI)[0] || '';
 }
 function bookmojiHTML(trope, cls){ return '<span class="bmj '+(cls||'')+'">'+bookmojiSVG(trope)+'</span>'; }
+
+/* Todos los iconos, del MISMO tamaño óptico: cada SVG viene con su propio aire
+   sobrante (unos llenan la caja y otros no), así que al mostrarlo se le recorta
+   el viewBox a lo que realmente dibuja y se le da un margen igual para todos. */
+function bookmojiAjustar(root){
+  var nodos = (root||document).querySelectorAll('.bmj svg:not([data-fit])');
+  for(var i=0;i<nodos.length;i++){
+    var svg = nodos[i];
+    try{
+      var b = svg.getBBox();
+      if(!b || !b.width || !b.height) continue;
+      var lado = Math.max(b.width, b.height) * 1.10;          // 10% de aire
+      var cx = b.x + b.width/2, cy = b.y + b.height/2;
+      svg.setAttribute('viewBox', (cx-lado/2)+' '+(cy-lado/2)+' '+lado+' '+lado);
+      svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+      svg.setAttribute('data-fit','1');
+    }catch(e){}
+  }
+}
+/* se ajusta solo lo que va apareciendo, sin tener que llamarlo en cada pantalla */
+(function(){
+  if(typeof MutationObserver === 'undefined') return;
+  var pend = false;
+  var pasar = function(){ pend = false; bookmojiAjustar(document); };
+  new MutationObserver(function(){ if(!pend){ pend = true; requestAnimationFrame(pasar); } })
+    .observe(document.documentElement, { childList:true, subtree:true });
+  if(document.readyState !== 'loading') requestAnimationFrame(pasar);
+  else document.addEventListener('DOMContentLoaded', pasar);
+})();
 `;
 let out = '\n/* ===== BOOKMOJI (shades de verde) ===== */\n';
 out += 'const BOOKMOJI = '+JSON.stringify(map)+';\n';

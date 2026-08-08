@@ -802,18 +802,21 @@ function screenHistoria(){
     const gano = p.gano || (p.puesto && /ganador|campe/i.test(p.puesto));
     const cls = ['hx-cell', chico?'mini':'', gano?'win':'', p.descartadoPor?'out':'',
                  p.rescatadoPor?'resc':'', (!p.elegido && !gano && !p.puesto && !p.descartadoPor && !p.rescatadoPor)?'nadie':''].filter(Boolean).join(' ');
-    const flag = gano ? `<b class="f-win">🏆 ganó</b>`
-      : p.descartadoPor ? `<b class="f-out">🗡 descartado</b>`
-      : p.rescatadoPor  ? `<b class="f-res">⛏ rescatado</b>`
-      : p.anulado       ? `<b class="f-anu">🚫 anulado</b>` : '';
-    // las cuatro franjas SIEMPRE se emiten (aunque vayan vacías): así nada se desnivela
+    // los CUBOS: un bloque por cada cosa que le pasó al libro ese día
+    const cubos = [];
+    if(p.elegido)       cubos.push(`<i class="k-eleg">🌾 ${escapeHtml(p.elegido)}</i>`);
+    if(gano)            cubos.push(`<i class="k-win">🏆 ganó</i>`);
+    if(p.rescatadoPor)  cubos.push(`<i class="k-res">⛏ rescate</i>`);
+    if(p.descartadoPor) cubos.push(`<i class="k-out">🗡 descarte</i>`);
+    if(p.puesto && !gano) cubos.push(`<i class="k-pue">⚔ ${escapeHtml(p.puesto)}</i>`);
+    if(p.anulado)       cubos.push(`<i class="k-anu">🚫 anulado</i>`);
+    if(!cubos.length)   cubos.push(`<i class="k-nadie">· nadie lo eligió</i>`);
     if(chico) return `<div class="${cls}" data-id="${escapeHtml(String(b.id))}" title="${escapeHtml(b.titulo)}">
       <div class="hx-mini" ${cov(b)}>${gano?'<span class="hx-crown">🏆</span>':''}</div></div>`;
     return `<div class="${cls}" data-id="${escapeHtml(String(b.id))}" title="${escapeHtml(b.titulo)}">
       <div class="hx-mini" ${cov(b)}>${gano?'<span class="hx-crown">🏆</span>':''}</div>
-      <div class="hx-crit">${p.elegido?'por '+escapeHtml(p.elegido):''}</div>
-      <div class="hx-name">${escapeHtml(short(b.titulo,22))}</div>
-      <div class="hx-flag">${flag}</div>
+      <div class="hx-name">${escapeHtml(short(b.titulo,26))}</div>
+      <div class="hx-chips">${cubos.join('')}</div>
     </div>`;
   };
 

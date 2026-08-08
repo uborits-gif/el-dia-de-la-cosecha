@@ -2592,31 +2592,40 @@ body.demo #app{padding-top:20px;}
 .hx-tipo.cos{color:var(--amber);} .hx-tipo.vasa{color:#E8C34A;}
 .hx-seed-txt{margin-top:12px;font-size:12.5px;color:var(--bone-dim);font-style:italic;}
 /* equipos: los libros de cada uno en UNA sola fila, dentro de su marco */
-.hx-teams{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;}
-.hx-team{flex:1 1 260px;min-width:0;}
-.hx-team-box{display:flex;gap:7px;padding:10px;border-radius:14px;border:1.5px solid var(--pc,var(--border));
-  overflow-x:auto;scrollbar-width:none;}
-.hx-team-box::-webkit-scrollbar{display:none;}
+/* las dos cajas SIEMPRE del mismo alto, aunque una tenga una fila más de cubos */
+.hx-teams{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;align-items:stretch;}
+.hx-team{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;}
+/* entran TODOS sin scroll: si no caben, bajan a otra fila */
+.hx-team-box{flex:1;display:flex;flex-wrap:wrap;gap:7px;padding:10px;border-radius:14px;
+  border:1.5px solid var(--pc,var(--border));overflow:hidden;align-items:flex-start;}
 .hx-team.a{--pc:var(--pa);} .hx-team.b{--pc:var(--pb);} .hx-team.x{--pc:var(--border);}
 .hx-team-n{text-align:center;font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;
   color:var(--pc,var(--grey));margin-top:7px;}
-/* la celda: grilla de filas FIJAS — tapa · criterio · título · estado.
-   Cada franja mide siempre lo mismo, así nada se desnivela aunque falte texto. */
-.hx-cell{width:62px;flex:none;cursor:pointer;text-align:center;transition:transform .18s;
-  display:grid;grid-template-rows:93px 13px 24px 12px;row-gap:4px;align-content:start;}
+/* la celda: tapa · título (2 líneas fijas) · CUBOS. Se encoge para que entren
+   los 12 sin scroll, y la fila no se desnivela porque el título mide siempre igual. */
+.hx-cell{flex:1 1 0;min-width:54px;max-width:96px;cursor:pointer;text-align:center;transition:transform .18s;
+  display:flex;flex-direction:column;gap:5px;}
 .hx-cell:hover{transform:translateY(-3px);}
-.hx-mini{position:relative;width:62px;height:93px;border-radius:4px;background-size:cover;background-position:center;
+.hx-mini{position:relative;width:100%;aspect-ratio:2/3;border-radius:4px;background-size:cover;background-position:center;
   background-color:var(--card-hi);box-shadow:0 6px 14px rgba(0,0,0,.6);border:1.5px solid transparent;}
 .hx-cell.win .hx-mini{border-color:#E8C34A;box-shadow:0 0 0 3px rgba(232,195,74,.22), 0 8px 18px rgba(0,0,0,.6);}
 .hx-cell.out .hx-mini{filter:grayscale(.75) brightness(.55);border-color:rgba(255,120,120,.5);}
 .hx-cell.resc .hx-mini{border-color:rgba(107,247,166,.6);}
 .hx-cell.nadie .hx-mini{opacity:.42;}
 .hx-crown{position:absolute;top:-9px;right:-7px;font-size:16px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.7));}
-.hx-crit{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);line-height:13px;overflow:hidden;}
-.hx-name{font-family:'Fraunces',serif;font-size:9.5px;line-height:1.2;color:var(--bone-dim);
+.hx-name{font-family:'Fraunces',serif;font-size:10px;line-height:1.25;color:var(--bone);height:25px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.hx-flag{font-size:8.5px;letter-spacing:.06em;line-height:12px;overflow:hidden;}
-.hx-cell.mini{grid-template-rows:45px;row-gap:0;}
+/* LOS CUBOS: bloques de color que arman el diagrama (un libro puede tener varios) */
+.hx-chips{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;}
+.hx-chips i{font-style:normal;font-size:7.5px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;
+  padding:3px 5px;border-radius:4px;line-height:1;white-space:nowrap;}
+.hx-chips .k-eleg{background:rgba(107,247,166,.16);color:#8df3b8;border:1px solid rgba(107,247,166,.3);}
+.hx-chips .k-win {background:rgba(232,195,74,.24);color:#ffdd7a;border:1px solid rgba(232,195,74,.55);}
+.hx-chips .k-res {background:rgba(232,150,74,.18);color:#f0b478;border:1px solid rgba(232,150,74,.36);}
+.hx-chips .k-out {background:rgba(255,110,110,.16);color:#ff9a9a;border:1px solid rgba(255,110,110,.34);}
+.hx-chips .k-pue {background:rgba(201,248,57,.14);color:var(--amber);border:1px solid rgba(201,248,57,.3);}
+.hx-chips .k-anu {background:rgba(255,255,255,.06);color:var(--grey);border:1px solid var(--border);}
+.hx-chips .k-nadie{background:rgba(255,255,255,.03);color:var(--grey);border:1px solid var(--border-soft);opacity:.75;}
 .hx-flag b{font-weight:700;}
 .hx-flag .f-win{color:#E8C34A;} .hx-flag .f-out{color:#ff9a9a;}
 .hx-flag .f-res{color:#6BF7A6;} .hx-flag .f-anu{color:var(--grey);}
@@ -2866,7 +2875,7 @@ body.demo #app{padding-top:20px;}
 }
 .vt-slot.done .vt-win,.vt-slot.landed .vt-win{color:#E8C34A;text-shadow:0 0 34px rgba(232,195,74,.35);}
 .vt-slot.spinning .vt-win{opacity:.6;filter:blur(.5px);}
-.vt-taken .bmj{width:15px;height:15px;color:#E8C34A;vertical-align:-2px;}
+.vt-taken .bmj{width:34px;height:34px;flex:none;}
 .vt-win small{display:block;font-family:'Inter';font-size:13px;font-weight:500;
   color:var(--grey);margin-top:14px;letter-spacing:.04em;}
 .vt-go{
@@ -2877,11 +2886,12 @@ body.demo #app{padding-top:20px;}
 }
 .vt-go:hover{transform:translateY(-3px) scale(1.03);box-shadow:0 18px 34px -8px rgba(201,248,57,.7);}
 .vt-go:disabled{opacity:.4;cursor:default;transform:none;}
-.vt-taken{position:relative;z-index:1;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
+/* los tropes ya sorteados: SIN pastilla, el dibujo grande y a la vista */
+.vt-taken{position:relative;z-index:1;display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
 .vt-taken span{
-  font-family:'Fraunces',serif;font-weight:700;font-size:13px;color:#E8C34A;
-  background:rgba(232,195,74,.08);border:1px solid rgba(232,195,74,.32);
-  border-radius:999px;padding:7px 16px;
+  display:inline-flex;align-items:center;gap:9px;
+  font-family:'Fraunces',serif;font-weight:700;font-size:14px;color:#E8C34A;
+  background:none;border:none;padding:0;
 }
 .vt-taken span b{color:var(--grey);font-weight:600;margin-left:7px;}
 /* la tarjeta que el azar va iluminando cuando elige el modo */

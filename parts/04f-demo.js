@@ -33,6 +33,8 @@ const demoBook = (row, quien)=>({
 async function demoEntrar(){
   if(demoActivo()) return;
   // 1. foto de TODO el club real (cualquier clave cosecha:*)
+  //    REGLA DE ORO: si el respaldo no se pudo guardar Y VERIFICAR, no se entra
+  //    a la demo. Antes acá se seguía de largo y se pisaba el club con vacío.
   const backup = {};
   try{
     for(let i=0;i<localStorage.length;i++){
@@ -40,6 +42,18 @@ async function demoEntrar(){
       if(k && k.startsWith('cosecha:')) backup[k] = localStorage.getItem(k);
     }
     localStorage.setItem(DEMO_KEY, JSON.stringify(backup));
+    // releer y comprobar que quedó COMPLETO antes de borrar nada
+    const control = JSON.parse(localStorage.getItem(DEMO_KEY) || 'null');
+    const claves = Object.keys(backup);
+    const ok = control && claves.every(k => control[k] === backup[k]);
+    if(!ok) throw new Error('el respaldo quedó incompleto');
+  }catch(e){
+    try{ localStorage.removeItem(DEMO_KEY); }catch(_){}
+    toast('No pude respaldar tu club, así que NO entro a la demo. Tu club está intacto.');
+    return;                                   // ← se sale sin tocar nada
+  }
+  // recién ahora, con el respaldo verificado, se saca el club de en medio
+  try{
     Object.keys(backup).forEach(k=>localStorage.removeItem(k));
     localStorage.setItem('cosecha:demo','1');
     // la nube no se entera: fecha local en el futuro → nada remoto pisa la demo
@@ -179,5 +193,39 @@ function demoAlArrancar(){
     document.body.classList.add('demo');
     demoCortarNube();
     demoBarra();
+    return;
+  }
+  // ¿quedó un respaldo huérfano (demo interrumpida)? Se ofrece recuperarlo.
+  let huerfano = null;
+  try{ huerfano = JSON.parse(localStorage.getItem(DEMO_KEY) || 'null'); }catch(e){}
+  if(huerfano && huerfano['cosecha:read']){
+    let nR = 0, nV = 0;
+    try{ nR = JSON.parse(huerfano['cosecha:read']||'[]').length;
+         nV = JSON.parse(huerfano['cosecha:vault']||'[]').length; }catch(e){}
+    const ahora = (State.read||[]).length + (State.vault||[]).length;
+    if(nR + nV > ahora){
+      setTimeout(()=>{
+        const ov = overlay(`
+          <div class="ov-pop center" style="max-width:460px;">
+            <div class="eyebrow" style="color:var(--amber);">Respaldo encontrado</div>
+            <h2 class="serif" style="font-size:24px;font-weight:700;margin:6px 0 0;">Quedó un club guardado de una demo</h2>
+            <p class="lead" style="font-size:13.5px;margin-top:10px;">
+              Tiene <b>${nR}</b> leídos y <b>${nV}</b> en la bóveda (ahora tenés ${ahora}). ¿Lo recupero?</p>
+            <div class="row mt-m">
+              <button class="btn btn-ghost" data-esc id="hbNo">Ahora no</button>
+              <button class="btn btn-amber" data-enter id="hbSi">Sí, recuperar mi club</button>
+            </div>
+          </div>`);
+        $('#hbNo', ov).addEventListener('click', ()=>{ Sound.fx.click(); closeOverlay(ov); });
+        $('#hbSi', ov).addEventListener('click', ()=>{
+          closeOverlay(ov);
+          try{
+            Object.entries(huerfano).forEach(([k,v])=>localStorage.setItem(k,v));
+            localStorage.removeItem(DEMO_KEY);
+          }catch(e){}
+          location.reload();
+        });
+      }, 900);
+    }
   }
 }

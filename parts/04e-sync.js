@@ -30,7 +30,9 @@ const Sync = {
 };
 
 function loadLocalAt(){
-  try{ Sync.localAt = +localStorage.getItem('cosecha:localAt') || 0; }catch(e){ Sync.localAt = 0; }
+  try{ let v = +localStorage.getItem('cosecha:localAt') || 0;
+       if(v > Date.now()) v = 0;   // 🛡 un timestamp del futuro es corrupto: lo ignoramos (causaba que un club chico "gane" y pise todo)
+       Sync.localAt = v; }catch(e){ Sync.localAt = 0; }
 }
 function bumpLocalAt(){
   Sync.localAt = Date.now();
@@ -66,7 +68,7 @@ async function initSync(){
       if(!snap.exists()){ syncPush(true); return; }     // primera vez: sembrar desde acá
       const d = snap.data() || {};
       if(d.clientId === Sync.clientId) return;           // eco de mi propia escritura
-      const at = +d.updatedAt || 0;
+      const at = Math.min(+d.updatedAt || 0, Date.now());   // 🛡 nunca aceptar timestamps del futuro
       if(at > Sync.localAt){                              // la nube es más nueva → entra
         if(syncEnJuego()){ Sync.pending = d; return; }
         aplicarRemoto(d);
@@ -108,6 +110,17 @@ async function syncAlArrancar(){ initSync(); }
 async function aplicarRemoto(d){
   let club;
   try{ club = JSON.parse(d.data || '{}'); }catch(e){ return; }
+  // 🛡 RED DE SEGURIDAD: la nube NUNCA puede vaciar un club que acá tiene libros.
+  // (Así es como un club vacío —de una demo o de un dispositivo recién instalado—
+  //  se propagaba y borraba todo. Si viene mucho más chico, se frena y avisa.)
+  const remoto = (club.read||[]).length + (club.vault||[]).length;
+  const local  = (State.read||[]).length + (State.vault||[]).length;
+  if(local > 0 && remoto < local * 0.5){
+    Sync.pending = null;
+    try{ toast('⚠️ La nube traía un club casi vacío. No lo apliqué: tus ' + local + ' libros siguen acá.'); }catch(e){}
+    syncPush(true);                       // lo de acá manda: se vuelve a subir lo bueno
+    return;
+  }
   Sync.applying = true;
   try{
     if(Array.isArray(club.read))  State.read  = club.read.map(migrateBook);
@@ -141,7 +154,7 @@ function syncPayload(){
     mazo: { mano: Cartas.mano, historial: Cartas.historial },
     duelos: State.duelos || [],
   };
-  const at = Sync.localAt || Date.now();
+  const at = Math.min(Sync.localAt || Date.now(), Date.now());   // 🛡 nunca escribir timestamps del futuro
   Sync.localAt = at; try{ localStorage.setItem('cosecha:localAt', String(at)); }catch(e){}
   return { data: JSON.stringify(club), updatedAt: at, clientId: Sync.clientId };
 }
@@ -205,7 +218,7 @@ function renderSync(box){
   if(!box) return;
   if(Sync.pending && !syncEnJuego()){
     const d = Sync.pending; Sync.pending = null;
-    const at = +d.updatedAt || Date.now();
+    const at = Math.min(+d.updatedAt || Date.now(), Date.now());   // 🛡 sin timestamps del futuro
     aplicarRemoto(d);
     Sync.localAt = at; try{ localStorage.setItem('cosecha:localAt', String(at)); }catch(e){}
     Sync.lastAt = at;
