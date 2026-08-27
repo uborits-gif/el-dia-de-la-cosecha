@@ -81,6 +81,7 @@ body{
 /* ====== PANTALLAS + transición ====== */
 #app{position:relative;min-height:100vh;}
 .screen{
+  position:relative;
   min-height:100vh;
   opacity:0; transform:translateY(22px);
 }
@@ -2822,6 +2823,8 @@ body.demo #app{padding-top:20px;}
 .sc-banner-comun b{font-family:'Fraunces',serif;font-size:15px;color:var(--bone);}
 .sc-banner-r{display:flex;gap:8px;flex-wrap:wrap;}
 /* el telón */
+/* el telón vive en <body>, no dentro de #app: #app lleva el filtro del look
+   y un filter en el ancestro le rompe el position:fixed (ver superTelonAfuera) */
 .sc-telon{position:fixed;inset:0;z-index:5000;pointer-events:auto;}
 .sc-tela{position:absolute;top:0;bottom:0;width:52%;
   background:linear-gradient(90deg,#123016,#0b1c0d 60%,#081308),
@@ -3918,6 +3921,51 @@ body.demo #app{padding-top:20px;}
   #grain{animation:none;}
   .book-float{animation:none;}
 }
+/* ============================================================
+   🎚 EL LOOK — el filtro de toda la web, y su panel de control.
+   El filtro NO va en <html> ni en <body>: un `filter` en un ancestro
+   convierte a los hijos position:fixed en absolutos. Va capa por capa,
+   que en este documento son todas hermanas.
+   ============================================================ */
+:root{ --look:none; }
+#ambient, #grain, #vignette, #app, #flowbar, #toast,
+#muteBtn, #resetBtn, #demoBtn, #demoBar, #abortBtn,
+.overlay, .libtip, .coltip, .esp, .pp-boomflash, .sc-telon{ filter:var(--look); }
+
+/* el panel se queda afuera del filtro, si no no se puede juzgar nada */
+.look{position:fixed;right:14px;bottom:14px;z-index:9999;width:min(300px,92vw);
+  padding:13px 14px 12px;border-radius:16px;filter:none;
+  background:rgba(12,16,11,.97);border:1px solid var(--border);
+  box-shadow:0 26px 50px -22px #000,0 0 0 1px rgba(255,255,255,.05);
+  font-family:system-ui,sans-serif;color:var(--bone);
+  animation:lookEntra .3s var(--ease-out);}
+@keyframes lookEntra{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.look-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.look-h b{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);}
+.look-x{width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;
+  color:var(--bone-dim);background:rgba(255,255,255,.05);border:1px solid var(--border);}
+.look-x:hover{color:var(--bone);border-color:var(--amber);}
+.look-fila{display:grid;grid-template-columns:74px 1fr 42px;align-items:center;gap:8px;margin-bottom:7px;}
+.look-n{font-size:10.5px;color:var(--bone-dim);}
+.look-fila output{font-size:10.5px;color:var(--amber);text-align:right;font-variant-numeric:tabular-nums;}
+.look-fila input[type=range]{width:100%;height:3px;-webkit-appearance:none;appearance:none;
+  border-radius:999px;background:linear-gradient(90deg,var(--border),var(--grey));outline:none;}
+.look-fila input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+  width:14px;height:14px;border-radius:50%;background:var(--amber);cursor:pointer;
+  box-shadow:0 2px 6px -1px #000;}
+.look-fila input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;
+  background:var(--amber);cursor:pointer;}
+.look-cod{display:flex;align-items:center;gap:8px;margin-top:11px;padding-top:10px;
+  border-top:1px solid var(--border-soft);}
+.look-cod code{flex:1;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;
+  letter-spacing:.04em;color:var(--amber);user-select:all;}
+.look-b{font-size:10px;padding:4px 10px;border-radius:999px;cursor:pointer;white-space:nowrap;
+  color:var(--bone-dim);background:rgba(255,255,255,.05);border:1px solid var(--border);}
+.look-b:hover{color:var(--bone);border-color:var(--amber);}
+.look-pie{display:flex;align-items:center;gap:8px;margin-top:9px;}
+.look-ayuda{font-size:9px;line-height:1.35;color:var(--grey);}
+
+
 </style>
 </head>
 <body>

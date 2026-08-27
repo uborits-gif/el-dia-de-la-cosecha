@@ -515,6 +515,7 @@ function confirmReset(){
   await revertirSiQuedoAMedias();  // se cerró la tab a mitad de una partida → todo vuelve como estaba
   await syncAlArrancar();          // trae del club de GitHub si hay uno conectado
   try{ demoAlArrancar(); }catch(e){}       // 🧪 el botón de la demo (y seguir en ella si quedó abierta)
+  lookArrancar();   // 🎚 el tono guardado, antes de pintar nada
   const rb = document.getElementById('resetBtn');
   if(rb) rb.addEventListener('click', confirmReset);
   const ab = document.getElementById('abortBtn');

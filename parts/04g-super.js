@@ -510,6 +510,14 @@ function superWireBanner(){
 }
 
 /* ---- 4. el telón: se revelan las cláusulas de los dos ---- */
+/* el telón se saca de #app y se cuelga del body: adentro de #app hereda el
+   filtro del look, y un filter en el ancestro le arruina el position:fixed */
+function superTelonAfuera(){
+  const t = document.getElementById("scTelon");
+  if(t && t.parentElement !== document.body) document.body.appendChild(t);
+  return t;
+}
+
 function superRevelar(done){
   Super.estado = 'revelado';
   try{ Sound.stopMusic(); }catch(e){}
@@ -536,13 +544,13 @@ function superRevelar(done){
       <div class="row mt-l"><button class="btn btn-amber" id="scSeguir" data-enter>Seguir con la cosecha →</button></div>
     </div>`);
   setTimeout(()=>{
-    const t = $('#scTelon'); if(t) t.classList.add('abierto');
+    const t = superTelonAfuera(); if(t) t.classList.add('abierto');
     try{ Sound.fx.riser(1.1); }catch(e){}
   }, 500);
   setTimeout(()=>{
     const r = $('#scRev'); if(r) r.style.opacity = '1';
     try{ Sound.fx.fanfare(); }catch(e){}
-    const t = $('#scTelon'); if(t) t.style.pointerEvents = 'none';
+    const t = document.getElementById('scTelon'); if(t) t.style.pointerEvents = 'none';
   }, 1500);
   setTimeout(()=>{
     const btn = $('#scSeguir');
@@ -651,11 +659,12 @@ function superResumen(done){
       <div class="sc-res mt-l">${fila('a')}${fila('b')}</div>
       <div class="row mt-l"><button class="btn btn-amber" id="scSeguir" data-enter>Seguir al rescate →</button></div>
     </div>`);
-  setTimeout(()=>{ const t=$('#scTelon'); if(t) t.classList.add('abierto');
+  superTelonAfuera();
+  setTimeout(()=>{ const t=document.getElementById('scTelon'); if(t) t.classList.add('abierto');
     try{ Sound.fx.riser(1.1); }catch(e){} }, 420);
   setTimeout(()=>{ const r=$('#scRev'); if(r) r.style.opacity='1';
     try{ Sound.fx.fanfare(); }catch(e){}
-    const t=$('#scTelon'); if(t) t.style.pointerEvents='none'; }, 1400);
+    const t=document.getElementById('scTelon'); if(t) t.style.pointerEvents='none'; }, 1400);
   setTimeout(()=>{ const b=$('#scSeguir');
     if(b) b.addEventListener('click', ()=>{ try{ Sound.fx.click(); }catch(e){} done(); }); }, 1500);
 }

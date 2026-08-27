@@ -976,6 +976,9 @@ const App = {
 
   show(html, opts={}){
     this.keys = {};
+    // el telón se cuelga del body para conservar su position:fixed, así que
+    // no se va solo al cambiar de pantalla: se limpia acá
+    document.querySelectorAll("body > .sc-telon").forEach(e=>e.remove());
     const appEl = $('#app');
     const old = appEl.querySelector('.screen.in');
     if(old){
