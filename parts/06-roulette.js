@@ -510,6 +510,8 @@ function confirmReset(){
   await loadPersisted();
   await loadFotos();
   await loadCartas();
+  try{ await colorMigrar(); await colorAplicarAlClub(); colorSembrarPersonas(); }catch(e){}
+  try{ await duelosLimpiar(); }catch(e){}   // ⚔️ fuera los duelos de prueba   // 🎨 el color pensado de cada libro
   await revertirSiQuedoAMedias();  // se cerró la tab a mitad de una partida → todo vuelve como estaba
   await syncAlArrancar();          // trae del club de GitHub si hay uno conectado
   try{ demoAlArrancar(); }catch(e){}       // 🧪 el botón de la demo (y seguir en ella si quedó abierta)
@@ -518,16 +520,14 @@ function confirmReset(){
   const ab = document.getElementById('abortBtn');
   if(ab) ab.addEventListener('click', confirmAbort);
   const h = location.hash.replace('#','');
-  if(h==='vault') screenVault();
-  else if(h==='seed') window.__seed();
-  else if(h==='vasa'){
+  if(h==='vasa'){
     if(State.vault.length<8){
       const T=['El bosque sumergido','Manual del insomnio','La cosecha amarga','Nieve en marzo','El archivo secreto','Un animal salvaje','La biblioteca de arena','Todo lo que fuimos','La casa vacía','El río invisible','Los días del fuego','Cartas a nadie','El último verano','Vidas ajenas'];
       State.vault = T.map((t,i)=>({ id:'vz'+i, titulo:t, portada:'', sinopsis:'Una historia sobre '+t.toLowerCase()+'.', rescates:i%4===0?1:0 }));
     }
     screenVasallaje();
   }
-  else screenHome();
+  else rutaArrancar();   // 🧭 la dirección manda qué pantalla se abre
 })();
 
 /* ---------- ayudita de desarrollo (consola): __seed() carga una partida de prueba ---------- */

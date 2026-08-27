@@ -3,6 +3,7 @@
    PANTALLA INICIO
    ============================================================ */
 async function screenHome(){
+  if(typeof Ruta === 'object') Ruta.marcar('/');
   Flow.hide();
   App.ambient();
   show(`
@@ -94,7 +95,7 @@ async function screenHome(){
           <h2 class="serif" style="font-weight:700;font-size:28px;margin:0;">Estadísticas</h2>
         </div>
         <div class="home-load">
-          <button class="load-btn" id="wrapBtn">🏆 Cerrar el año</button>
+          <button class="load-btn" id="wrapBtn">🎁 El Wrapped del año</button>
         </div>
       </div>
       <div id="statsBox"></div>
@@ -118,7 +119,7 @@ async function screenHome(){
   renderMazo($('#mazoBox'));
   renderSync($('#syncBox'));
   renderResumen($('#resumenBox'));
-  $('#wrapBtn').addEventListener('click', ()=>{ Sound.fx.click(); screenResumenEvento(); });
+  $('#wrapBtn').addEventListener('click', ()=>{ Sound.fx.click(); screenWrapped(); });
   try{ renderStats($('#statsBox')); }catch(e){ $('#statsBox').innerHTML = `<div class="st-hint" style="margin-top:14px;">No pude calcular las estadísticas: ${escapeHtml(e.message)}</div>`; }
 
   // recuerdos: cargar álbum · descargar · agregar fotos sueltas
@@ -374,6 +375,10 @@ async function pickColorFromScreen(){
 function showPlacard(list, startIdx, opts={}){
   if(!list.length) return;
   let idx = ((startIdx % list.length) + list.length) % list.length;
+  // la ficha es una dirección más: se puede compartir y volver con atrás
+  const rutaAntes = (typeof Ruta === 'object') ? Ruta.actual() : null;
+  const marcarLibro = ()=>{ if(typeof Ruta === 'object' && list[idx]) Ruta.marcar(rutaDeLibro(list[idx])); };
+  const soltarLibro = ()=>{ if(typeof Ruta === 'object' && rutaAntes) Ruta.marcar(rutaAntes, { reemplazar:true }); };
   const ov = overlay('', 'placard-ov');
   ov.innerHTML = `
     <div class="pl2-frame ov-pop" id="plFrame">
@@ -387,6 +392,7 @@ function showPlacard(list, startIdx, opts={}){
   function render(dir, editing=false){
     const b = list[idx];
     ensureColor(b);
+    marcarLibro();
     const row = (label, val, suffix='')=> (val!==undefined && val!=='' && val!==null)
       ? `<div class="pl2-row"><b>${label}</b><span>${escapeHtml(String(val))}${suffix}</span></div>` : '';
     // IZQUIERDA: identidad del libro (sinopsis + técnica + tropes)
@@ -422,7 +428,7 @@ function showPlacard(list, startIdx, opts={}){
     // Varios hechos caen el MISMO día: se desempatan por la fase del ritual,
     // que es el orden real en que pasan (Flow.STEPS): selección → rescate →
     // descarte → el juego. A Dorayaki lo rescató Uri y DESPUÉS lo descartó Maru.
-    const FASE = { cosechas:0, elegidos:1, rescates:2, descartes:3, puestos:4, anulaciones:5, victorias:6, premios:7 };
+    const FASE = { cosechas:0, clausulas:0.7, elegidos:1, rescates:2, descartes:3, puestos:4, anulaciones:5, victorias:6, premios:7 };
     const hechos = [];
     const push = (key, icon, fn)=>evList(b,key).forEach((e,i,arr)=>{
       const r = fn(e, i, arr.length);
@@ -452,6 +458,10 @@ function showPlacard(list, startIdx, opts={}){
           main:`Temática: <b>${escapeHtml(partes.join(' '))}</b>`, sub:escapeHtml(e.fecha) });
       }
     });
+    // ⚡ las cláusulas de la Supercosecha: la propia del libro, y la común de esa noche
+    push('clausulas', '⚡', (e)=>({
+      main:`<b>Supercosecha</b>${evVal(e.extra)?` — ${escapeHtml(e.extra)}`:''}`,
+      sub:[fSub(e), evVal(e.quien)?`la común: ${escapeHtml(e.quien)}`:''].filter(Boolean).join(' · ') }));
     push('elegidos', '', (e)=>{
       const lab = ({sinopsis:'la sinopsis', titulo:'el título', portada:'la portada'})[e.quien] || e.quien;
       return { icon: CRIT_ICON[e.quien]||'👁', main:`Elegido solo por <b>${escapeHtml(lab)}</b>`, sub:fSub(e) };
@@ -516,6 +526,7 @@ function showPlacard(list, startIdx, opts={}){
       ['victorias','Victorias', 'fecha · método · empate de honor'],
       ['anulaciones','Anulaciones', 'fecha · motivo'],
       ['puestos','Puestos', 'fecha · torneo · puesto'],
+      ['clausulas','Cláusulas ⚡', 'fecha · común · la del libro'],
       ['puntajes','Puntajes', 'Maru 4.5 | Uri 3'],
       ['diasLectura','Leído en (días)', ''],['encuentros','Encuentros', ''],['nota','Nota', ''],
     ];
@@ -534,6 +545,7 @@ function showPlacard(list, startIdx, opts={}){
           ${tecRows?`<div class="pl2-sec"><div class="pl2-rows">${tecRows}</div></div>`:''}
           ${tropes.length?`<div class="pl2-sec"><h4 class="pl2-h">Tropes</h4>
             <div class="pl2-chips" id="plTropes">${tropes.map((t,i)=>`<span class="${i>=6?'pl2-hide':''}">${bookmojiHTML(t)} ${escapeHtml(t)}</span>`).join('')}${tropes.length>6?`<button class="pl2-more" id="plMore">+${tropes.length-6}</button>`:''}</div></div>`:''}
+          ${typeof colorFichaHTML==="function"?colorFichaHTML(b):""}
           <div class="pl2-tools" id="plTools">
             <div class="pl2-tool">
               <label class="pt-swatch" title="Color del lomo — tocá el círculo">
@@ -850,6 +862,7 @@ function showPlacard(list, startIdx, opts={}){
     Sound.fx.click();
     document.removeEventListener('keydown', onKey);
     removeEventListener('resize', onResize);
+    soltarLibro();          // 🧭 la dirección vuelve a donde estabas
     closeOverlay(ov);
   }
   const onResize = ()=>{ if(render._scene) placeArrows(render._scene); };
@@ -952,6 +965,7 @@ function mountVaultFilter(host, getCloset){
    THE VAULT — armario de los caídos
    ============================================================ */
 function screenVault(){
+  if(typeof Ruta === 'object') Ruta.marcar('/boveda');
   Flow.hide();
   App.ambient('rgba(255,214,120,.05)', 'rgba(30,30,50,.5)');
   show(`
@@ -1376,6 +1390,7 @@ function buildVaultGrande(container, books, opts={}){
    CARGA (3 archivos)
    ============================================================ */
 function screenUpload(){
+  if(typeof Ruta === 'object') Ruta.marcar('/cosecha');
   Flow.set(0);
   App.ambient();
   // arranca la noche: una carta por cabeza, contadores limpios,
@@ -1391,7 +1406,10 @@ function screenUpload(){
     <h1 class="title" style="font-size:clamp(32px,5vw,52px);">Cargá los libros</h1>
     <p class="lead mt-s">Cinco de cada uno, y la bóveda.
       <button class="tpl-link" id="tplBtn">Descargar plantilla</button>
+      ${(typeof Super!=='undefined' && Super.activa) ? ''
+        : `<button class="sc-mini" id="superBtn" title="La cosecha con condiciones sorteadas">⚡ Supercosecha</button>`}
     </p>
+    ${(typeof Super!=='undefined' && Super.activa) ? superBannerHTML() : ''}
 
     <div class="upload-grid mt-l stagger">
       ${uploadCard('a', `Los 5 de ${escapeHtml(State.players.a)}`, 0)}
@@ -1521,6 +1539,11 @@ function screenUpload(){
   wireFotoPicker();
 
   $('#tplBtn').addEventListener('click', ()=>{ downloadText('mis-5-libros.txt', BOOK_TEMPLATE); toast('Plantilla descargada'); });
+  // ⚡ la Supercosecha: o el botón para entrar, o el banner del modo ya activo
+  if($('#superBtn')) $('#superBtn').addEventListener('click', ()=>{ Sound.fx.click(); superEmpezar(); });
+  if(typeof superWireBanner === 'function') superWireBanner();
+  // si venía de mirar sus cláusulas en privado, la pantalla ya está de vuelta
+  if(typeof Super!=='undefined') Super._volverACarga = false;
   $('#backHome').addEventListener('click', ()=>{ Sound.fx.click(); screenHome(); });
   $('#toSorteo').addEventListener('click', async ()=>{
     Sound.fx.click();
@@ -1568,9 +1591,12 @@ function screenUpload(){
     // metadata automática: quién trajo cada libro
     State.booksA.forEach(b=>{ if(!b.traidoPor) b.traidoPor = State.players.a; });
     State.booksB.forEach(b=>{ if(!b.traidoPor) b.traidoPor = State.players.b; });
+    // ⚡ supercosecha: cada libro se lleva puestas sus cláusulas
+    if(typeof Super!=='undefined' && Super.activa) superSellarLibros();
     await persist();
     // REGLA DE ORO: si los dos trajeron el mismo libro, se lee ese. Sin cosecha.
     const common = findCommonBook();
+    // ⚡ las cláusulas NO se revelan todavía: recién al elegir cada libro
     if(common){ screenUnanime(common); return; }
     screenSorteo();
   });

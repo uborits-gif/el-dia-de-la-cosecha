@@ -86,6 +86,7 @@ const State = {
   picks: { a: null, b: null },
   finalists: [],
   duelos: [],    // duelos de final del Vasallaje (para las estadísticas)
+  sorter: {},    // rankings del cierre de año  { '2026': { a:{…}, b:{…} } }
 };
 
 const PLAYER_COLOR = { a:'var(--pa)', b:'var(--pb)' };
@@ -143,6 +144,7 @@ async function loadPersisted(){
   if(HAS_STORAGE){ try{ const d = await window.storage.get('cosecha:duelos'); if(d && d.value) State.duelos = JSON.parse(d.value)||[]; }catch(e){} }
   if(!State.duelos || !State.duelos.length){ try{ const d = localStorage.getItem('cosecha:duelos'); if(d) State.duelos = JSON.parse(d)||[]; }catch(e){} }
   if(!Array.isArray(State.duelos)) State.duelos = [];
+  if(typeof loadSorter === 'function') await loadSorter();   // 🏆 rankings del sorter
   // higiene: sin duplicados (pruebas viejas dejaban repetidos en la memoria)
   const dedupe = (arr)=>{
     const seen = new Set();
@@ -234,6 +236,10 @@ const META_FIELDS = [
   { key:'diasLectura',   file:'dias de lectura', aliases:['días de lectura'],                 label:'Leído en',         sec:'club', num:true, suffix:' días' },
   { key:'encuentros',    file:'encuentros',      aliases:[],                                  label:'Encuentros',       sec:'club', num:true },
   { key:'nota',          file:'nota',            aliases:['notas'],                           label:'Nota del club',    sec:'club' },
+  /* 🎨 el color del libro (Read Your Color): rojo|naranja|amarillo|verde|azul|morado, con matiz */
+  { key:'color',         file:'color',           aliases:['colour'],                          label:'Color',            sec:'club' },
+  /* ⚡ supercosecha: bitácora propia — "fecha · cláusula común · cláusula del libro" */
+  { key:'clausulas',     file:'clausulas',       aliases:['cláusulas','restricciones'],       label:'Cláusulas',        sec:'club', auto:true, log:true, ev:'común' },
   /* — casillas viejas: se leen para migrar y NO se vuelven a escribir — */
   { key:'cosechadoEn',   file:'cosechado',       aliases:['primera cosecha','fecha'],         label:'Primera cosecha',  sec:'club', legacy:true },
   { key:'lugar',         file:'lugar',           aliases:['ubicacion','ubicación','donde'],   label:'Lugar',            sec:'club', legacy:true },
@@ -390,8 +396,10 @@ const creditoDe      = b => ultimoRescate(b) || b.traidoPor || '';
 function stampCosecha(book){
   const hoy = fechaHoy();
   if(evTiene(book, 'cosechas', hoy)) return;
+  // la temática, si esa noche hubo. Las cláusulas de la Supercosecha NO van acá:
+  // tienen su propia bitácora (evento 'clausulas'), que las guarda formateadas.
   evPush(book, 'cosechas', { fecha:hoy, quien:State.cosechaLugar || '',
-    extra: State.cosechaTema || '' });   // la temática, si esa noche hubo
+    extra: State.cosechaTema || '' });
 }
 /* copia limpia (sin props de runtime) para bóveda/estante */
 function cleanBook(b){

@@ -38,7 +38,9 @@ files.forEach(f=>{ const k=norm(f.replace('botm-bookmoji-','').replace('.svg',''
 
 /* ── los bookmoji DISEÑADOS POR URI: ya vienen con la paleta del club
    (contorno #8db207 + relleno #d4f852), así que NO se recolorean. ── */
-const DIR2 = 'C:/Users/urika/Downloads/bookmoji-nuevos';
+const DIR2 = ['assets/bookmoji-nuevos',
+  'C:/Users/urika/OneDrive/Escritorio/Proyectos/Remotion/cosecha/assets/bookmoji-nuevos',
+  'C:/Users/urika/Downloads/bookmoji-nuevos'].find(d=>fs.existsSync(d));
 const FIX = {   // nombres de archivo con typo → la clave que usa la app
   seriallkiller:'serialkiller', comingtoage:'comingofage', foundfamilu:'foundfamily',
   murdermistery:'murdermystery', revange:'revenge',
@@ -46,7 +48,7 @@ const FIX = {   // nombres de archivo con typo → la clave que usa la app
 const SALTEAR = new Set(['recurso21','wittybanter2']);   // sobrantes del export
 const DE_URI = new Set();
 let nuevos = 0;
-if(fs.existsSync(DIR2)){
+if(DIR2){
   fs.readdirSync(DIR2).filter(f=>f.endsWith('.svg')).forEach(f=>{
     let k = norm(f.replace('.svg',''));
     if(SALTEAR.has(k)) return;
@@ -90,9 +92,10 @@ const ALIAS={
   '400pages':'400', addictionthemes:'drugsandalcohol', amnesia:'cerebral', atmospheric:'creepy',
   characterdriven:'literary', dark:'creepy', darkhumor:'snarky', drugalcoholuse:'drugsandalcohol',
   dualtimelines:'nonlineartimeline', famousauthor:'wellknown', femalefriendships:'femalefriendship',
-  firstperson:'literary', foundfamily:'familychosen', graphicviolence:'graphiccontent', grief:'sad',
+  foundfamily:'familychosen', graphicviolence:'graphiccontent', grief:'sad',
   gritty:'rugged', identity:'cerebral', magicalrealism:'magical', multigenerational:'familydrama',
-  murdermystery:'whodunit', periodismo:'academic', rebelion:'war', revenge:'murder',
+  murdermystery:'whodunit', periodismo:'academic', rebelion:'war', ruptura:'breakup',
+  breakup2:'breakup', revenge:'murder',
   romancesubplot:'romance', satirical:'snarky', secta:'creepy', serialkiller:'murder',
   sisterdynamic:'siblings', strongfemalelead:'feminist', suburbandrama:'suburban',
   suspenseful:'suspense', tearjerker:'sad', techworld:'techie', teens:'teen', twisty:'puzzle',

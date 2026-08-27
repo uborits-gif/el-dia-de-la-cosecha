@@ -106,6 +106,17 @@ async function initSync(){
 /* el init del app llama a este nombre */
 async function syncAlArrancar(){ initSync(); }
 
+/* una huella barata de lo que se ve en el home: si no cambia, no se repinta */
+function firmaDelClub(){
+  const trozo = b => (b.id||'') + ':' + (b.titulo||'') + ':' + (b.puntajes||'') + ':' + (b.bitacora||'');
+  return [
+    (State.read||[]).map(trozo).join('|'),
+    (State.vault||[]).map(trozo).join('|'),
+    JSON.stringify(State.players||{}),
+    (State.duelos||[]).length,
+  ].join('§');
+}
+
 /* ---------- aplicar un club remoto ---------- */
 async function aplicarRemoto(d){
   let club;
@@ -121,6 +132,7 @@ async function aplicarRemoto(d){
     syncPush(true);                       // lo de acá manda: se vuelve a subir lo bueno
     return;
   }
+  const firmaAntes = firmaDelClub();
   Sync.applying = true;
   try{
     if(Array.isArray(club.read))  State.read  = club.read.map(migrateBook);
@@ -131,17 +143,21 @@ async function aplicarRemoto(d){
       Cartas.historial = club.mazo.historial || [];
     }
     if(Array.isArray(club.duelos)) State.duelos = club.duelos;
+    if(club.sorter && typeof club.sorter === 'object') State.sorter = club.sorter;
     await persist();
     if(typeof persistCartas === 'function') await persistCartas();
   }catch(e){}
   Sync.applying = false;
   // sólo repintamos el home si estamos en él y NO se está tipeando/tocando algo
   // (que la nube no te borre lo que estás escribiendo ni te corte a mitad de un gesto)
+  // Sólo se repinta si de verdad cambió algo. Antes se repintaba con cada
+  // aviso de la nube —incluido el primero, al entrar—, y por eso la pantalla
+  // parpadeaba apenas abrías la web.
   if(document.querySelector('#syncBox')){
     const ae = document.activeElement;
     const ocupado = ae && (ae.tagName==='INPUT' || ae.tagName==='TEXTAREA' || ae.isContentEditable
                     || (typeof ae.closest==='function' && ae.closest('.ov-back,.overlay')));
-    if(!ocupado){ try{ screenHome(); }catch(e){} }
+    if(!ocupado && firmaDelClub() !== firmaAntes){ try{ screenHome(); }catch(e){} }
   }
 }
 
@@ -153,6 +169,7 @@ function syncPayload(){
     players: State.players,
     mazo: { mano: Cartas.mano, historial: Cartas.historial },
     duelos: State.duelos || [],
+    sorter: State.sorter || {},
   };
   const at = Math.min(Sync.localAt || Date.now(), Date.now());   // 🛡 nunca escribir timestamps del futuro
   Sync.localAt = at; try{ localStorage.setItem('cosecha:localAt', String(at)); }catch(e){}

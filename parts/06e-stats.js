@@ -106,7 +106,22 @@ function computeStats(){
   const esCampeonVasallaje = b => nVasallajes(b) || /vasallaje/i.test(metodoGanador(b));
   const david = all.filter(b=>evCount(b,'rescates')>=1 && esCampeonVasallaje(b))
     .sort((x,y)=>evCount(y,'rescates')-evCount(x,'rescates'))[0] || null;
-  S.fama = { fenix, maldicion, traicionado, anulado, david };
+  // 🎖 EL CUADRO DE HONOR: nadie lo eligió la noche que entró… y terminó ganando igual.
+  // (el caso Confesión: jugó una cosecha, nadie lo miró, y después se llevó todo)
+  const honor = read.filter(b=>{
+    const cos = evList(b,'cosechas').map(e=>e.fecha).filter(Boolean);
+    const elg = new Set(evList(b,'elegidos').map(e=>e.fecha).filter(Boolean));
+    const vic = evList(b,'victorias').map(e=>e.fecha).filter(Boolean);
+    if(!cos.length || !vic.length) return false;
+    const primera = cos[0];
+    // esa primera noche nadie lo eligió, y la victoria llegó DESPUÉS
+    return !elg.has(primera) && vic.some(f => fechaOrd(f) > fechaOrd(primera));
+  }).map(b=>{
+    const primera = (evList(b,'cosechas')[0]||{}).fecha || '';
+    const gano = (evList(b,'victorias').slice(-1)[0]||{}).fecha || '';
+    return { b, primera, gano, metodo: (evList(b,'victorias').slice(-1)[0]||{}).quien || '' };
+  });
+  S.fama = { fenix, maldicion, traicionado, anulado, david, honor };
 
   /* ---- cómo deciden: cuentan todas las veces que lo eligieron, no la última ---- */
   const critEv = arr => tally(arr.flatMap(b=>evList(b,'elegidos').map(e=>e.quien)));
@@ -130,18 +145,30 @@ function computeStats(){
   // cosecha jugada del libro, pero no puede armar una fecha en el diario.
   const todasLasFechas = all.flatMap(b=>evList(b,'cosechas').map(e=>e.fecha))
     .filter(f=>f && f!==EV_NOFECHA && parseFecha(f));
-  const fechas = tally(todasLasFechas);
-  S.cosechas = fechas.map(([f,n])=>{
-    const ganadores = read.filter(b=>winDate(b)===f);
-    const lugarEv = all.flatMap(b=>evList(b,'cosechas')).find(e=>e.fecha===f && evVal(e.quien));
-    return { fecha:f, libros:n, ganadores,
-      lugar: evVal((lugarEv||{}).quien),
-      metodo: ganadores.length ? metodoGanador(ganadores[0]) : '' };
-  }).sort((x,y)=>fechaOrd(y.fecha)-fechaOrd(x.fecha));
+  /* Una sola fuente para «qué pasó cada noche»: la misma que arma la línea
+     de tiempo. Antes esto contaba eventos de cosecha y la línea contaba
+     participaciones, así que la misma jornada daba 8 acá y 10 allá.
+     Los rescates van aparte: no cuentan para el «5 y 5» de la noche. */
+  S.cosechas = (typeof construirHistoria === 'function' ? construirHistoria() : [])
+    .map(j=>{
+      const rescatados = j.libros.filter(x=>x.rescatadoPor).length;
+      return {
+        fecha: j.fecha,
+        libros: j.libros.length - rescatados,
+        rescatados,
+        ganadores: j.ganadores.length ? j.ganadores
+          : (j.campeon ? [j.campeon] : read.filter(b=>winDate(b)===j.fecha)),
+        lugar: j.lugar || '',
+        metodo: j.tipo === 'vasallaje'
+          ? ('Vasallaje' + (j.modo ? ' · ' + j.modo : ''))
+          : (j.metodo || ''),
+      };
+    })
+    .sort((x,y)=>fechaOrd(y.fecha)-fechaOrd(x.fecha));
   const porMes = tally(todasLasFechas
     .map(f=>{ const p = parseFecha(f); return p ? `${MESES_L[p.m]} ${p.y}` : null; }).filter(Boolean));
   // mes con más COSECHAS (no libros): contamos fechas únicas por mes
-  const mesesCos = tally(fechas.map(([f])=>{ const p = parseFecha(f); return p ? `${MESES_L[p.m]} ${p.y}` : null; }).filter(Boolean));
+  const mesesCos = tally(S.cosechas.map(c=>{ const p = parseFecha(c.fecha); return p ? `${MESES_L[p.m]} ${p.y}` : null; }).filter(Boolean));
   S.mesTop = mesesCos[0] || null;
   S.porMes = porMes;
 
@@ -149,6 +176,12 @@ function computeStats(){
   S.tropesAll = tally(all.flatMap(tropesOf));
   S.tropesVault = tally(vault.flatMap(tropesOf));
   S.paises = tally(all.map(b=>b.pais));
+  // quién es quién: para poder mostrar los libros detrás de cada número
+  const agrupar = (clave)=>{ const m={}; all.forEach(b=>{ const k=clave(b); if(k) (m[k]=m[k]||[]).push(b); }); return m; };
+  S.porPais   = agrupar(b=>b.pais);
+  S.porGenero = agrupar(b=>b.genero);
+  S.porAutor  = agrupar(b=>b.autor);
+  S.porAutoria = { F: all.filter(b=>generoAutor(b)==='F'), M: all.filter(b=>generoAutor(b)==='M') };
   S.autores = tally(all.map(b=>b.autor));
   S.generos = tally(all.map(b=>b.genero));
   const gens = all.map(generoAutor);
@@ -189,7 +222,7 @@ function computeStats(){
   const velocidad = read.filter(b=>numOf(b.diasLectura) && numOf(b.paginas))
     .map(b=>({ b, ppd: numOf(b.paginas)/numOf(b.diasLectura) })).sort((x,y)=>y.ppd-x.ppd);
   S.diario = {
-    cosechas: fechas.length, leidos: read.length,
+    cosechas: S.cosechas.length, leidos: read.length,
     paginas: pags.reduce((s,x)=>s+x,0), avgDias,
     encuentros: encs.reduce((s,x)=>s+x,0),
     masRapido: dias.length ? read.filter(b=>numOf(b.diasLectura)).sort((x,y)=>numOf(x.diasLectura)-numOf(y.diasLectura))[0] : null,
@@ -239,6 +272,89 @@ function computeStats(){
     sintonia: conAmbos.length ? conAmbos.reduce((s,b)=>s+Math.abs(rA(b)-rB(b)),0)/conAmbos.length : null,
     terco: (iA!=null && iB!=null && iA!==iB) ? { quien: iA>iB?A:B, delta: Math.max(iA,iB) } : null,
   };
+
+  /* ---- 🎨 los colores del club: qué hay, y qué le tocaría a cada uno ---- */
+  S.color = (()=>{
+    if(typeof colorDeLibro !== 'function') return null;
+    const conColor = all.map(b=>({ b, c: colorDeLibro(b) })).filter(x=>x.c);
+    if(!conColor.length) return null;
+    const reparto = tally(conColor.map(x=>x.c.split('-')[0]));
+    // el reparto fino: las 12 casillas del compás, y qué libro cae en cada una
+    const subs = {}, porSub = {};
+    conColor.forEach(x=>{
+      subs[x.c] = (subs[x.c]||0) + 1; (porSub[x.c] = porSub[x.c] || []).push(x.b); });
+    const cA = colorJugador('a'), cB = colorJugador('b');
+    // los que esperan en la bóveda, ordenados por cuánto le pegan a cada uno
+    const paraQuien = (col)=>{
+      if(!col) return [];
+      return vault.map(b=>{
+        const c = colorDeLibro(b);
+        return c ? { b, c, af: colorAfinidad(c, col) } : null;
+      }).filter(Boolean).sort((x,y)=>y.af - x.af || (x.b.titulo>y.b.titulo?1:-1));
+    };
+    // de los que YA leyeron, cuántos eran del color de cada uno
+    const leidosDe = (col)=> col ? read.filter(b=>{
+      const c = colorDeLibro(b); return c && c.split('-')[0] === col.split('-')[0]; }).length : 0;
+    return {
+      total: conColor.length, sinColor: all.length - conColor.length, reparto, subs, porSub,
+      puntos: conColor.map(x=>({ id:x.b.id, titulo:x.b.titulo, color:x.c })),
+      gente: ['a','b'].map(w=>({ quien:w, nombre:State.players[w], color:colorJugador(w) })).filter(g=>g.color),
+      colorA: cA, colorB: cB,
+      recoA: paraQuien(cA).slice(0,4), recoB: paraQuien(cB).slice(0,4),
+      leidosA: leidosDe(cA), leidosB: leidosDe(cB),
+      // el que trajo libros del color del OTRO (le compró el gusto)
+      cruces: ['a','b'].map(w=>{
+        const suyo = w==='a'?cA:cB, delOtro = w==='a'?cB:cA;
+        if(!delOtro) return null;
+        const nom = State.players[w];
+        const traidos = all.filter(b=>(b.traidoPor||'').toLowerCase()===String(nom).toLowerCase());
+        const n = traidos.filter(b=>{ const c=colorDeLibro(b); return c && c.split('-')[0]===delOtro.split('-')[0]; }).length;
+        return n ? { quien:nom, n, color:delOtro } : null;
+      }).filter(Boolean),
+    };
+  })();
+
+  /* ---- ⚡ la Supercosecha: todo sale de la bitácora 'clausulas' ---- */
+  S.super = (()=>{
+    const conCl = all.filter(b=>evCount(b,'clausulas'));
+    if(!conCl.length) return null;
+    const evs = conCl.flatMap(b=>evList(b,'clausulas').map(e=>({...e, b})));
+    const noches = [...new Set(evs.map(e=>e.fecha).filter(Boolean))];
+    // ¿cuál fue la cláusula que MÁS se repitió como propia?
+    const propias = tally(evs.map(e=>evVal(e.extra)).filter(Boolean));
+    const comunes = tally(evs.map(e=>evVal(e.quien)).filter(Boolean));
+    // la cláusula de cada libro que GANÓ su noche: la condición que se llevó la cosecha
+    const ganadoras = evs.filter(e=>evList(e.b,'victorias').some(v=>v.fecha===e.fecha))
+                         .map(e=>({ texto:evVal(e.extra), libro:e.b, fecha:e.fecha }))
+                         .filter(x=>x.texto);
+    // qué tan difícil venía cada cláusula (se busca en el banco por texto)
+    const banco = (typeof SUPER_CLAUSULAS !== 'undefined') ? SUPER_CLAUSULAS : [];
+    const norm = t => String(t||'').toLowerCase().replace(/[^a-z0-9áéíóúñ ]/gi,'').trim();
+    const difDe = t => (banco.find(c=>norm(c.texto)===norm(t))||{}).dificultad || null;
+    const catDe = t => (banco.find(c=>norm(c.texto)===norm(t))||{}).categoria || null;
+    const difs = evs.map(e=>difDe(evVal(e.extra))).filter(Boolean);
+    const cats = tally(evs.map(e=>catDe(evVal(e.extra))).filter(Boolean)
+      .map(c=>(typeof SUPER_CAT!=='undefined' ? (SUPER_CAT[c]||c) : c)));
+    const dur = difs.filter(d=>d===3).length;
+    // el que más cláusulas difíciles le tocaron (y sobrevivió)
+    const porJugador = {};
+    evs.forEach(e=>{
+      const q = e.b.traidoPor || '';
+      if(!q) return;
+      porJugador[q] = porJugador[q] || { n:0, duras:0 };
+      porJugador[q].n++;
+      if(difDe(evVal(e.extra))===3) porJugador[q].duras++;
+    });
+    const sufrido = Object.entries(porJugador).sort((x,y)=>y[1].duras-x[1].duras)[0] || null;
+    return {
+      noches: noches.length, libros: conCl.length,
+      comunes, propias, cats,
+      duras: dur, difPromedio: difs.length ? (difs.reduce((s,x)=>s+x,0)/difs.length) : null,
+      ganadoras, ultimaComun: comunes.length ? comunes[0][0] : '',
+      repetida: propias.length && propias[0][1] > 1 ? propias[0] : null,
+      sufrido: sufrido && sufrido[1].duras ? { quien:sufrido[0], duras:sufrido[1].duras } : null,
+    };
+  })();
 
   /* ---- el ojo: cómo vienen las apuestas ---- */
   S.ojo = (()=>{
@@ -339,14 +455,14 @@ function renderStats(container){
   /* helpers de composición */
   // un valor numérico entero cuenta hacia arriba al aparecer; el resto se muestra tal cual
   const numHTML = v => /^\d+$/.test(String(v)) ? `<span class="st-count" data-to="${v}">0</span>` : String(v);
-  const fig = (k, v, u, cls='') => `<div class="st-fig"><div class="k">${k}</div>
+  const fig = (k, v, u, cls='', attrs='') => `<div class="st-fig" ${attrs}><div class="k">${k}</div>
     <div class="v ${cls}">${numHTML(v)}</div>${u?`<div class="u">${u}</div>`:''}</div>`;
   const figs = arr => `<div class="st-figs">${arr.join('')}</div>`;
   const bars = (rows, color) => rows.length ? `<div class="st-bars">${rows.map(([lab,n],i)=>{
       const max = rows[0][1] || 1;
       return `<div class="st-bar ${i===0?'top':''}">
         <div class="stb-h"><span class="stb-l">${escapeHtml(String(lab))}</span><span class="stb-n">${numHTML(n)}</span></div>
-        <div class="stb-t"><i class="stb-f" style="--bc:${color||'var(--amber)'}" data-w="${Math.round(n/max*100)}"></i></div>
+        <div class="stb-t"><i class="stb-f" style="--bc:${(typeof color==='function'?color(lab,i):color)||'var(--amber)'}" data-w="${Math.round(n/max*100)}"></i></div>
       </div>`;
     }).join('')}</div>` : '<div class="st-hint">Todavía sin datos.</div>';
   const rec = (ico, lab, book, sub) => `<div class="st-rec">
@@ -386,7 +502,7 @@ function renderStats(container){
 
   // qué libros tiene cada trope (para el ADN interactivo)
   const tropeBooks = {};
-  S.all.forEach(b=> tropesOf(b).forEach(t=>{ (tropeBooks[t]=tropeBooks[t]||[]).push(b.titulo); }));
+  S.all.forEach(b=> tropesOf(b).forEach(t=>{ (tropeBooks[t]=tropeBooks[t]||[]).push(b); }));
 
   /* ribbon de géneros: monocromo con acento (nada de arcoíris) */
   const gTop = S.generos.slice(0,5);
@@ -442,6 +558,8 @@ function renderStats(container){
           const n = evCount(S.fama.david,'rescates');
           return `estuvo en la bóveda, lo rescataron ${n>1?n+' veces':'una vez'} y salió campeón del cuadro`;
         })()) : ''}
+        ${(S.fama.honor||[]).map(h=>rec('🌱','Lo que nadie vio', h.b,
+          `estuvo en la mesa el ${escapeHtml(h.primera)} y ninguno lo eligió — volvió el ${escapeHtml(h.gano)} y se llevó la noche${h.metodo?' ('+escapeHtml(h.metodo)+')':''}`)).join('')}
         ${S.fama.anulado ? rec('🚫','El campeón anulado', S.fama.anulado,
           `ganó el ${escapeHtml((evLast(S.fama.anulado,'anulaciones')||{}).fecha||'—')} y decidieron volver a sortear`) : ''}
       </div>
@@ -514,6 +632,67 @@ function renderStats(container){
       ])}
     </section>
 
+    <!-- ═══ VASALLAJE ═══ -->
+    <section class="st-sec">
+      <h3 class="st-h"><em>⚔️</em> Vasallaje</h3>
+      ${S.vasallaje.jugados ? (()=>{
+        const V = S.vasallaje;
+        return `
+        ${figs([
+          fig('Torneos jugados', V.jugados, 'veces peleó la bóveda', 'am'),
+          fig('Último campeón', V.campeones.length?escapeHtml(short(V.campeones[V.campeones.length-1].titulo,16)):'—', V.campeones.length+(V.campeones.length===1?' campeón en total':' campeones en total')),
+          // los apodos ("eterno", "serial", "carne de cuadro") sólo tienen gracia si SE REPITE:
+          // con una sola vez se cuenta el hecho, sin título grandilocuente.
+          V.finalista ? fig(V.finalista.n>1?'El eterno finalista':'Llegó a la final',
+            escapeHtml(short(V.finalista.b.titulo,22)),
+            V.finalista.n>1 ? `perdió ${V.finalista.n} finales` : 'y la perdió', 'sm') : null,
+          V.semifinalista ? fig(V.semifinalista.n>1?'El semifinalista serial':'Llegó a semifinales',
+            escapeHtml(short(V.semifinalista.b.titulo,22)),
+            V.semifinalista.n>1 ? `${V.semifinalista.n} veces en semis` : 'una vez', 'sm') : null,
+          (V.convocado && V.convocado.ps.length>1) ? fig('Carne de cuadro', V.convocado.ps.length,
+            `cuadros jugados · ${escapeHtml(short(V.convocado.b.titulo,20))}`) : null,
+          fig('Tasa de rescate', S.boveda.tasaRescate+'%', 'de los caídos vuelve a jugar'),
+        ].filter(Boolean))}
+        ${V.modos.length ? `<div class="st-rlab" style="margin:30px 0 16px;">Cómo se armaron los cuadros</div>${bars(V.modos, 'var(--pb)')}` : ''}
+        ${V.lugares.length ? `<div class="st-rlab" style="margin:30px 0 16px;">Dónde se jugaron los torneos</div>${bars(V.lugares, 'var(--amber)')}` : ''}
+        ${(State.duelos && State.duelos.length) ? (()=>{
+          const d = State.duelos[State.duelos.length-1];
+          const cruz = State.duelos.filter(x=>x.cruzado).length;
+          return `<div class="st-rlab" style="margin:30px 0 12px;">El duelo de la final</div>
+            <div class="st-band gold">🎭 Última final${d.lugar?` · 📍${escapeHtml(d.lugar)}`:''}: <b>${escapeHtml(d.a.quien)}</b> quería «${escapeHtml(short(d.a.quiso,20))}» y <b>${escapeHtml(d.b.quien)}</b> quería «${escapeHtml(short(d.b.quiso,20))}» — ganó «${escapeHtml(short(d.ganador,20))}»${d.acuerdo?' — se pusieron de acuerdo':' — cada uno quería otro'}.</div>
+            ${cruz?`<div class="st-band" style="margin-top:8px;">🔀 ${cruz} ${cruz>1?'veces':'vez'} cada uno quiso el libro que trajo el otro. Amor de club.</div>`:''}`;
+        })() : ''}`;
+      })() : '<div class="st-hint">Todavía no hubo ningún Vasallaje. La bóveda espera su torneo.</div>'}
+    </section>
+
+    <!-- ═══ ⚡ SUPERCOSECHA ═══ -->
+    ${S.super ? (()=>{
+      const SU = S.super;
+      const dif = SU.difPromedio;
+      const cara = dif==null ? '—' : (dif<1.7?'🟢':dif<2.4?'🟡':'🔴');
+      return `<section class="st-sec sc-stats">
+        <h3 class="st-h"><em>⚡</em> La Supercosecha</h3>
+        <div class="st-note" style="margin:-8px 0 16px;">Las noches que jugaron con condiciones sorteadas.</div>
+        ${figs([
+          fig('Supercosechas', SU.noches, SU.noches===1?'noche con cláusulas':'noches con cláusulas', 'am'),
+          fig('Libros con cláusula', SU.libros, 'tuvieron que cumplir algo'),
+          fig('Cláusulas duras', SU.duras, '🔴 de las difíciles, cumplidas'),
+          fig('Nivel promedio', cara, dif==null?'—':`${(Math.round(dif*10)/10).toString().replace('.',',')} de 3 · dificultad media`, 'sm'),
+          SU.repetida ? fig('La que más se repitió', escapeHtml(short(SU.repetida[0],26)), `${SU.repetida[1]} veces`, 'sm') : null,
+          SU.sufrido ? fig('El más castigado', escapeHtml(SU.sufrido.quien), `${SU.sufrido.duras} cláusulas 🔴 le tocaron`, 'sm') : null,
+        ].filter(Boolean))}
+        ${SU.ganadoras.length ? `
+          <div class="st-rlab" style="margin:30px 0 14px;">🏆 La cláusula que se llevó la cosecha</div>
+          ${SU.ganadoras.slice(-4).reverse().map(g=>`
+            <div class="st-band gold" style="margin-top:8px;">
+              «${escapeHtml(short(g.libro.titulo,26))}» ganó cumpliendo <b>${escapeHtml(g.texto)}</b>
+              <span style="color:var(--grey)"> · ${escapeHtml(g.fecha||'')}</span></div>`).join('')}` : ''}
+        ${SU.comunes.length ? `<div class="st-rlab" style="margin:30px 0 16px;">Las cláusulas comunes que salieron</div>
+          ${bars(SU.comunes.slice(0,6), '#E8C34A')}` : ''}
+        ${SU.cats.length ? `<div class="st-rlab" style="margin:30px 0 16px;">Por dónde los apretaron más</div>
+          ${bars(SU.cats.slice(0,7), 'var(--pb)')}` : ''}
+      </section>` })() : ''}
+
     <!-- ═══ ADN ═══ -->
     <section class="st-sec">
       <h3 class="st-h"><em>🧬</em> El ADN del club</h3>
@@ -531,7 +710,7 @@ function renderStats(container){
         <div>
           <div class="st-rlab" style="margin-bottom:16px;">De dónde leen</div>
           <div class="st-geo">${S.paises.slice(0,7).map(([p,n])=>`
-            <div class="st-geo-row"><span class="st-flag">${flagOf(p)}</span>
+            <div class="st-geo-row" data-libros="${(S.porPais[p]||[]).map(b=>b.id).join(',')}" data-libros-t="${escapeHtml(p)}"><span class="st-flag">${flagOf(p)}</span>
               <span class="st-geo-name">${escapeHtml(p)}</span>
               <span class="st-geo-bar"><i data-w="${n/S.paises[0][1]*100}"></i></span>
               <span class="st-geo-n">${n}</span></div>`).join('') || '<div class="st-hint">Sin países.</div>'}</div>
@@ -539,19 +718,20 @@ function renderStats(container){
         <div>
           <div class="st-rlab" style="margin-bottom:16px;">Géneros</div>
           <div class="st-ribbon">${gTop.map((g,i)=>`<i style="background:${GSHADE[i]}" data-w="${g[1]/gTot*100}"></i>`).join('')}</div>
-          <div class="st-rleg">${gTop.map((g,i)=>`<div><i style="background:${GSHADE[i]}"></i>${escapeHtml(short(g[0],22))} · ${g[1]}</div>`).join('')}</div>
+          <div class="st-rleg">${gTop.map((g,i)=>`<div data-libros="${(S.porGenero[g[0]]||[]).map(b=>b.id).join(',')}" data-libros-t="${escapeHtml(g[0])}"><i style="background:${GSHADE[i]}"></i>${escapeHtml(short(g[0],22))} · ${g[1]}</div>`).join('')}</div>
         </div>
       </div>
 
       <div class="st-rlab" style="margin:34px 0 14px;">Quién escribe lo que leen</div>
       <div class="st-scale">
-        <div class="f" data-w="${S.autoria.F/totAut*100}"><b>${S.autoria.F}</b><span>autoras</span></div>
-        <div class="m" data-w="${S.autoria.M/totAut*100}"><b>${S.autoria.M}</b><span>autores</span></div>
+        <div class="f" data-w="${S.autoria.F/totAut*100}" data-libros="${S.porAutoria.F.map(b=>b.id).join(',')}" data-libros-t="Autoras"><b>${S.autoria.F}</b><span>autoras</span></div>
+        <div class="m" data-w="${S.autoria.M/totAut*100}" data-libros="${S.porAutoria.M.map(b=>b.id).join(',')}" data-libros-t="Autores"><b>${S.autoria.M}</b><span>autores</span></div>
       </div>
 
       ${figs([
         fig('Autor más repetido', S.autores[0] && S.autores[0][1]>1 ? escapeHtml(short(S.autores[0][0],18)) : '—',
-          S.autores[0] && S.autores[0][1]>1 ? `${S.autores[0][1]} libros en el club` : 'nadie repite todavía', 'sm'),
+          S.autores[0] && S.autores[0][1]>1 ? `${S.autores[0][1]} libros en el club` : 'nadie repite todavía', 'sm',
+          S.autores[0] ? `data-libros="${(S.porAutor[S.autores[0][0]]||[]).map(b=>b.id).join(',')}" data-libros-t="${escapeHtml(S.autores[0][0])}"` : ''),
         fig('Leer TODA la bóveda', S.vaultTiempo ? S.vaultTiempo.anios : '—',
           S.vaultTiempo ? `años · ${S.boveda.esperan} libros a ${S.vaultTiempo.ritmo} días c/u` : 'faltan días de lectura', 'am'),
         fig('Páginas en la bóveda', S.vaultPags ? S.vaultPags.toLocaleString('es-AR') : '—', 'esperando ser leídas'),
@@ -578,6 +758,64 @@ function renderStats(container){
           ? `📅 <b>${escapeHtml(S.decadas.a < S.decadas.b ? A : B)}</b> trae los muertos, <b>${escapeHtml(S.decadas.a < S.decadas.b ? B : A)}</b> trae el hype — ${Math.abs(S.decadas.a-S.decadas.b)} años de distancia.`
           : `📅 Leen la misma época. Da miedo.`}</div>` : ''}
     </section>
+
+    <!-- ═══ 🎨 LOS COLORES ═══ -->
+    ${S.color ? (()=>{
+      const CO = S.color;
+      const selector = (w)=>{
+        const act = w==='a' ? CO.colorA : CO.colorB;
+        const casa = act ? act.split('-')[0] : '';
+        const c = COLORES[casa];
+        // la tendencia es opcional: podés ser rojo y no saber para dónde tirás
+        const tend = c ? `<div class="col-tend-ops">
+          <span class="col-tend-l">¿tira para algún lado?</span>
+          <button class="col-top${act===casa?' on':''}" data-w="${w}" data-c="${casa}"
+            style="--cc:${c.hex};--cc2:${c.hex2}">No sé / ninguno</button>
+          ${c.subs.map(sb=>{ const h = COLORES[sb.hacia]; return `<button class="col-top${act===sb.id?' on':''}"
+            data-w="${w}" data-c="${sb.id}" data-coltip="${sb.id}"
+            style="--cc:${c.hex};--cc2:${c.hex2}">${escapeHtml(sb.nombre)}
+            <i style="--vc:${h?h.hex:c.hex}">→ ${escapeHtml(h?h.nombre.toLowerCase():'')}</i></button>`; }).join('')}
+        </div>` : '';
+        return `<div class="col-quien">
+          <div class="col-quien-h" style="color:var(--p${w})">${escapeHtml(S[w==='a'?'A':'B'])} es…</div>
+          <div class="col-quien-ops">
+            ${COLOR_LISTA.map(x=>`<button class="col-op${casa===x.id?' on':''}"
+              data-w="${w}" data-c="${x.id}" data-coltip="${x.id}"
+              style="--cc:${x.hex};--cc2:${x.hex2}">${colorPunto(x.id,13)}${escapeHtml(x.nombre)}</button>`).join('')}
+          </div>
+          ${tend}
+        </div>`;
+      };
+      const reco = (w)=>{
+        const lista = w==='a' ? CO.recoA : CO.recoB;
+        const col = w==='a' ? CO.colorA : CO.colorB;
+        if(!col) return `<div class="col-reco-vacio">Elegí arriba de qué color es ${escapeHtml(S[w==='a'?'A':'B'])} y te digo qué buscar en la bóveda.</div>`;
+        if(!lista.length) return `<div class="col-reco-vacio">La bóveda todavía no tiene libros con color.</div>`;
+        return `<div class="col-reco">
+          <div class="col-reco-h" style="color:var(--p${w})">Para ${escapeHtml(S[w==='a'?'A':'B'])} <span data-coltip="${col}">${colorPill(col,{corto:true})}</span></div>
+          ${lista.map((x,i)=>`<div class="col-reco-item" style="--i:${i}" data-id="${escapeHtml(String(x.b.id))}">
+            <div class="col-reco-cov" ${cov(x.b)}></div>
+            <div class="col-reco-info">
+              <div class="col-reco-t">${escapeHtml(short(x.b.titulo,30))}</div>
+              <div class="col-reco-c" data-coltip="${x.c}">${colorPill(x.c,{corto:true})}
+                <span class="col-reco-af">${x.af}%</span></div>
+              ${razonDeColor(x.b)?`<div class="col-reco-por">${escapeHtml(short(razonDeColor(x.b),96))}</div>`:''}
+            </div></div>`).join('')}
+        </div>`;
+      };
+      return `<section class="st-sec col-sec">
+        <h3 class="st-h"><em>🎨</em> Los colores del club</h3>
+        <div class="st-note" style="margin:-8px 0 16px;">Cada punto es un libro. Dos ejes: <b>corazón ↔ mente</b> y <b>raíces ↔ alas</b>.
+          Pasá el mouse por una mancha, o tocala para ver sus libros.</div>
+        ${bars(CO.reparto.map(([id,n])=>[(COLORES[id]||{}).nombre||id, n]),
+          (lab,i)=>{ const c = COLORES[(CO.reparto[i]||[])[0]];
+            return c ? `linear-gradient(90deg,var(--amber),${c.hex2} 55%,${c.hex})` : 'var(--amber)'; })}
+        <div class="cmp-libros" id="cmpLibros"></div>
+        <div class="col-quienes">${selector('a')}${selector('b')}</div>
+        <div class="col-recos">${reco('a')}${reco('b')}</div>
+        ${CO.cruces.length ? CO.cruces.map(x=>`<div class="st-band gold" style="margin-top:10px;">
+          💚 <b>${escapeHtml(x.quien)}</b> trajo <b>${x.n}</b> libro${x.n===1?'':'s'} del color del otro — le compró el gusto.</div>`).join('') : ''}
+      </section>` })() : ''}
 
     <!-- ═══ FÓRMULA ═══ -->
     <section class="st-sec">
@@ -621,7 +859,7 @@ function renderStats(container){
         fig('En la bóveda', S.boveda.esperan, `esperando · vuelve el ${S.boveda.tasaRescate}%`),
       ])}
       <div class="st-rlab" style="margin:30px 0 16px;">Dónde cosechan</div>
-      ${bars(S.diario.lugares, 'var(--wood-3)')}
+      ${bars(S.diario.lugares, 'var(--amber)')}
       <div class="st-rlab" style="margin:34px 0 4px;">La historia, cosecha por cosecha</div>
       <div class="st-tl">${S.cosechas.map(c=>`
         <div class="st-tlrow">
@@ -630,45 +868,12 @@ function renderStats(container){
             .map(g=>`<div class="st-tlcov" ${cov(g)}></div>`).join('')}
           <div class="st-tlmain">
             <div class="st-tlwin">${c.ganadores.length ? c.ganadores.map(g=>escapeHtml(g.titulo)).join(' <span style="color:var(--amber)">+</span> ') : '<span style="color:var(--grey)">sin ganador registrado</span>'}</div>
-            <div class="st-tlmeta">${c.libros} libros${c.lugar?' · 📍 '+escapeHtml(c.lugar):''}${c.metodo?' · 🎲 '+escapeHtml(c.metodo):''}${c.ganadores.length>1?' · 🤝 empate de honor':''}</div>
+            <div class="st-tlmeta">${c.libros} libro${c.libros===1?'':'s'}${c.rescatados?` · ♻ ${c.rescatados}`:''}${c.lugar?' · 📍 '+escapeHtml(c.lugar):''}${c.metodo?' · 🎲 '+escapeHtml(c.metodo):''}${c.ganadores.length>1?' · 🤝 empate de honor':''}</div>
           </div>
         </div>`).join('') || '<div class="st-hint">Todavía no hay cosechas registradas.</div>'}</div>
       <div style="text-align:center;margin-top:20px;">
         <button class="load-btn" id="verHistoria">📜 Ver la historia completa →</button>
       </div>
-    </section>
-
-    <!-- ═══ VASALLAJE ═══ -->
-    <section class="st-sec">
-      <h3 class="st-h"><em>⚔️</em> Vasallaje</h3>
-      ${S.vasallaje.jugados ? (()=>{
-        const V = S.vasallaje;
-        return `
-        ${figs([
-          fig('Torneos jugados', V.jugados, 'veces peleó la bóveda', 'am'),
-          fig('Último campeón', V.campeones.length?escapeHtml(short(V.campeones[V.campeones.length-1].titulo,16)):'—', V.campeones.length+(V.campeones.length===1?' campeón en total':' campeones en total')),
-          // los apodos ("eterno", "serial", "carne de cuadro") sólo tienen gracia si SE REPITE:
-          // con una sola vez se cuenta el hecho, sin título grandilocuente.
-          V.finalista ? fig(V.finalista.n>1?'El eterno finalista':'Llegó a la final',
-            escapeHtml(short(V.finalista.b.titulo,22)),
-            V.finalista.n>1 ? `perdió ${V.finalista.n} finales` : 'y la perdió', 'sm') : null,
-          V.semifinalista ? fig(V.semifinalista.n>1?'El semifinalista serial':'Llegó a semifinales',
-            escapeHtml(short(V.semifinalista.b.titulo,22)),
-            V.semifinalista.n>1 ? `${V.semifinalista.n} veces en semis` : 'una vez', 'sm') : null,
-          (V.convocado && V.convocado.ps.length>1) ? fig('Carne de cuadro', V.convocado.ps.length,
-            `cuadros jugados · ${escapeHtml(short(V.convocado.b.titulo,20))}`) : null,
-          fig('Tasa de rescate', S.boveda.tasaRescate+'%', 'de los caídos vuelve a jugar'),
-        ].filter(Boolean))}
-        ${V.modos.length ? `<div class="st-rlab" style="margin:30px 0 16px;">Cómo se armaron los cuadros</div>${bars(V.modos, 'var(--pb)')}` : ''}
-        ${V.lugares.length ? `<div class="st-rlab" style="margin:30px 0 16px;">Dónde se jugaron los torneos</div>${bars(V.lugares, 'var(--wood-3)')}` : ''}
-        ${(State.duelos && State.duelos.length) ? (()=>{
-          const d = State.duelos[State.duelos.length-1];
-          const cruz = State.duelos.filter(x=>x.cruzado).length;
-          return `<div class="st-rlab" style="margin:30px 0 12px;">El duelo de la final</div>
-            <div class="st-band gold">🎭 Última final${d.lugar?` · 📍${escapeHtml(d.lugar)}`:''}: <b>${escapeHtml(d.a.quien)}</b> quería «${escapeHtml(short(d.a.quiso,20))}» y <b>${escapeHtml(d.b.quien)}</b> quería «${escapeHtml(short(d.b.quiso,20))}» — ganó «${escapeHtml(short(d.ganador,20))}»${d.acuerdo?' (se pusieron de acuerdo)':' (lo decidió la ruleta)'}.</div>
-            ${cruz?`<div class="st-band" style="margin-top:8px;">🔀 ${cruz} ${cruz>1?'veces':'vez'} cada uno quiso el libro que trajo el otro. Amor de club.</div>`:''}`;
-        })() : ''}`;
-      })() : '<div class="st-hint">Todavía no hubo ningún Vasallaje. La bóveda espera su torneo.</div>'}
     </section>`;
 
   // invisibles con portadas
@@ -702,13 +907,20 @@ function renderStats(container){
   // ADN: pasar o tocar un trope muestra la listita de libros (sutil, sin portadas)
   const adnPop = $('#adnPop', container);
   $$('#adnChips .adn-tile[data-trope]', container).forEach(chip=>{
-    const t = chip.dataset.trope, titles = tropeBooks[t] || [];
+    const t = chip.dataset.trope, libs = tropeBooks[t] || [];
     const showList = ()=>{
       if(!adnPop) return;
       $$('#adnChips .adn-tile', container).forEach(c=>c.classList.remove('on'));
       chip.classList.add('on');
-      adnPop.innerHTML = `<div class="st-adn-h">${bookmojiHTML(t)} ${escapeHtml(t)} · ${titles.length} libro${titles.length>1?'s':''}</div>`
-        + titles.map(x=>`<span>${escapeHtml(x)}</span>`).join('');
+      adnPop.innerHTML = `<span class="st-adn-h">${bookmojiHTML(t)} ${escapeHtml(t)} · ${libs.length} libro${libs.length>1?'s':''}</span>`
+        + libs.map((b,i)=>`<span style="--i:${i}" data-id="${escapeHtml(String(b.id))}">${escapeHtml(b.titulo)}</span>`).join('');
+      $$('span[data-id]', adnPop).forEach(el=>el.addEventListener('click', ()=>{
+        const list = [...State.read, ...State.vault];
+        const i = list.findIndex(x=>String(x.id)===el.dataset.id);
+        if(i>=0){ try{ Sound.fx.click(); }catch(e){}
+          showPlacard(list, i, { source: State.read.some(x=>String(x.id)===el.dataset.id) ? 'honor' : 'vault' }); }
+      }));
+      adnPop.classList.remove('on'); void adnPop.offsetWidth;   // reinicia la cascada en cada trope
       adnPop.classList.add('on');
     };
     chip.addEventListener('mouseenter', showList);
@@ -717,11 +929,118 @@ function renderStats(container){
       else { try{ Sound.fx.click(); }catch(e){} showList(); }
     });
   });
+  // 🎨 elegir de qué color es cada jugador → se recalculan los recomendados
+  $$('.col-op', container).forEach(el=>el.addEventListener('click', ()=>{
+    try{ Sound.fx.chosen(); }catch(e){}
+    const w = el.dataset.w, c = el.dataset.c;
+    // tocar la casa que ya estaba la apaga; si no, entra sin tendencia
+    setColorJugador(w, (colorJugador(w)||'').split('-')[0] === c ? '' : c);
+    renderStats(container);
+  }));
+  // la tendencia va aparte, y es opcional
+  $$('.col-top', container).forEach(el=>el.addEventListener('click', ()=>{
+    try{ Sound.fx.click(); }catch(e){}
+    setColorJugador(el.dataset.w, el.dataset.c);
+    renderStats(container);
+  }));
+  // 🎨 tocar una tendencia del compás → los libros que caen ahí
+  $$('.ryc-pt', container).forEach(el=>el.addEventListener('click', ev=>{
+    ev.stopPropagation();
+    const list = [...State.read, ...State.vault];
+    const i = list.findIndex(x=>String(x.id)===el.dataset.id);
+    if(i>=0){ try{ Sound.fx.click(); }catch(e){}
+      showPlacard(list, i, { source: State.read.some(x=>String(x.id)===el.dataset.id) ? 'honor' : 'vault' }); }
+  }));
+  const cmpBox = $('#cmpLibros', container);
+  if(cmpBox){
+    const porSub = (S.color && S.color.porSub) || {};
+    let abierto = '';
+    $$('[data-sub]', container).forEach(el=>el.addEventListener('click', ()=>{
+      const id = el.dataset.sub;
+      const libros = porSub[id] || Object.keys(porSub)
+        .filter(k => k.split('-')[0] === id).flatMap(k => porSub[k]);
+      if(abierto === id){ abierto=''; cmpBox.classList.remove('on');
+        $$('[data-sub]', container).forEach(x=>x.classList.remove('elegido')); return; }
+      abierto = id;
+      try{ Sound.fx.click(); }catch(e){}
+      $$('[data-sub]', container).forEach(x=>x.classList.toggle('elegido', x.dataset.sub===id));
+      const c = colorDe(id), sb = subDe(id), h = sb && COLORES[sb.hacia];
+      cmpBox.style.setProperty('--cc', c.hex); cmpBox.style.setProperty('--cc2', c.hex2);
+      cmpBox.innerHTML = `<div class="cmp-libros-h">
+          ${colorPunto(id,13)}<b>${escapeHtml(colorFrase(id))}</b>
+          <span>${libros.length} libro${libros.length===1?'':'s'}</span></div>
+        <div class="cmp-libros-d">${escapeHtml(sb ? subMatiz(sb) : c.desc)}${h?` · tira a ${escapeHtml(h.nombre.toLowerCase())}`:''}</div>
+        ${libros.length ? `<div class="cmp-libros-g">${libros.map((b,i)=>`
+          <div class="cmp-libro" style="--i:${i}" data-id="${escapeHtml(String(b.id))}">
+            <div class="cmp-libro-cov" ${cov(b)}></div>
+            <div class="cmp-libro-t">${escapeHtml(short(b.titulo,26))}</div>
+            ${!sb && subDe(colorDeLibro(b))?`<div class="cmp-libro-sb">${escapeHtml(subDe(colorDeLibro(b)).nombre)}</div>`:''}
+            ${razonDeColor(b)?`<div class="cmp-libro-por">${escapeHtml(short(razonDeColor(b),84))}</div>`:''}
+          </div>`).join('')}</div>`
+        : '<div class="cmp-libros-v">Todavía ningún libro del club cayó en esta tendencia.</div>'}`;
+      cmpBox.classList.add('on');
+      $$('.cmp-libro', cmpBox).forEach(n=>n.addEventListener('click', ()=>{
+        const list = [...State.read, ...State.vault];
+        const i = list.findIndex(x=>String(x.id)===n.dataset.id);
+        if(i>=0) showPlacard(list, i, { source: State.read.some(x=>String(x.id)===n.dataset.id) ? 'honor' : 'vault' });
+      }));
+    }));
+  }
+  $$('.col-reco-item', container).forEach(el=>el.addEventListener('click', ()=>{
+    const list = [...State.read, ...State.vault];
+    const i = list.findIndex(x=>String(x.id)===el.dataset.id);
+    if(i>=0){ try{ Sound.fx.click(); }catch(e){} showPlacard(list, i, { source:'vault' }); }
+  }));
   const vh = $('#verHistoria', container);
   if(vh) vh.addEventListener('click', ()=>{ try{ Sound.fx.click(); }catch(e){} screenHistoria(); });
   // entrada coreografiada: cada sección sube al entrar en pantalla, con sus hijos escalonados
+  librosTipMontar();
   setupStatsReveal(container);
   return S;
+}
+
+/* ---------- el globito de portadas ----------
+   Cualquier elemento con data-libros="id,id,…" muestra al pasar el mouse
+   las portadas de esos libros. Sirve para países, géneros, autoría y autores:
+   el número deja de ser un número y se ve de qué libros está hecho. */
+let _libTip = null, _libTipRaf = 0;
+function librosTipMontar(){
+  if(_libTip) return;
+  _libTip = document.createElement('div');
+  _libTip.className = 'libtip';
+  document.body.appendChild(_libTip);
+
+  const colocar = (host)=>{
+    const r = host.getBoundingClientRect(), t = _libTip.getBoundingClientRect();
+    const m = 12, vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+    let x = r.left + r.width/2 - t.width/2;
+    x = Math.max(m, Math.min(x, vw - t.width - m));
+    let y = r.top - t.height - 10;
+    if(y < m) y = Math.min(r.bottom + 10, vh - t.height - m);
+    _libTip.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+  };
+  const mostrar = (host)=>{
+    const ids = String(host.getAttribute('data-libros')||'').split(',').filter(Boolean);
+    if(!ids.length) return;
+    const todos = [...(State.read||[]), ...(State.vault||[])];
+    const libros = ids.map(id => todos.find(b=>String(b.id)===id)).filter(Boolean);
+    if(!libros.length) return;
+    const ver = libros.slice(0, 12), resto = libros.length - ver.length;
+    _libTip.innerHTML = '<div class="libtip-h">' + escapeHtml(host.getAttribute('data-libros-t')||'')
+      + ' · ' + libros.length + ' libro' + (libros.length===1?'':'s') + '</div>'
+      + '<div class="libtip-g">' + ver.map((b,i)=>'<div class="libtip-b" style="--i:'+i+'">'
+        + '<div class="libtip-cov" ' + cov(b) + '></div>'
+        + '<span>' + escapeHtml(short(b.titulo,16)) + '</span></div>').join('')
+      + (resto>0 ? '<div class="libtip-mas">+' + resto + '</div>' : '') + '</div>';
+    _libTip.classList.add('on');
+    cancelAnimationFrame(_libTipRaf);
+    _libTipRaf = requestAnimationFrame(()=>colocar(host));
+  };
+  const ocultar = ()=>_libTip.classList.remove('on');
+  const buscar = e => e.target && e.target.closest ? e.target.closest('[data-libros]') : null;
+  document.addEventListener('pointerover', e=>{ const h = buscar(e); if(h) mostrar(h); });
+  document.addEventListener('pointerout', e=>{ const h = buscar(e); if(h && !h.contains(e.relatedTarget)) ocultar(); });
+  addEventListener('scroll', ocultar, true);
 }
 
 /* ============================================================
@@ -790,7 +1109,8 @@ function juegoDe(metodo){
 }
 const HX_RANK = p => /ganador|campe/i.test(p||'') ? 4 : /^final$/i.test(p||'') ? 3 : /semi/i.test(p||'') ? 2 : 1;
 
-function screenHistoria(){
+function screenHistoria(foco){
+  if(typeof Ruta === 'object') Ruta.marcar(foco ? '/jornada/' + foco : '/historia');
   const H = construirHistoria();
   const A = State.players.a, B = State.players.b;
   const esA = n => n && n.toLowerCase()===A.toLowerCase();
@@ -904,17 +1224,25 @@ function screenHistoria(){
         // la jornada fundacional: sin método y sin cuadro
         const fundacional = !esVasa && !j.metodo && j.libros.length<=2;
         const A_ = [], B_ = [], X_ = [];
-        j.libros.forEach(p=>{ (esA(p.traidoPor)?A_:(p.traidoPor?B_:X_)).push(p); });
+        // el que RESCATA se queda el libro esa noche, aunque lo haya traído el otro
+        const duenio = p => p.rescatadoPor || p.traidoPor;
+        j.libros.forEach(p=>{ const q = duenio(p); (esA(q)?A_:(q?B_:X_)).push(p); });
+        // los rescates no cuentan para el «5 y 5» de la noche
+        const nFrescos = j.libros.filter(p=>!p.rescatadoPor).length;
+        const nRescates = j.libros.length - nFrescos;
         const equipo = (arr, nom, lado)=> arr.length ? `<div class="hx-team ${lado}">
             <div class="hx-team-box">${arr.map(p=>celda(p,false)).join('')}</div>
             <div class="hx-team-n">Libros de ${escapeHtml(nom)}</div></div>` : '';
-        return `<section class="hx-day" style="--i:${i}">
+        const slug = (typeof rutaSlug === 'function') ? rutaSlug(j.fecha) : '';
+        return `<section class="hx-day" id="j-${slug}" data-fecha="${escapeHtml(j.fecha)}" style="--i:${i}">
           <div class="hx-dot${esVasa?' vasa':''}"></div>
           <div class="hx-card${esVasa?' vasa':''}${fundacional?' seed':''}">
             <div class="hx-top">
               <div class="hx-when">
                 <div class="hx-fecha">${escapeHtml(j.fecha)}</div>
-                <div class="hx-sub">${[j.lugar?'📍 '+escapeHtml(j.lugar):'', `${j.libros.length} libro${j.libros.length===1?'':'s'}`].filter(Boolean).join(' · ')}</div>
+                <div class="hx-sub">${[j.lugar?'📍 '+escapeHtml(j.lugar):'',
+                  `${nFrescos} libro${nFrescos===1?'':'s'}`,
+                  nRescates?`♻ ${nRescates} rescatado${nRescates===1?'':'s'}`:''].filter(Boolean).join(' · ')}</div>
               </div>
               ${jg ? `<div class="hx-game"><div class="hx-game-ico">${jg.icon}</div>
                 <div class="hx-game-n">${escapeHtml(jg.name)}</div></div>` : ''}
@@ -932,6 +1260,20 @@ function screenHistoria(){
   `);
   $('#hxBack').addEventListener('click', ()=>{ Sound.fx.click(); screenHome(); });
   // tocar un libro abre su ficha
+  if(foco){
+    const dia = document.getElementById('j-' + foco);
+    if(dia) requestAnimationFrame(()=>{
+      dia.scrollIntoView({ block:'center', behavior:'smooth' });
+      dia.classList.add('hx-foco');
+    });
+  }
+  // tocar la fecha de una jornada deja su dirección a mano para compartirla
+  $$('.hx-fecha', document).forEach(el=>el.addEventListener('click', ()=>{
+    const dia = el.closest('.hx-day'); if(!dia || typeof Ruta !== 'object') return;
+    Ruta.marcar('/jornada/' + dia.id.replace(/^j-/, ''));
+    try{ Sound.fx.click(); }catch(e){}
+    toast('Dirección de esta jornada copiada a la barra');
+  }));
   $$('.hx-cell', document).forEach(el=>el.addEventListener('click', ()=>{
     const id = el.dataset.id;
     const list = [...State.read, ...State.vault];

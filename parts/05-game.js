@@ -229,6 +229,7 @@ function revealChosen(book, done){
       <div id="rvBook" style="margin:6px 0 4px;"></div>
       <div class="serif" style="font-size:28px;font-weight:700;margin-top:18px;">${escapeHtml(book.titulo)}</div>
       <p class="serif" style="font-style:italic;font-size:16px;line-height:1.5;color:var(--bone-dim);margin:10px auto 0;max-width:440px;">${escapeHtml(hook)}</p>
+      ${(typeof Super!=='undefined' && Super.activa) ? superClausulaDelElegidoHTML(book) : ''}
       <button class="btn btn-primary mt-m" id="rvGo" data-enter>Seguir</button>
     </div>`);
   const wasWrapped = book._pickedBy === 'titulo';
@@ -248,7 +249,12 @@ function revealChosen(book, done){
 
 function afterChoose(chooser){
   const bothChose = State.picks.a && State.picks.b;
-  if(bothChose){ screenPassTo('a', ()=>screenRescue('a')); }
+  if(bothChose){
+    // ⚡ supercosecha: el resumen completo (cláusulas + portadas) va ANTES del rescate
+    const alRescate = ()=>screenPassTo('a', ()=>screenRescue('a'));
+    if(typeof Super!=='undefined' && Super.activa) superResumen(alRescate);
+    else alRescate();
+  }
   else { const next = other(chooser); screenPassTo(next, ()=>screenChoose(next)); }
 }
 

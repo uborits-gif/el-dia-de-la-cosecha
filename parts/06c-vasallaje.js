@@ -1593,9 +1593,9 @@ function vsFinalReveal(winner, linea, done){
 function recordDuelo(x, z, votos, ganador, acuerdo, modoLabel){
   if(!Array.isArray(State.duelos)) State.duelos = [];
   const A = State.players.a, B = State.players.b;
-  const cruzado = !acuerdo
-    && (votos.a.traidoPor||'').toLowerCase()===B.toLowerCase()
-    && (votos.b.traidoPor||'').toLowerCase()===A.toLowerCase();
+  // de quién es cada libro: el que lo rescató manda sobre el que lo trajo
+  const de = b => String((typeof creditoDe==='function' ? creditoDe(b) : (b.traidoPor||''))||'').toLowerCase();
+  const cruzado = !acuerdo && de(votos.a)===B.toLowerCase() && de(votos.b)===A.toLowerCase();
   State.duelos.push({
     fecha: fechaHoy(), modo: modoLabel||'Vasallaje', lugar:(VS.lugar||'').trim(),
     a:{ quien:A, quiso:votos.a.titulo }, b:{ quien:B, quiso:votos.b.titulo },
@@ -1603,6 +1603,36 @@ function recordDuelo(x, z, votos, ganador, acuerdo, modoLabel){
   });
   persistDuelos();
 }
+
+/* ---------- higiene de los duelos de final ----------
+   Las pruebas dejaron entradas imposibles (el mismo libro de los dos lados)
+   y con fechas que no corresponden a ningún vasallaje. Se limpian una vez. */
+const DUELOS_LIMPIEZA_V = 1;
+function duelosSonReales(d){
+  if(!d || !d.a || !d.b) return false;
+  const x = String(d.a.quiso||'').trim(), z = String(d.b.quiso||'').trim();
+  if(!x || !z) return false;
+  if(x.toLowerCase() === z.toLowerCase()) return false;      // imposible en una final
+  return true;
+}
+async function duelosLimpiar(){
+  let v = 0;
+  try{ v = +(localStorage.getItem('cosecha:duelos-limpieza') || 0); }catch(e){ return; }
+  if(v >= DUELOS_LIMPIEZA_V) return;
+  const antes = (State.duelos||[]).length;
+  // sólo se quedan los duelos que caen en una fecha con vasallaje de verdad
+  const conVasallaje = new Set();
+  [...(State.read||[]), ...(State.vault||[])].forEach(b=>{
+    (typeof evList==='function' ? evList(b,'puestos') : []).forEach(e=>{ if(e.fecha) conVasallaje.add(e.fecha); });
+  });
+  State.duelos = (State.duelos||[]).filter(d => duelosSonReales(d) && (!conVasallaje.size || conVasallaje.has(d.fecha)));
+  // sin repetidos: una final por fecha
+  const vistas = new Set();
+  State.duelos = State.duelos.filter(d => vistas.has(d.fecha) ? false : (vistas.add(d.fecha), true));
+  try{ localStorage.setItem('cosecha:duelos-limpieza', String(DUELOS_LIMPIEZA_V)); }catch(e){}
+  if(antes !== State.duelos.length && typeof persistDuelos === 'function') persistDuelos();
+}
+
 function persistDuelos(){
   const raw = JSON.stringify(State.duelos||[]);
   try{ localStorage.setItem('cosecha:duelos', raw); }catch(e){}
