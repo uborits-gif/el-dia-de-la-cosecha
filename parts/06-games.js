@@ -275,6 +275,7 @@ const GAMES = [
   { id:'bola8',     icon:'🎱', name:'La Bola 8',              desc:'El oráculo no apela.',                           run:()=>gameBola8() },
   { id:'cartas',    icon:'🃏', name:'Cartas del Caos',        desc:'La ruleta, con trampa.',                         run:()=>gameCartas() },
   { id:'micro',     icon:'♨️', name:'El Microondas del Terror', desc:'Sobrevive el que no explota.',                 run:()=>gameMicro() },
+  { id:'espiritismo',icon:'🕯️', name:'La Sesión',             desc:'Que lo elijan los muertos.',                     run:()=>gameSesion() },
   { id:'eligeA',    icon:'👸', name:'Elige Maru',             desc:'Maru decide. Uri paga.',                         run:()=>gameElige('a') },
   { id:'eligeB',    icon:'🤴', name:'Elige Uri',              desc:'Uri decide. Maru paga.',                         run:()=>gameElige('b') },
   /* — todavía en el taller: se ven, no se juegan — */
@@ -284,7 +285,6 @@ const GAMES = [
   { id:'papa',      icon:'💣', name:'La Papa Caliente',       desc:'La mecha corre. Vos rezá.',             wip:true, run:()=>gamePapa() },
   { id:'naufragio', icon:'🚢', name:'El Naufragio',           desc:'Dos salvavidas para diez.',             wip:true, run:()=>gameNaufragio() },
   { id:'globo',     icon:'🎈', name:'El Globo',               desc:'Alguien tiene que pesar menos.',        wip:true, run:()=>gameGlobo() },
-  { id:'espiritismo',icon:'🕯️', name:'La Sesión',             desc:'Que lo elijan los muertos.',            run:()=>gameSesion() },
   { id:'ovni',      icon:'👽', name:'La Abducción',           desc:'Al que se llevan, se lee.',             wip:true, run:()=>gameAbduccion() },
   { id:'dardo',     icon:'🎯', name:'El Dardo del Destino',   desc:'Un tiro. Sin apelación.',               wip:true, run:()=>gameDardo() },
 ];
@@ -315,13 +315,21 @@ function screenGameSelect(){
     grid.appendChild(tile);
   });
 
-  $('#surpriseBtn').addEventListener('click', ()=>{
+  /* El sorteo NO arranca el juego solo: primero pregunta.
+     A veces sale justo el que no querían jugar esa noche, y antes no había
+     forma de decir que no — ya estabas adentro. Ahora la ruleta propone y
+     ustedes aceptan, mandan a sortear de nuevo, o eligen a mano. */
+  function sortear(evitar){
     if(grid._spinning) return;
     grid._spinning = true;
-    $('#surpriseBtn').disabled = true;
+    const btn = $('#surpriseBtn');
+    if(btn) btn.disabled = true;
     // la sorpresa sólo recorre los que se pueden jugar: nunca cae en uno con candado
     const todas = $$('.game-tile', grid);
-    const libres = GAMES.map((g,i)=>({ g, tile:todas[i] })).filter(x=>!x.g.wip);
+    todas.forEach(t=>t.classList.remove('lit','chosen'));
+    let libres = GAMES.map((g,i)=>({ g, tile:todas[i] })).filter(x=>!x.g.wip);
+    // si acaban de rechazar uno, no se lo volvemos a ofrecer de una
+    if(evitar && libres.length > 1) libres = libres.filter(x=>x.g.id !== evitar);
     const target = Math.floor(Math.random()*libres.length);
     const loops = 2 + Math.floor(Math.random()*2);
     const total = loops*libres.length + target + 1;
@@ -341,10 +349,43 @@ function screenGameSelect(){
         Sound.fx.chosen();
         const r = tile.getBoundingClientRect();
         sparkleAt(r.left+r.width/2, r.top+r.height/2, 8);
-        setTimeout(()=>launchGame(g, tile), 1200);
+        setTimeout(()=>confirmarSorteo(g, tile), 700);
       }
     })();
-  });
+  }
+
+  /* el veredicto del sorteo, con derecho a pataleo */
+  function confirmarSorteo(g, tile){
+    const soltar = ()=>{
+      grid._spinning = false;
+      const btn = $('#surpriseBtn');
+      if(btn) btn.disabled = false;
+    };
+    const ov = overlay(`
+      <div class="ov-pop center" style="max-width:460px;">
+        <div class="eyebrow">El azar propone</div>
+        <div class="sorteo-ico">${gameIcon(g)}</div>
+        <h2 class="serif" style="font-size:26px;font-weight:700;margin:6px 0 0;">${escapeHtml(g.name)}</h2>
+        <p class="lead" style="font-size:14px;margin-top:8px;">${escapeHtml(g.desc)}</p>
+        <div class="row mt-m" style="flex-direction:column;align-items:stretch;">
+          <button class="btn btn-amber" id="sortSi" data-enter>Dale, jugamos</button>
+          <button class="btn btn-ghost" id="sortOtro">Que salga otro</button>
+          <button class="btn btn-ghost" id="sortMano" data-esc>Lo elegimos a mano</button>
+        </div>
+      </div>`);
+    $('#sortSi', ov).addEventListener('click', ()=>{
+      Sound.fx.click(); closeOverlay(ov); soltar(); launchGame(g, tile);
+    });
+    $('#sortOtro', ov).addEventListener('click', ()=>{
+      Sound.fx.click(); closeOverlay(ov); soltar(); sortear(g.id);
+    });
+    $('#sortMano', ov).addEventListener('click', ()=>{
+      Sound.fx.click(); closeOverlay(ov); soltar();
+      $$('.game-tile', grid).forEach(t=>t.classList.remove('lit','chosen'));
+    });
+  }
+
+  $('#surpriseBtn').addEventListener('click', ()=>sortear());
 }
 
 let currentGame = null;   // el método que se está jugando (para "volver a jugar")

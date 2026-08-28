@@ -96,6 +96,11 @@ const ALIAS={
   gritty:'rugged', identity:'cerebral', magicalrealism:'magical', multigenerational:'familydrama',
   murdermystery:'whodunit', periodismo:'academic', rebelion:'war', ruptura:'breakup',
   breakup2:'breakup', revenge:'murder',
+  /* los tropes que estaban en castellano pasaron a inglés (ver TROPES_EN en
+     03-core.js). Los tres primeros tienen dibujo propio con el nombre viejo,
+     así que el nombre nuevo apunta ahí y no se pierde la ilustración. */
+  rebellion:'rebelion', journalism:'periodismo', cult:'secta',
+  essays:'academic', essay:'academic',
   romancesubplot:'romance', satirical:'snarky', secta:'creepy', serialkiller:'murder',
   sisterdynamic:'siblings', strongfemalelead:'feminist', suburbandrama:'suburban',
   suspenseful:'suspense', tearjerker:'sad', techworld:'techie', teens:'teen', twisty:'puzzle',

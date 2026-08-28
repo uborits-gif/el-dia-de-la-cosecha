@@ -333,6 +333,38 @@ const evTiene = (b,key,fecha)=>evList(b,key).some(e=>e.fecha===fecha);
    contador viejo sólo puede ser un entero PELADO, nada más.               ---- */
 const evEsContador = v => /^\d+$/.test(String(v ?? '').trim());
 const evVacio = v => v===undefined || v===null || String(v).trim()==='';
+
+/* 🏷 LOS TROPES VAN TODOS EN INGLÉS.
+   El vocabulario es el de BOTM y es en inglés; unos pocos se habían cargado en
+   castellano y quedaban como una isla rara en el ADN y en la ruleta de tropes
+   (aparecían separados de su equivalente y con el nombre en otro idioma).
+   Acá se renombran de una vez: como corre dentro de migrateBook, se arregla
+   solo cualquier libro que entre —del archivo, de la nube o de un respaldo— y
+   la corrección se vuelve a subir sin que nadie tenga que editar nada a mano.
+   Los dibujos propios se conservan: el nombre nuevo tiene su alias en
+   scripts/gen-bookmoji.js apuntando al mismo SVG.                          */
+const TROPES_EN = {
+  'rebelion':   'Rebellion',
+  'periodismo': 'Journalism',
+  'secta':      'Cult',
+  'ensayo':     'Essays',
+  'ruptura':    'Break up',
+};
+/* misma normalización que bookmojiKey: sin acentos, sin espacios, minúsculas */
+const tropeClave = t => String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase().replace(/[^a-z0-9]/g,'');
+function tropesAlIngles(b){
+  if(evVacio(b.tropes)) return;
+  const vistos = new Set();
+  const lista = String(b.tropes).split(',')
+    .map(t => t.trim())
+    .filter(Boolean)
+    .map(t => TROPES_EN[tropeClave(t)] || t)
+    // renombrar puede dejar dos iguales (si el libro ya tenía el nombre inglés)
+    .filter(t => { const k = tropeClave(t); if(vistos.has(k)) return false; vistos.add(k); return true; });
+  b.tropes = lista.join(', ');
+}
+
 function migrateBook(b){
   const num = v => evEsContador(v) ? parseInt(v,10) : 0;
   /* ¿hay que migrar este campo? Sólo si está vacío o es un contador pelado.
@@ -376,6 +408,7 @@ function migrateBook(b){
     while(list.length < num(b.vasallajes)) list.unshift({ fecha:'', quien:'Vasallaje', extra:'puesto ?' });
     evWrite(b, 'puestos', list);
   }
+  tropesAlIngles(b);
   META_FIELDS.filter(f=>f.legacy).forEach(f=>delete b[f.key]);
   return b;
 }

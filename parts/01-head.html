@@ -890,6 +890,15 @@ h1.title{
 .gt-name{font-family:"sztos-variable",'Fraunces',serif;font-variation-settings:"wght" 660,"wdth" 102;font-size:15px;line-height:1.15;}
 .gt-desc{font-size:11.5px;color:var(--grey);margin-top:5px;line-height:1.4;}
 
+/* el juego que salió sorteado, en la tarjeta que pregunta si lo jugamos.
+   gameIcon() devuelve un emoji o un <img>, así que la caja sirve para los dos */
+.sorteo-ico{
+  height:74px;display:flex;align-items:center;justify-content:center;
+  font-size:46px;line-height:1;margin-top:6px;
+  animation:tilePop .5s var(--ease-pop);
+}
+.sorteo-ico .gt-img{width:70px;height:70px;}
+
 .mini-book{filter:drop-shadow(0 6px 10px rgba(0,0,0,.4));}
 
 /* --- rueda de la fortuna --- */
