@@ -853,13 +853,13 @@ function showPlacard(list, startIdx, opts={}){
     pintarAvg();
   }
 
-  function go(d){ idx = (idx + d + list.length) % list.length; Sound.fx.whoosh(); render(d); }
+  function go(d){ idx = (idx + d + list.length) % list.length; Sound.fx.pasarPagina(); render(d); }
   function onKey(e){
     if(e.key==='ArrowLeft') go(-1);
     else if(e.key==='ArrowRight') go(1);
   }
   function close(){
-    Sound.fx.click();
+    Sound.fx.cerrarLibro();
     document.removeEventListener('keydown', onKey);
     removeEventListener('resize', onResize);
     soltarLibro();          // 🧭 la dirección vuelve a donde estabas
@@ -872,6 +872,7 @@ function showPlacard(list, startIdx, opts={}){
   if($('#plNext', ov)) $('#plNext', ov).addEventListener('click', ()=>go(1));
   document.addEventListener('keydown', onKey);
   addEventListener('resize', onResize);
+  Sound.fx.abrirLibro();
   render(0);
   requestAnimationFrame(()=>placeArrows(render._scene));   // ya con las fuentes medidas
 }
@@ -1213,7 +1214,7 @@ function buildCloset(container, books, opts={}){
       fitSpineTitle(st, stSpan, hasTally ? 20 : 0);
 
       slot.append(under, scene);
-      slot.addEventListener('pointerenter', ()=>{ showDetail(book); Sound.fx.click(); });
+      slot.addEventListener('pointerenter', ()=>{ showDetail(book); Sound.fx.hover(); });
       slot.addEventListener('click', ()=>{
         showDetail(book);
         if(opts.onPick) opts.onPick(book, slot);

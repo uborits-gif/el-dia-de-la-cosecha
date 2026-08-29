@@ -116,11 +116,29 @@ const Sound = (function(){
 
   /* ====== EFECTOS NOMBRADOS ====== */
   const fx = {
-    // click de interfaz: tick suave y corto
-    click(){ tone({freq:820, dur:0.045, type:'sine', vol:0.07}); },
+    /* click de interfaz. Suena el sample; el tick sintético queda de respaldo
+       para los primeros toques, mientras el mp3 todavía se está decodificando */
+    click(){ if(!sfx('buttonClick', {vol:0.5})) tone({freq:820, dur:0.045, type:'sine', vol:0.07}); },
 
-    // transición de pantalla: soplo de aire sutil
+    /* transición de pantalla: soplo de aire sutil. Sin sample: esto suena en
+       CADA cambio de pantalla, y una hoja de papel en cada paso cansa. */
     whoosh(){ noise({dur:0.4, vol:0.05, lp:2600, hp:500, sweepTo:600, wet:.3}); },
+
+    /* pasar el mouse por encima de algo. Va sintético a propósito: el hover se
+       dispara decenas de veces al barrer la bóveda y el click de botón, que es
+       un sample, quedaba a los gritos. */
+    hover(){ tone({freq:940, dur:0.03, type:'sine', vol:0.035}); },
+
+    // la hoja que se desliza: para gestos deliberados, no para navegar
+    deslizar(){ sfx('paperSliding', {vol:0.4}); },
+
+    /* ---- papel y libro: los samples, para quien los quiera puntuales ---- */
+    abrirLibro(){ sfx('openBook', {vol:0.6}); },
+    cerrarLibro(){ sfx('closeBook', {vol:0.55}); },
+    pasarPagina(){ sfx('pageTurn', {vol:0.5}); },
+    hojear(){ sfx('pageFlipping', {vol:0.45}); },
+    agarrarPapel(){ sfx('pickUpPaper', {vol:0.5}); },
+    volverAtras(){ sfx('paperSlidingBack', {vol:0.4}); },
 
     // tic de la ruleta (pitch sube con el progreso 0..1)
     tick(p=0){
@@ -139,8 +157,9 @@ const Sound = (function(){
       noise({dur:0.16, vol:0.06, lp:3200, hp:600, delay:0.1});
     },
 
-    // libro cae a la bóveda: golpe seco + sub
+    // libro cae a la bóveda: la hoja que se suelta, con el golpe seco debajo
     drop(){
+      sfx('dropDownPaper', {vol:0.5});
       tone({freq:170, dur:0.16, type:'sine', vol:0.24, glideTo:52});
       tone({freq:55, dur:0.3, type:'sine', vol:0.22, glideTo:38, delay:0.02});
       noise({dur:0.2, vol:0.13, lp:420});
@@ -246,6 +265,45 @@ const Sound = (function(){
     droneNodes = null;
   }
 
+  /* ====== EFECTOS DE PAPEL Y LIBRO (samples cortos) ======
+     Los mp3 viven en SFX_B64 (parts/01g-sfx.js). Se decodifican UNA vez a
+     AudioBuffer y después se disparan desde el mismo contexto que el resto:
+     así no hay latencia en el click ni se recarga el data-URI en cada toque.
+     La decodificación arranca cuando el navegador desbloquea el audio; hasta
+     que termina, el que tenga respaldo sintético lo usa y nadie se entera. */
+  const sfxBuf = {};
+  let sfxPedido = false;
+  function sfxPrecargar(){
+    if(sfxPedido || typeof SFX_B64 === 'undefined') return;
+    const c = ac(); if(!c) return;
+    sfxPedido = true;
+    Object.keys(SFX_B64).forEach(id=>{
+      try{
+        const bin = atob(SFX_B64[id]);
+        const arr = new Uint8Array(bin.length);
+        for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+        c.decodeAudioData(arr.buffer, b=>{ sfxBuf[id] = b; }, ()=>{});
+      }catch(e){}
+    });
+  }
+  /* devuelve true si de verdad sonó, para que quien tenga respaldo sintético
+     sepa si le toca sonar a él */
+  function sfx(id, { vol=0.65, rate=1, delay=0 } = {}){
+    if(!enabled) return false;
+    const c = ac(); if(!c) return false;
+    if(!sfxBuf[id]){ sfxPrecargar(); return false; }
+    try{
+      const src = c.createBufferSource();
+      src.buffer = sfxBuf[id];
+      src.playbackRate.value = rate;
+      const g = c.createGain();
+      g.gain.value = vol;
+      src.connect(g); g.connect(c.destination);
+      src.start(c.currentTime + delay);
+      return true;
+    }catch(e){ return false; }
+  }
+
   /* ====== CLIPS MP3 (canciones + efectos embebidos) ====== */
   let activeClips = [];
   function playClip(id, {vol=0.9, loop=false}={}){
@@ -312,12 +370,12 @@ const Sound = (function(){
   }
 
   return { fx, tone, noise, pluck, playCelebration, stopCelebration, playClip, stopClips,
-           startMusic, stopMusic, PATTERNS,
+           startMusic, stopMusic, PATTERNS, sfx, sfxPrecargar,
            startDrone, swellDrone, stopDrone, setEnabled:setEnabledFull, isEnabled, ac };
 })();
 
 /* desbloqueo del contexto + botón de mute */
-document.addEventListener('pointerdown', ()=>Sound.ac(), { once:true });
+document.addEventListener('pointerdown', ()=>{ Sound.ac(); Sound.sfxPrecargar(); }, { once:true });
 /* el parlante va dibujado: el pack de iOS no trae el de "sin sonido" y
    quedaba el único emoji del sistema en toda la app */
 const SPK = on => `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor"

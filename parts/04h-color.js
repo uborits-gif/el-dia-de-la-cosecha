@@ -223,11 +223,31 @@ function colorSembrarPersonas(){
   try{ localStorage.setItem('cosecha:color-siembra', String(COLOR_SIEMBRA_V)); }catch(e){}
 }
 
+/* El color se guarda por NOMBRE, no por casilla.
+   Antes vivía en 'cosecha:color-a' / '-b', y con eso alcanzaba para que se
+   diera vuelta todo: en el club real la casilla 'a' terminó siendo Uri y no
+   Maru, así que cada uno aparecía en estadísticas con el color del otro. La
+   casilla se puede dar vuelta; el nombre no. */
+const _colorClave = who => {
+  const n = String((State.players||{})[who]||'').toLowerCase().trim()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'');
+  return n ? 'cosecha:color:' + n : '';
+};
 function colorJugador(who){
-  try{ return localStorage.getItem('cosecha:color-'+who) || ''; }catch(e){ return ''; }
+  try{
+    const k = _colorClave(who);
+    const elegido = k ? localStorage.getItem(k) : null;
+    if(elegido) return elegido;                       // lo que eligió esa persona
+    const n = String((State.players||{})[who]||'').toLowerCase().trim();
+    if(COLOR_PERSONAS[n]) return COLOR_PERSONAS[n];   // lo que ya sabemos de ella
+    return localStorage.getItem('cosecha:color-'+who) || '';   // lo viejo, por casilla
+  }catch(e){ return ''; }
 }
 function setColorJugador(who, id){
-  try{ localStorage.setItem('cosecha:color-'+who, id||''); }catch(e){}
+  try{
+    const k = _colorClave(who);
+    localStorage.setItem(k || ('cosecha:color-'+who), id||'');
+  }catch(e){}
 }
 
 /* afinidad segun el COMPAS: misma casa > vecino (comparte un eje) > lejano */

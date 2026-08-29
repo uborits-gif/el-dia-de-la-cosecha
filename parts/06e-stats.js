@@ -149,7 +149,8 @@ function computeStats(){
      de tiempo. Antes esto contaba eventos de cosecha y la línea contaba
      participaciones, así que la misma jornada daba 8 acá y 10 allá.
      Los rescates van aparte: no cuentan para el «5 y 5» de la noche. */
-  S.cosechas = (typeof construirHistoria === 'function' ? construirHistoria() : [])
+  const jornadas = (typeof construirHistoria === 'function' ? construirHistoria() : []);
+  S.cosechas = jornadas
     .map(j=>{
       const rescatados = j.libros.filter(x=>x.rescatadoPor).length;
       return {
@@ -228,7 +229,11 @@ function computeStats(){
     masRapido: dias.length ? read.filter(b=>numOf(b.diasLectura)).sort((x,y)=>numOf(x.diasLectura)-numOf(y.diasLectura))[0] : null,
     masLento: dias.length ? read.filter(b=>numOf(b.diasLectura)).sort((x,y)=>numOf(y.diasLectura)-numOf(x.diasLectura))[0] : null,
     velocidad: velocidad[0] || null,
-    lugares: tally(all.flatMap(b=>evList(b,'cosechas').map(e=>evVal(e.quien)))),
+    /* dónde se cosechó más: se cuentan NOCHES, no libros. Antes se recorrían los
+       eventos de cada libro, así que una cosecha de 10 libros sumaba 10 al lugar
+       y el ranking terminaba midiendo el tamaño de la mesa, no cuántas veces
+       jugaron ahí. Misma idea que mesesCos, más arriba. */
+    lugares: tally(jornadas.filter(j=>j.tipo === 'cosecha').map(j=>j.lugar)),
   };
   /* cuánto tardarían en leer toda la bóveda */
   const alDate = f => { const p = parseFecha(f); return p ? new Date(p.y, p.m, p.d) : null; };
@@ -394,10 +399,9 @@ function computeStats(){
     finalista: masVeces('final'),
     semifinalista: masVeces('semifinal'),
     convocado: conCuadros.slice().sort((x,y)=>y.ps.length-x.ps.length)[0] || null,
-    modos: tally(all.flatMap(b=>evList(b,'puestos')
-      .map(e=>(String(e.quien||'').match(/\(([^)]+)\)/)||[])[1]).filter(Boolean))),
-    lugares: tally(all.flatMap(b=>evList(b,'puestos')
-      .map(e=>(String(e.quien||'').match(/📍\s*(.+)$/)||[])[1]).filter(Boolean).map(s=>s.trim()))),
+    /* igual que en el diario: un torneo es UNO, tenga 8 libros o 32 */
+    modos:   tally(jornadas.filter(j=>j.tipo === 'vasallaje').map(j=>j.modo)),
+    lugares: tally(jornadas.filter(j=>j.tipo === 'vasallaje').map(j=>j.lugar)),
   };
   return S;
 }
@@ -458,9 +462,11 @@ function renderStats(container){
   const fig = (k, v, u, cls='', attrs='') => `<div class="st-fig" ${attrs}><div class="k">${k}</div>
     <div class="v ${cls}">${numHTML(v)}</div>${u?`<div class="u">${u}</div>`:''}</div>`;
   const figs = arr => `<div class="st-figs">${arr.join('')}</div>`;
-  const bars = (rows, color) => rows.length ? `<div class="st-bars">${rows.map(([lab,n],i)=>{
+  /* attrs: atributos extra por fila, para las barras que además son botones
+     (las de colores abren la lista de libros de ese color) */
+  const bars = (rows, color, attrs) => rows.length ? `<div class="st-bars">${rows.map(([lab,n],i)=>{
       const max = rows[0][1] || 1;
-      return `<div class="st-bar ${i===0?'top':''}">
+      return `<div class="st-bar ${i===0?'top':''}"${attrs ? ' ' + attrs(lab,i) : ''}>
         <div class="stb-h"><span class="stb-l">${escapeHtml(String(lab))}</span><span class="stb-n">${numHTML(n)}</span></div>
         <div class="stb-t"><i class="stb-f" style="--bc:${(typeof color==='function'?color(lab,i):color)||'var(--amber)'}" data-w="${Math.round(n/max*100)}"></i></div>
       </div>`;
@@ -805,11 +811,16 @@ function renderStats(container){
       };
       return `<section class="st-sec col-sec">
         <h3 class="st-h"><em>🎨</em> Los colores del club</h3>
-        <div class="st-note" style="margin:-8px 0 16px;">Cada punto es un libro. Dos ejes: <b>corazón ↔ mente</b> y <b>raíces ↔ alas</b>.
-          Pasá el mouse por una mancha, o tocala para ver sus libros.</div>
+        <div class="st-note" style="margin:-8px 0 16px;">Cuántos libros del club cayeron en cada color.
+          Tocá uno y aparecen cuáles son, con el porqué de cada uno.</div>
         ${bars(CO.reparto.map(([id,n])=>[(COLORES[id]||{}).nombre||id, n]),
+          /* OJO: acá va un COLOR, no un degradado. La CSS de .stb-f arma el
+             degradado sola con color-mix(in srgb, var(--bc) …), y color-mix
+             con un linear-gradient adentro es inválido: se descartaba toda la
+             declaración de background y las seis barras quedaban VACÍAS. */
           (lab,i)=>{ const c = COLORES[(CO.reparto[i]||[])[0]];
-            return c ? `linear-gradient(90deg,var(--amber),${c.hex2} 55%,${c.hex})` : 'var(--amber)'; })}
+            return c ? c.hex : 'var(--amber)'; },
+          (lab,i)=>`data-sub="${escapeHtml(String((CO.reparto[i]||[])[0]||''))}"`)}
         <div class="cmp-libros" id="cmpLibros"></div>
         <div class="col-quienes">${selector('a')}${selector('b')}</div>
         <div class="col-recos">${reco('a')}${reco('b')}</div>

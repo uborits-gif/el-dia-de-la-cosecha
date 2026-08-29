@@ -406,7 +406,7 @@ function sorterPantallaDuelo(){
   const responder = (r)=>{
     if(cerrado) return;
     cerrado = true;
-    try{ Sound.fx[r==='nada'?'click':'chosen'](); }catch(e){}
+    try{ Sound.fx.hojear(); Sound.fx[r==='nada'?'click':'chosen'](); }catch(e){}
     const ring = $('#soRing');
     if(ring) ring.classList.add(r==='a'?'gana-a':r==='b'?'gana-b':'empatan');
     setTimeout(()=>{
@@ -418,7 +418,7 @@ function sorterPantallaDuelo(){
   const deshacer = ()=>{
     if(cerrado || !sorterDeshacer(st)) return;
     cerrado = true;
-    try{ Sound.fx.click(); }catch(e){}
+    try{ Sound.fx.volverAtras(); }catch(e){}
     sorterGuardarCurso(who, st);
     sorterPantallaDuelo();
   };

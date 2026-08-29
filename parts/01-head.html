@@ -2481,6 +2481,16 @@ body.demo #app{padding-top:20px;}
   box-shadow:0 0 10px -3px var(--bc,var(--amber));
   transition:width .95s cubic-bezier(.22,.9,.26,1);}
 .st-bar.top .stb-l{color:var(--amber);font-weight:600;}
+/* en la sección de colores la barra ES el dato: más gruesa para que el color
+   se lea de verdad. En las otras secciones el filete de 4px está bien. */
+.col-sec .st-bar .stb-t{height:9px;border-radius:5px;}
+.col-sec .st-bar .stb-f{border-radius:5px;}
+/* las barras de color abren la lista de libros: que se note que se tocan */
+.st-bar[data-sub]{cursor:pointer;padding:5px 8px;margin:-5px -8px;border-radius:9px;
+  transition:background .18s;}
+.st-bar[data-sub]:hover{background:rgba(201,248,57,.06);}
+.st-bar[data-sub].elegido{background:rgba(201,248,57,.1);}
+.st-bar[data-sub].elegido .stb-l{color:var(--amber);font-weight:600;}
 
 /* ── entrada coreografiada: cada bloque y sus hijos suben al entrar en pantalla ── */
 .st-rv{opacity:0;transform:translateY(24px);

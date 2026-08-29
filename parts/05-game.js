@@ -147,7 +147,7 @@ function synopsisDeck(container, books, onChoose){
         <div class="dossier-kbd"><b>←</b><b>→</b> pasar expediente</div>
       </div>`;
     $('#dkChoose', d).addEventListener('click', ()=>{
-      Sound.fx.click();
+      Sound.fx.agarrarPapel();
       onChoose(book);
     });
     return d;
@@ -172,7 +172,7 @@ function synopsisDeck(container, books, onChoose){
     $$('.dossier', holder).forEach(d=>{ if(d!==cur) d.remove(); });
     idx = (to + books.length) % books.length;
     seen.add(idx);
-    Sound.fx.whoosh();
+    Sound.fx.pasarPagina();
     const next = dossierEl(books[idx], idx);
     next.classList.add(dir>0 ? 'in-r' : 'in-l');
     holder.appendChild(next);

@@ -101,6 +101,10 @@ const ALIAS={
      así que el nombre nuevo apunta ahí y no se pierde la ilustración. */
   rebellion:'rebelion', journalism:'periodismo', cult:'secta',
   essays:'academic', essay:'academic',
+  /* los tres países que entran al bombo del vasallaje (VS_PAISES, en
+     06c-vasallaje.js) no son tropes: sólo necesitan cara, y usan la de
+     International, que es de donde salen. */
+  argentina:'international', reinounido:'international', estadosunidos:'international',
   romancesubplot:'romance', satirical:'snarky', secta:'creepy', serialkiller:'murder',
   sisterdynamic:'siblings', strongfemalelead:'feminist', suburbandrama:'suburban',
   suspenseful:'suspense', tearjerker:'sad', techworld:'techie', teens:'teen', twisty:'puzzle',

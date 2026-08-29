@@ -43,10 +43,24 @@ function screenVasallaje(){
 const vsQuoteOf = b => (b.blindQuote || b.sinopsis || '').trim();
 /* cómo se nombra un libro según el modo: a ciegas, solo su frase */
 const vsName = b => (VS.blind && !VS.revealed) ? `«${vsQuoteOf(b)}»` : b.titulo;
+/* 🌍 LOS TRES PAÍSES DE LA CASA — entran al bombo como si fueran tropes.
+   NO son tropes: no se cargan en la ficha ni aparecen en el ADN. Viven sólo
+   acá, se resuelven contra el campo `país` del libro, y llevan el dibujo de
+   International (ver los alias en scripts/gen-bookmoji.js). */
+const VS_PAISES = ['Argentina', 'Reino Unido', 'Estados Unidos'];
+const esPaisDelBombo = t => VS_PAISES.includes(t);
+/* un libro puede tener más de un país ("Estados Unidos / Irán"): cuenta para
+   cada uno, no como una etiqueta suelta */
+const vsPaisesDe = b => String(b.pais||'').split('/').map(x=>x.trim()).filter(Boolean);
+
 function vsTropeCounts(){
   const m = new Map();
   State.vault.forEach(b=>(b.tropes||'').split(',').map(t=>t.trim()).filter(Boolean)
     .forEach(t=>m.set(t, (m.get(t)||0)+1)));
+  VS_PAISES.forEach(p=>{
+    const n = State.vault.filter(b=>vsPaisesDe(b).includes(p)).length;
+    if(n) m.set(p, n);
+  });
   // desde VS_NEED (4) entran al bombo: los gordos (8+) llenan el cuadro solos,
   // los flacos (4-7) se juntan de a dos. Así participan casi todos los tropes.
   return [...m.entries()].filter(([,n])=>n >= VS_NEED).sort((x,y)=>y[1]-x[1]);
@@ -56,9 +70,13 @@ function vsTropeViable(){
   const t = vsTropeCounts();
   return t.some(([,n])=>n >= VS_NEED*2) || t.length >= 2;
 }
-/* libros de la bóveda que tienen ese trope y todavía no están en juego */
+/* libros de la bóveda que tienen ese trope —o son de ese país— y todavía no
+   están en juego */
 const vsBooksWith = (trope, usados=[]) => State.vault.filter(b=>
-  (b.tropes||'').split(',').map(x=>x.trim()).includes(trope) && !usados.includes(b));
+  (esPaisDelBombo(trope)
+    ? vsPaisesDe(b).includes(trope)
+    : (b.tropes||'').split(',').map(x=>x.trim()).includes(trope))
+  && !usados.includes(b));
 
 /* ---- la memoria del cuadro: en qué puesto quedó cada libro ---- */
 /* puestos con nombre de torneo, sin numeritos: cuartos → semifinal → final → ganador */
@@ -247,6 +265,9 @@ async function vsModeTrope(){
     const solo = !taken.length && target.libres.length >= VS_NEED*2;
     const cuantos = solo ? VS_NEED*2 : Math.min(need, VS_NEED);
     setFace(target.t);
+    lab.textContent = esPaisDelBombo(target.t)
+      ? (taken.length ? 'Y AHORA VIENEN DE' : 'ESTA NOCHE VIENEN DE')
+      : (taken.length ? 'TU SEGUNDO TROPE ES' : 'TU TROPE ES');
     $('#vtSlot').classList.add('landed');
     ico.classList.add('pop');
     win.innerHTML = `${escapeHtml(target.t)}<small>${target.libres.length} libros${
@@ -260,7 +281,7 @@ async function vsModeTrope(){
 
     const enJuego = taken.flatMap(t=>t.books);
     if(enJuego.length < VS_NEED*2){
-      lab.textContent = 'TU SEGUNDO TROPE ES';
+      lab.textContent = 'GIRÁ DE NUEVO';
       win.textContent = '?';
       ico.innerHTML = ''; ico.classList.remove('pop');
       $('#vtSlot').classList.remove('landed');

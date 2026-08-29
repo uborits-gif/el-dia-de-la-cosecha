@@ -214,6 +214,7 @@ function confirmarCarta(who, id, onOk){
   $('#ccSi', ov).addEventListener('click', ()=>{
     closeOverlay(ov);
     consumirCarta(who, id);
+    Sound.fx.deslizar();
     Sound.fx.reveal();
     onOk();
   });
