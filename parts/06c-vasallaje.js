@@ -94,6 +94,22 @@ function vsStampPlace(b, place){
   const lug = (VS.lugar||'').replace(/[·|]/g,'-').trim();
   evPush(b, 'puestos', { fecha:hoy, quien:`Vasallaje (${modo})${lug?` 📍${lug}`:''}`, extra: VS_PLACE[place] || place });
 }
+/* ⚔️ QUIÉN PELEÓ CONTRA QUIÉN — se anota en los DOS libros del cruce.
+   Sin esto sólo quedaba el puesto al que llegó cada uno, y el cuadro de la
+   historia tenía que deducir los enfrentamientos: los inventaba. Un cruce se
+   juega una sola vez, así que se identifica por fecha + ronda; un libro sí
+   juega varias rondas el mismo día, por eso NO alcanza con mirar la fecha. */
+function vsStampCruce(b, rival, ronda, gano){
+  if(!b || !rival) return;
+  const ya = evList(b, 'cruces').some(e=>e.fecha === fechaHoy() && e.quien === ronda);
+  if(ya) return;
+  // '·' y '|' parten la bitácora: el título del rival se sanea antes de entrar
+  const t = String(rival.titulo||'').replace(/[·|]/g,'-').trim();
+  evPush(b, 'cruces', { quien: ronda, extra: (gano ? 'ganó a ' : 'perdió con ') + t });
+}
+/* el nombre de la ronda según cuántos libros seguían en pie */
+const vsRondaDe = vivos => granPlace(vivos);
+
 /* reparte 8 libros en dos lados de 4 (respeta dueño original si se puede) */
 function vsSplit(books){
   const eight = shuffled(books).slice(0, VS_NEED*2);
@@ -883,6 +899,10 @@ function resolveMatch(r, m){
   const ka = `n${r}_${2*m}`, kb = `n${r}_${2*m+1}`, kt = `n${r+1}_${m}`;
   const perdedor = cr.winner===cr.a ? cr.b : cr.a;
   perdedor._vsPlace = granPlace(VS.N / Math.pow(2, r));   // dónde quedó, por tamaño de ronda
+  // contra quién peleó cada uno: se guarda ACÁ, cuando todavía se sabe
+  const ronda = vsRondaDe(VS.N / Math.pow(2, r));
+  vsStampCruce(cr.a, cr.b, ronda, cr.winner === cr.a);
+  vsStampCruce(cr.b, cr.a, ronda, cr.winner === cr.b);
   paintEdge(cr.winner===cr.a ? ka : kb, kt, true);
   paintEdge(cr.winner===cr.a ? kb : ka, kt, false);
   vsUI.nodes[cr.winner===cr.a ? kb : ka].el.classList.add('out');
@@ -1157,6 +1177,9 @@ function resolveGrand(winners){
   winners.forEach(w=>w._vsPlace = 'campeon');
   if(!wA) VS.grand.a._vsPlace = 'finalista';
   if(!wB) VS.grand.b._vsPlace = 'finalista';
+  // la final también es un cruce, y es el que más importa recordar
+  vsStampCruce(VS.grand.a, VS.grand.b, 'final', wA);
+  vsStampCruce(VS.grand.b, VS.grand.a, 'final', wB);
   const FK = VS.finalKeys || { a:'n0_0', b:'n0_1', win:'n1_0' };
   paintEdge(FK.a, FK.win, wA);
   paintEdge(FK.b, FK.win, wB);

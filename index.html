@@ -3410,7 +3410,10 @@ body.demo #app{padding-top:20px;}
 .hx-sub{font-size:11.5px;color:var(--grey);margin-top:3px;}
 .hx-game{display:flex;align-items:center;gap:9px;padding:6px 13px 6px 8px;border-radius:12px;
   background:rgba(255,255,255,.04);border:1px solid var(--border-soft);}
-.hx-game-ico{font-size:26px;line-height:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));}
+.hx-game-ico{font-size:26px;line-height:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));
+  display:flex;align-items:center;justify-content:center;height:34px;}
+/* los juegos con ilustración propia traen un <img>, no un emoji */
+.hx-game-ico .gt-img{width:34px;height:34px;}
 .hx-game-n{font-family:'Fraunces',serif;font-weight:700;font-size:12.5px;color:var(--bone);max-width:130px;line-height:1.15;}
 .hx-tipo{font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;white-space:nowrap;}
 .hx-tipo.cos{color:var(--amber);} .hx-tipo.vasa{color:#E8C34A;}
@@ -3454,7 +3457,11 @@ body.demo #app{padding-top:20px;}
 .hx-flag .f-win{color:#E8C34A;} .hx-flag .f-out{color:#ff9a9a;}
 .hx-flag .f-res{color:#6BF7A6;} .hx-flag .f-anu{color:var(--grey);}
 /* el vasallaje: EL CUADRO en miniatura, con sus llaves */
-.hx-treewrap{margin-top:14px;overflow-x:auto;scrollbar-width:none;display:flex;justify-content:center;}
+.hx-treewrap{margin-top:14px;overflow-x:auto;scrollbar-width:none;display:flex;justify-content:center;
+  flex-direction:column;align-items:center;}
+/* cuando el torneo es viejo y sus cruces no quedaron anotados, se dice */
+.hx-recon{margin-top:8px;font-size:10.5px;letter-spacing:.06em;color:var(--grey);
+  text-align:center;font-style:italic;}
 .hx-treewrap::-webkit-scrollbar{display:none;}
 .hx-tree{position:relative;flex:none;}
 .hx-tree svg{position:absolute;inset:0;overflow:visible;}
@@ -3465,6 +3472,11 @@ body.demo #app{padding-top:20px;}
   border-radius:2.5px;background-size:cover;background-position:center;background-color:var(--card-hi);
   box-shadow:0 3px 8px rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.1);}
 .hx-tn.champ{border:1.5px solid #E8C34A;box-shadow:0 0 0 3px rgba(232,195,74,.2),0 6px 16px rgba(0,0,0,.7);z-index:3;}
+/* los libros del cuadro abren su ficha, igual que los de las cosechas */
+.hx-tn{cursor:pointer;transition:transform .16s, box-shadow .16s;}
+.hx-tn:hover{transform:translate(-50%,-50%) scale(1.16);z-index:4;
+  box-shadow:0 6px 18px rgba(0,0,0,.75);}
+.hx-tn.champ:hover{transform:translate(-50%,-50%) scale(1.12);}
 .hx-tn-crown{position:absolute;top:-11px;left:50%;transform:translateX(-50%);font-size:14px;
   filter:drop-shadow(0 2px 3px rgba(0,0,0,.8));}
 .hx-winner{margin-top:14px;padding:9px 13px;border-radius:10px;font-size:13px;color:var(--bone-dim);
@@ -3959,7 +3971,13 @@ body.demo #app{padding-top:20px;}
 :root{ --look:none; }
 #ambient, #grain, #vignette, #app, #flowbar, #toast,
 #muteBtn, #resetBtn, #demoBtn, #demoBar, #abortBtn,
-.overlay, .libtip, .coltip, .esp, .pp-boomflash, .sc-telon{ filter:var(--look); }
+.overlay, .libtip, .coltip, .esp, .pp-boomflash, .sc-telon, .pl-vuelo{ filter:var(--look); }
+/* 📖 las capas del libro que vuela al abrir la ficha: cada una lleva UNA
+   propiedad (posición, arco, escala, deformación) para que se compongan
+   solas y ninguna curva pise a la otra. Ver parts/06h-abrir.js */
+.pl-arco, .pl-esc, .pl-def{ width:100%; height:100%; transform-origin:50% 50%; }
+.pl-vuelo, .pl-arco, .pl-esc, .pl-def{ will-change:transform; }
+.pl-vuelo .book-scene{ display:block; }
 
 /* el panel se queda afuera del filtro, si no no se puede juzgar nada */
 .look{position:fixed;right:14px;bottom:14px;z-index:9999;width:min(300px,92vw);
@@ -4745,6 +4763,12 @@ const META_FIELDS = [
   { key:'victorias',     file:'victorias',       aliases:['victoria','ganadas'],              label:'Victorias',        sec:'club', auto:true, log:true, ev:'método' },
   { key:'anulaciones',   file:'anulaciones',     aliases:['anulacion','anulación'],           label:'Anulaciones',      sec:'club', auto:true, log:true, ev:'motivo' },
   { key:'puestos',       file:'puestos',         aliases:['puesto','cuadro'],                 label:'Puestos',          sec:'club', auto:true, log:true, ev:'torneo' },
+  /* ⚔️ contra quién peleó, cruce por cruce. Los `puestos` guardan hasta DÓNDE
+     llegó un libro, pero no contra quién: sin esto, el cuadro de la historia
+     tenía que adivinar los enfrentamientos a partir de los puestos, y los
+     inventaba. Así se perdió «Condenada vs Van a morir todos».
+     El extra dice "ganó a Rival" o "perdió con Rival".                     */
+  { key:'cruces',        file:'cruces',          aliases:['enfrentamientos','duelos'],        label:'Cruces',           sec:'club', auto:true, log:true, ev:'ronda' },
   { key:'premios',       file:'premios',         aliases:['premio','mencion','mención'],      label:'Premios',          sec:'club', auto:true, log:true, ev:'premio' },
   { key:'puntajes',      file:'puntajes',        aliases:['puntaje','estrellas'],             label:'Puntajes',         sec:'club' },
   { key:'diasLectura',   file:'dias de lectura', aliases:['días de lectura'],                 label:'Leído en',         sec:'club', num:true, suffix:' días' },
@@ -5527,14 +5551,21 @@ const App = {
     // no se va solo al cambiar de pantalla: se limpia acá
     document.querySelectorAll("body > .sc-telon").forEach(e=>e.remove());
     const appEl = $('#app');
-    const old = appEl.querySelector('.screen.in');
-    if(old){
+    /* Se van TODAS las pantallas que había, no sólo la que tenía .in.
+       La clase .in la pone un doble requestAnimationFrame, así que una pantalla
+       creada y reemplazada antes de ese cuadro —navegando rápido, o con la
+       pestaña en segundo plano, donde rAF no corre— nunca la recibía y no se
+       borraba nunca. Quedaba en el DOM sin .in ni .out, y una pantalla sin .out
+       sigue en el flujo con min-height:100vh: cada una sumaba una pantalla
+       entera de scroll de más. */
+    appEl.querySelectorAll('.screen').forEach(old=>{
       old.classList.remove('in');
-      old.classList.add('out');
+      old.classList.add('out');           // .out la saca del flujo además de ocultarla
       // sin ids: que los selectores no encuentren la pantalla saliente
       old.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+      old.removeAttribute('id');
       setTimeout(()=>old.remove(), 420);
-    }
+    });
     const scr = document.createElement('div');
     scr.className = 'screen';
     scr.innerHTML = `<div class="wrap">${html}</div>`;
@@ -6498,6 +6529,10 @@ function showPlacard(list, startIdx, opts={}){
   Sound.fx.abrirLibro();
   render(0);
   requestAnimationFrame(()=>placeArrows(render._scene));   // ya con las fuentes medidas
+  // 📖 el libro sale de donde lo tocaste y la ficha entra detrás.
+  // Va por setTimeout y no por rAF: con la pestaña en segundo plano el rAF
+  // no corre, y la apertura quedaba sin engancharse nunca.
+  setTimeout(()=>{ if(typeof abrirFicha === 'function') abrirFicha(ov, list[idx]); }, 0);
 }
 
 /* ============================================================
@@ -6952,8 +6987,8 @@ function buildVaultGrande(container, books, opts={}){
   };
   const applyActive = (i)=>{
     if(i === active) return;
-    if(active >= 0) pose(slots[active], false);
-    active = i; pose(slots[active], true);
+    if(active >= 0){ pose(slots[active], false); slots[active].classList.remove('presente'); }
+    active = i; pose(slots[active], true); slots[active].classList.add('presente');
     const bk = books[active];
     $('#vgTitle', root).textContent = bk.titulo;
     $('#vgAuthor', root).textContent = bk.autor || '';
@@ -13597,6 +13632,22 @@ function vsStampPlace(b, place){
   const lug = (VS.lugar||'').replace(/[·|]/g,'-').trim();
   evPush(b, 'puestos', { fecha:hoy, quien:`Vasallaje (${modo})${lug?` 📍${lug}`:''}`, extra: VS_PLACE[place] || place });
 }
+/* ⚔️ QUIÉN PELEÓ CONTRA QUIÉN — se anota en los DOS libros del cruce.
+   Sin esto sólo quedaba el puesto al que llegó cada uno, y el cuadro de la
+   historia tenía que deducir los enfrentamientos: los inventaba. Un cruce se
+   juega una sola vez, así que se identifica por fecha + ronda; un libro sí
+   juega varias rondas el mismo día, por eso NO alcanza con mirar la fecha. */
+function vsStampCruce(b, rival, ronda, gano){
+  if(!b || !rival) return;
+  const ya = evList(b, 'cruces').some(e=>e.fecha === fechaHoy() && e.quien === ronda);
+  if(ya) return;
+  // '·' y '|' parten la bitácora: el título del rival se sanea antes de entrar
+  const t = String(rival.titulo||'').replace(/[·|]/g,'-').trim();
+  evPush(b, 'cruces', { quien: ronda, extra: (gano ? 'ganó a ' : 'perdió con ') + t });
+}
+/* el nombre de la ronda según cuántos libros seguían en pie */
+const vsRondaDe = vivos => granPlace(vivos);
+
 /* reparte 8 libros en dos lados de 4 (respeta dueño original si se puede) */
 function vsSplit(books){
   const eight = shuffled(books).slice(0, VS_NEED*2);
@@ -14386,6 +14437,10 @@ function resolveMatch(r, m){
   const ka = `n${r}_${2*m}`, kb = `n${r}_${2*m+1}`, kt = `n${r+1}_${m}`;
   const perdedor = cr.winner===cr.a ? cr.b : cr.a;
   perdedor._vsPlace = granPlace(VS.N / Math.pow(2, r));   // dónde quedó, por tamaño de ronda
+  // contra quién peleó cada uno: se guarda ACÁ, cuando todavía se sabe
+  const ronda = vsRondaDe(VS.N / Math.pow(2, r));
+  vsStampCruce(cr.a, cr.b, ronda, cr.winner === cr.a);
+  vsStampCruce(cr.b, cr.a, ronda, cr.winner === cr.b);
   paintEdge(cr.winner===cr.a ? ka : kb, kt, true);
   paintEdge(cr.winner===cr.a ? kb : ka, kt, false);
   vsUI.nodes[cr.winner===cr.a ? kb : ka].el.classList.add('out');
@@ -14660,6 +14715,9 @@ function resolveGrand(winners){
   winners.forEach(w=>w._vsPlace = 'campeon');
   if(!wA) VS.grand.a._vsPlace = 'finalista';
   if(!wB) VS.grand.b._vsPlace = 'finalista';
+  // la final también es un cruce, y es el que más importa recordar
+  vsStampCruce(VS.grand.a, VS.grand.b, 'final', wA);
+  vsStampCruce(VS.grand.b, VS.grand.a, 'final', wB);
   const FK = VS.finalKeys || { a:'n0_0', b:'n0_1', win:'n1_0' };
   paintEdge(FK.a, FK.win, wA);
   paintEdge(FK.b, FK.win, wB);
@@ -16614,7 +16672,7 @@ function computeStats(){
     semifinalista: masVeces('semifinal'),
     convocado: conCuadros.slice().sort((x,y)=>y.ps.length-x.ps.length)[0] || null,
     /* igual que en el diario: un torneo es UNO, tenga 8 libros o 32 */
-    modos:   tally(jornadas.filter(j=>j.tipo === 'vasallaje').map(j=>j.modo)),
+    modos:   tally(jornadas.filter(j=>j.tipo === 'vasallaje').map(j=>mayus1(j.modo))),
     lugares: tally(jornadas.filter(j=>j.tipo === 'vasallaje').map(j=>j.lugar)),
   };
   return S;
@@ -17321,6 +17379,7 @@ function construirHistoria(){
 }
 
 /* el juego con el que se definió: icono grande del catálogo */
+const mayus1 = t => { const x = String(t||'').trim(); return x ? x[0].toUpperCase() + x.slice(1) : x; };
 function juegoDe(metodo){
   const m = String(metodo||'').toLowerCase().replace(/^vasallaje\s*·?\s*/,'').trim();
   if(!m) return null;
@@ -17328,9 +17387,10 @@ function juegoDe(metodo){
     const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
     const g = GAMES.find(x=>norm(x.name)===norm(m))
            || GAMES.find(x=>norm(x.name).includes(norm(m)) || norm(m).includes(norm(x.name)));
-    if(g) return { icon:g.icon, name:g.name };
+    if(g) return { icon:(typeof gameIcon==='function' ? gameIcon(g) : g.icon), name:g.name };
   }
-  return { icon:'🎲', name:metodo };
+  // no es un minijuego (un modo de vasallaje, «Papelitos»…): dado y nombre tal cual
+  return { icon:'🎲', name:mayus1(metodo) };
 }
 const HX_RANK = p => /ganador|campe/i.test(p||'') ? 4 : /^final$/i.test(p||'') ? 3 : /semi/i.test(p||'') ? 2 : 1;
 
@@ -17373,17 +17433,78 @@ function screenHistoria(foco){
     const rk = p => HX_RANK(p && p.puesto);
     let N = 1; while(N < ps.length) N *= 2;
     const K = Math.log2(N);
-    const byRank = ps.slice().sort((a,b)=>rk(b)-rk(a));
-    while(byRank.length < N) byRank.push(null);
-    let seed = [1];
-    while(seed.length < N){ const m = seed.length*2 + 1; seed = seed.flatMap(x=>[x, m-x]); }
-    const capas = [ seed.map(s=>byRank[s-1]) ];
+    /* Los cruces REALES de esa noche. Desde que se guardan (bitácora 'cruces'),
+       el cuadro muestra quién peleó contra quién de verdad. Para los torneos
+       de antes no existe el dato: ahí se siembra por puesto, como siempre,
+       pero la tarjeta lo aclara en vez de hacerlo pasar por cierto. */
+    const limpio = t => String(t||'').replace(/[·|]/g,'-').trim();
+    const crucesDe = pp => (typeof evList === 'function' ? evList(pp.b,'cruces') : [])
+      .filter(e=>e.fecha === j.fecha);
+    /* de dos libros, cuál le ganó al otro esa noche */
+    const ganoDe = (a, b)=>{
+      if(!a) return b; if(!b) return a;
+      const e = crucesDe(a).find(x=>limpio(x.extra).endsWith(limpio(b.b.titulo)));
+      if(e) return /^gan/.test(String(e.extra)) ? a : b;
+      return rk(a) >= rk(b) ? a : b;                    // sin dato: el que llegó más lejos
+    };
+    /* la primera ronda, tal como se jugó: pares sin repetir (lo anotan los dos) */
+    const porTitulo = new Map(ps.map(x=>[limpio(x.b.titulo), x]));
+    const RONDAS = ['dieciseisavos','octavos','cuartos','semifinal','final'];
+    const paresPorRonda = new Map();
+    ps.forEach(pp=>crucesDe(pp).forEach(e=>{
+      const m = String(e.extra||'').match(/^(gan|perd)\S*\s+\S+\s+([\s\S]+)$/);
+      const otro = m ? porTitulo.get(limpio(m[2])) : null;
+      if(!otro || otro === pp) return;
+      const ronda = String(e.quien||'').toLowerCase().trim();
+      if(!paresPorRonda.has(ronda)) paresPorRonda.set(ronda, new Map());
+      const clave = [String(pp.b.id), String(otro.b.id)].sort().join('|');
+      if(!paresPorRonda.get(ronda).has(clave)) paresPorRonda.get(ronda).set(clave, [pp, otro]);
+    }));
+    /* El orden de las hojas se arma DESDE LA FINAL HACIA ATRÁS: cada finalista
+       se abre en el cruce que ganó, y así hasta la primera ronda. Ordenarlas
+       por el orden en que aparecen los cruces no alcanza — los dos que se
+       enfrentaron en la final pueden terminar en la misma mitad del cuadro y
+       el dibujo los cruza en semis. (Pasó: Condenada, que perdió la final,
+       aparecía peleando la semi contra Diez negritos.) */
+    const rondas = RONDAS.filter(r => paresPorRonda.has(r));   // de la primera a la final
+    const parDe = (p, ri)=>{
+      const m = paresPorRonda.get(rondas[ri]);
+      if(!m) return null;
+      for(const pr of m.values()) if(pr[0] === p || pr[1] === p) return pr;
+      return null;
+    };
+    const hojasDe = (p, ri)=>{
+      if(ri < 0) return [p];
+      const par = parDe(p, ri);
+      if(!par) return [p];
+      return [...hojasDe(par[0], ri-1), ...hojasDe(par[1], ri-1)];
+    };
+    let orden = null;
+    const finM = paresPorRonda.get('final');
+    if(finM && finM.size === 1 && rondas.length){
+      const [a, b] = [...finM.values()][0];
+      const iFin = rondas.indexOf('final');
+      const h = [...hojasDe(a, iFin-1), ...hojasDe(b, iFin-1)];
+      // sólo vale si salieron todos los libros, sin repetir
+      if(h.length === ps.length && new Set(h).size === h.length) orden = h;
+    }
+    const reconstruido = !orden;
+
+    let capas;
+    if(orden){
+      const c0 = orden.slice();
+      while(c0.length < N) c0.push(null);
+      capas = [c0.slice(0, N)];
+    }else{
+      const byRank = ps.slice().sort((a,b)=>rk(b)-rk(a));
+      while(byRank.length < N) byRank.push(null);
+      let seed = [1];
+      while(seed.length < N){ const m = seed.length*2 + 1; seed = seed.flatMap(x=>[x, m-x]); }
+      capas = [ seed.map(s=>byRank[s-1]) ];
+    }
     for(let r=1; r<=K; r++){
       const prev = capas[r-1], nxt = [];
-      for(let i=0;i<prev.length;i+=2){
-        const a = prev[i], b = prev[i+1];
-        nxt.push(!a ? b : !b ? a : (rk(a) >= rk(b) ? a : b));
-      }
+      for(let i=0;i<prev.length;i+=2) nxt.push(ganoDe(prev[i], prev[i+1]));
       capas.push(nxt);
     }
     const cw = N>16 ? 13 : N>8 ? 17 : 23, ch = Math.round(cw*1.5);
@@ -17430,7 +17551,9 @@ function screenHistoria(foco){
     }
     return `<div class="hx-treewrap"><div class="hx-tree" style="width:${W}px;height:${H}px;">
       <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${paths.join('')}</svg>
-      ${nodos.join('')}</div></div>`;
+      ${nodos.join('')}</div>${reconstruido
+        ? `<div class="hx-recon" title="De este torneo se guardó hasta dónde llegó cada libro, pero no contra quién jugó">cuadro reconstruido — los cruces de esa noche no quedaron anotados</div>`
+        : ''}</div>`;
   };
 
   show(`
@@ -17499,7 +17622,7 @@ function screenHistoria(foco){
     try{ Sound.fx.click(); }catch(e){}
     toast('Dirección de esta jornada copiada a la barra');
   }));
-  $$('.hx-cell', document).forEach(el=>el.addEventListener('click', ()=>{
+  $$('.hx-cell, .hx-tn', document).forEach(el=>el.addEventListener('click', ()=>{
     const id = el.dataset.id;
     const list = [...State.read, ...State.vault];
     const i = list.findIndex(x=>String(x.id)===id);
@@ -17867,6 +17990,296 @@ function lookArrancar(){
     }
   });
 }
+/* ============================================================
+   📖 CÓMO SE ABRE UN LIBRO
+   El libro SALE de donde lo tocaste —del lomo en la bóveda, de la tapa
+   en el estante—, vuela hasta el centro y se queda ahí; los tres bloques
+   de la ficha entran detrás.
+
+   ── El movimiento, capa por capa ──
+   Todo el vuelo está parenteado como en After Effects: en vez de meter
+   posición, escala y giro en una sola tanda de keyframes (que en los
+   empalmes produce cambios bruscos de velocidad), cada propiedad vive en
+   su propia capa con su propia curva y su propia duración. Se componen
+   solas y el resultado no tiene junturas:
+
+       .pl-vuelo   posición    (recorrido A→B)
+       .pl-arco    arco        (se comba en el aire, no viaja recto)
+       .pl-esc     escala      (dura un poco más: aterriza y sigue asentando)
+       .pl-def     deformación (estirar y comprimir en el pico de velocidad)
+       .book3d     giro        (arranca tarde y termina último)
+
+   ── Por qué antes pegaba un salto al final ──
+   El libro de la ficha RESPIRA (animación `breathe`, ±7px). Medíamos su
+   posición con la respiración a mitad de camino, el vuelo aterrizaba en
+   ese punto medido, y al cambiar el clon por el libro real éste ya se
+   había movido: se veía un tirón. Ahora la respiración se congela antes
+   de medir y se suelta después del cambio — como `breathe` arranca en 0,
+   al soltarla no hay salto. El clon además se arma con el mismo tamaño y
+   las mismas opciones que el libro final, así el cambio es invisible.
+   ============================================================ */
+
+const ABRIR_VARIANTES = [
+  { id:'vuelo',   n:'Vuelo directo' },
+  { id:'despega', n:'Se despega' },
+  { id:'abre',    n:'Se abre en el aire' },
+  { id:'lomo',    n:'Del lomo a la tapa' },
+  { id:'camara',  n:'La cámara se acerca' },
+];
+let ABRIR_VAR = 0;
+try{ ABRIR_VAR = Math.min(4, Math.max(0, +(localStorage.getItem('cosecha:abrir')||0))); }catch(e){}
+
+/* Curvas propias. Ninguna es lineal y ninguna frena de golpe: todas tienen
+   entrada suave y una cola larga, que es lo que hace que el final "se
+   asiente" en vez de cortarse. */
+const E_POS  = 'cubic-bezier(.24,.72,.18,1)';    // el recorrido
+const E_ESC  = 'cubic-bezier(.20,.66,.12,1)';    // la escala, más tendida
+const E_GIRO = 'cubic-bezier(.22,.68,.20,1)';    // el giro, el último en parar
+const E_SENO = 'cubic-bezier(.42,0,.58,1)';      // ida y vuelta (arco, deformación)
+const E_PANEL= 'cubic-bezier(.18,.78,.22,1)';    // los bloques de la ficha
+
+/* ---------- de dónde sale el libro ----------
+   No hace falta que las 12 llamadas a showPlacard pasen el origen: alcanza
+   con recordar qué se tocó y subir al contenedor que representa al libro. */
+const ABRIR_ORIGENES = '.vg2-slot, .vault-slot, .book-scene, .hx-cell, .hx-tn, .cmp-libro,' +
+                       '.col-reco-item, .st-htl-item, .hc-holder, .cmp-libro-cov, .rz-premio';
+let _abrirDesde = null;
+document.addEventListener('pointerdown', e=>{
+  const t = e.target;
+  if(!t || !t.closest) return;
+  // en la bóveda grande la ficha se abre con «Inspeccionar volumen», que no es
+  // un libro: el vuelo tiene que salir igual del que está presentado
+  _abrirDesde = t.closest(ABRIR_ORIGENES)
+             || document.querySelector('.vg2-slot.presente')
+             || null;
+}, true);
+
+const abrirReduce = ()=> matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const _capa = (cls, hijo)=>{ const d = document.createElement('div'); d.className = cls;
+  if(hijo) d.appendChild(hijo); return d; };
+
+/* ---------- la animación ---------- */
+function abrirFicha(ov, book, intento){
+  if(abrirReduce()) return;
+  const destino = ov.querySelector('.pl2-book .book-scene');
+  const izq  = ov.querySelector('.pl2-left');
+  const der  = ov.querySelector('.pl2-right');
+  const pill = ov.querySelector('.pl2-pill');
+  if(!destino) return;
+
+  /* Los bloques se esconden YA: si esperáramos a poder medir, se verían un
+     cuadro antes de arrancar y quedaría un parpadeo. */
+  if(!intento) [izq, der, pill].forEach(e=>{ if(e) e.style.opacity = '0'; });
+  const mostrar = ()=>[izq, der, pill].forEach(e=>{ if(e) e.style.removeProperty('opacity'); });
+
+  /* La ficha recién montada todavía no tiene medidas: se reintenta hasta que
+     el libro de destino ocupe algo. (setTimeout y no rAF: con la pestaña en
+     segundo plano el rAF no corre y la apertura no se enganchaba nunca.) */
+  const rD0 = destino.getBoundingClientRect();
+  if(!rD0.width || !rD0.height){
+    if((intento || 0) < 10) return setTimeout(()=>abrirFicha(ov, book, (intento||0)+1), 16);
+    mostrar();
+    return;
+  }
+
+  /* 🫁 se congela la respiración ANTES de medir: si el libro está a mitad de
+     su vaivén, todo el vuelo aterriza corrido y al cambiarlo se ve el tirón */
+  const flota = destino.querySelector('.book-float');
+  const somb  = destino.querySelector('.book-shadow');
+  if(flota) flota.classList.add('still');
+  if(somb)  somb.classList.add('still');
+  const rD = destino.getBoundingClientRect();          // ya quieto: medida exacta
+  mostrar();
+
+  const respirar = ()=>{
+    if(flota) flota.classList.remove('still');
+    if(somb)  somb.classList.remove('still');
+  };
+
+  const fuente = _abrirDesde && document.body.contains(_abrirDesde) ? _abrirDesde : null;
+  const rF = fuente ? fuente.getBoundingClientRect() : null;
+  const hayVuelo = !!(rF && rF.width && rF.height &&
+    rF.bottom > 0 && rF.top < innerHeight && rF.right > 0 && rF.left < innerWidth);
+
+  const V = ABRIR_VARIANTES[ABRIR_VAR].id;
+  const anim = [];
+
+  if(!hayVuelo){
+    respirar();
+  } else {
+    /* El clon se arma con el MISMO tamaño y las mismas opciones que el libro
+       final. Ojo con la escala: la ficha se achica sola para entrar en
+       pantalla, así que el libro dibujado mide MENOS que su --w. El vuelo
+       tiene que terminar en esa escala achicada (k) y no en 1, o aterriza
+       más grande que el libro real y el cambio pega un tirón. */
+    const wReal = parseFloat(destino.style.getPropertyValue('--w')) || rD.width;
+    const hReal = wReal * 1.5;
+    const k = rD.width / wReal;                         // cuánto está achicada la ficha
+    const libro = bookEl(book, { size: wReal, baseY:-26, detail:true, still:true });
+
+    const def   = _capa('pl-def', libro);
+    const esc   = _capa('pl-esc', def);
+    const arco  = _capa('pl-arco', esc);
+    const clon  = _capa('pl-vuelo', arco);
+    // la caja del clon es la del libro SIN achicar y centrada en el destino:
+    // así escalar desde el centro cae exactamente donde tiene que caer
+    const cx = rD.left + rD.width/2, cy = rD.top + rD.height/2;
+    clon.style.cssText = `position:fixed;left:${cx - wReal/2}px;top:${cy - hReal/2}px;` +
+      `width:${wReal}px;height:${hReal}px;z-index:5200;pointer-events:none;`;
+    document.body.appendChild(clon);
+    destino.style.visibility = 'hidden';
+
+    const cuerpo = libro.querySelector('.book3d');
+    const dx = (rF.left + rF.width/2) - cx;
+    const dy = (rF.top  + rF.height/2) - cy;
+    const dist = Math.hypot(dx, dy) || 1;
+    // el lomo de la bóveda es angosto: la escala sale del ALTO, no del ancho
+    const esLomo = rF.width < rF.height * 0.45;
+    const s0 = Math.max(0.04, esLomo ? rF.height/hReal : rF.width/wReal);
+    const gY = esLomo ? -84 : -6;                       // desde qué ángulo llega
+
+    /* el arco: perpendicular al recorrido, siempre combando hacia arriba, para
+       que el libro describa una curva y no una recta de punto a punto */
+    let px = -dy/dist, py = dx/dist;
+    if(py > 0){ px = -px; py = -py; }
+    const arcoPx = Math.min(58, Math.max(12, dist * 0.12));
+
+    /* tiempos escalonados: la posición llega primero, la escala se sigue
+       asentando un poco después y el giro es el último en detenerse */
+    let tPos = 700, tEsc = 820, tGiro = 880, tArco = 700, dGiro = 40;
+    let aMul = 1, sMed = null;
+
+    if(V === 'despega'){                 // sale hacia adelante y después vuela
+      tPos = 900; tEsc = 1000; tGiro = 1040; tArco = 900;
+      aMul = 1.5;
+      sMed = { off:.30, s: s0 * 1.55 };  // se agranda de golpe al despegarse
+    } else if(V === 'abre'){
+      tPos = 840; tEsc = 940; tGiro = 980; tArco = 840;
+    } else if(V === 'lomo'){
+      tPos = 920; tEsc = 1020; tGiro = 1080; tArco = 920; dGiro = 120;
+      aMul = .7;
+    } else if(V === 'camara'){           // casi no viaja: se acerca
+      tPos = 640; tEsc = 760; tGiro = 800; tArco = 640;
+      aMul = .35;
+    }
+
+    // 1 · posición
+    anim.push(clon.animate(
+      [{ transform:`translate(${dx}px, ${dy}px)` }, { transform:'translate(0,0)' }],
+      { duration:tPos, easing:E_POS, fill:'both' }));
+
+    // 2 · arco (0 → afuera → 0, sin quiebre)
+    anim.push(arco.animate([
+      { transform:'translate(0,0)' },
+      { transform:`translate(${px*arcoPx*aMul}px, ${py*arcoPx*aMul}px)`, offset:.45 },
+      { transform:'translate(0,0)' },
+    ], { duration:tArco, easing:E_SENO, fill:'both' }));
+
+    // 3 · escala — monótona y sin rebote: nada de pop al final.
+    //     Termina en k (la escala real de la ficha), no en 1.
+    const kEsc = sMed
+      ? [{ transform:`scale(${s0})` },
+         { transform:`scale(${sMed.s * k})`, offset:sMed.off, easing:E_ESC },
+         { transform:`scale(${k})` }]
+      : [{ transform:`scale(${s0})` }, { transform:`scale(${k})` }];
+    anim.push(esc.animate(kEsc, { duration:tEsc, easing:E_ESC, fill:'both' }));
+
+    /* 4 · deformación: se estira en el eje del movimiento cuando más rápido va.
+       Tiene que quedar RESUELTA bien antes que la escala: si las dos siguen
+       vivas al final, sus curvas se cruzan y el ancho hace un bache de medio
+       píxel justo antes de asentarse — se lee como un temblorcito. Termina
+       al 55% del vuelo y el tramo final queda como una aproximación limpia. */
+    const horizontal = Math.abs(dx) > Math.abs(dy);
+    anim.push(def.animate([
+      { transform:'scale(1,1)' },
+      { transform: horizontal ? 'scale(1.035,.974)' : 'scale(.974,1.035)', offset:.32 },
+      { transform:'scale(1,1)' },
+    ], { duration: Math.round(tEsc * 0.55), easing:E_SENO, fill:'both' }));
+
+    // 5 · giro
+    if(cuerpo){
+      cuerpo.style.transition = 'none';        // que no pelee con la transición CSS
+      anim.push(cuerpo.animate(
+        V === 'lomo'
+          ? [{ transform:'rotateY(-90deg)' },
+             { transform:'rotateY(-90deg)', offset:.16 },
+             { transform:'rotateY(-40deg) rotateX(5deg)', offset:.62, easing:E_GIRO },
+             { transform:'rotateY(-26deg) rotateX(0deg)' }]
+        : V === 'camara'
+          ? [{ transform:`rotateY(${gY}deg) translateZ(-240px)` },
+             { transform:'rotateY(-26deg) translateZ(0)' }]
+          : [{ transform:`rotateY(${gY}deg) rotateX(2deg)` },
+             { transform:'rotateY(-26deg) rotateX(0deg)' }],
+        { duration:tGiro, delay:dGiro, easing:E_GIRO, fill:'both' }));
+    }
+
+    // 6 · la tapa se abre (sólo esa variante)
+    if(V === 'abre'){
+      const tapa = libro.querySelector('.bf-hinge') || libro.querySelector('.bf-cover');
+      if(tapa){
+        tapa.style.transformOrigin = 'left center';
+        anim.push(tapa.animate([
+          { transform:'rotateY(0deg)' },
+          { transform:'rotateY(0deg)', offset:.34 },
+          { transform:'rotateY(-98deg)', offset:1, easing:E_GIRO },
+        ], { duration:tGiro, easing:E_SENO, fill:'both' }));
+      }
+    }
+
+    /* el cambio: se destapa el libro real y se saca el clon en el MISMO
+       cuadro, con la respiración soltándose recién ahí */
+    let cambiado = false;
+    const cambiar = ()=>{
+      if(cambiado) return; cambiado = true;
+      destino.style.removeProperty('visibility');
+      respirar();
+      clon.remove();
+    };
+    Promise.all(anim.map(a=>a.finished.catch(()=>{}))).then(cambiar);
+    // red de seguridad: con la pestaña en segundo plano las animaciones no resuelven
+    setTimeout(cambiar, Math.max(tPos, tEsc, tGiro + dGiro) * 1.6 + 500);
+  }
+
+  /* ---------- los tres bloques de la ficha ----------
+     Entran escalonados y no sólo se desplazan: también escalan un pelo, así
+     el movimiento tiene cuerpo en vez de ser un deslizamiento plano. */
+  const base = hayVuelo ? 190 : 0;
+  const entra = (el, ms, kf, dur)=>{
+    if(!el) return;
+    anim.push(el.animate(kf, { duration:dur||520, delay:ms, easing:E_PANEL, fill:'both' }));
+  };
+  const sube = [{ opacity:0, transform:'translateY(20px) scale(.985)' },
+                { opacity:1, transform:'translateY(0) scale(1)' }];
+  const desdeIzq = [{ opacity:0, transform:'translateX(-36px) scale(.985)' },
+                    { opacity:1, transform:'translateX(0) scale(1)' }];
+  const desdeDer = [{ opacity:0, transform:'translateX(36px) scale(.985)' },
+                    { opacity:1, transform:'translateX(0) scale(1)' }];
+  const abanicoI = [{ opacity:0, transform:'perspective(1400px) rotateY(34deg) translateX(24px)' },
+                    { opacity:1, transform:'perspective(1400px) rotateY(0deg) translateX(0)' }];
+  const abanicoD = [{ opacity:0, transform:'perspective(1400px) rotateY(-34deg) translateX(-24px)' },
+                    { opacity:1, transform:'perspective(1400px) rotateY(0deg) translateX(0)' }];
+  const enFoco   = [{ opacity:0, filter:'blur(7px)', transform:'scale(1.03)' },
+                    { opacity:1, filter:'blur(0px)', transform:'scale(1)' }];
+
+  if(V === 'despega'){      entra(izq, base, desdeIzq);  entra(der, base+90, desdeDer); }
+  else if(V === 'abre'){    entra(izq, base+70, abanicoI, 580); entra(der, base+140, abanicoD, 580); }
+  else if(V === 'camara'){  entra(izq, base, enFoco);    entra(der, base+80, enFoco); }
+  else {                    entra(izq, base, sube);      entra(der, base+90, sube); }
+  entra(pill, base + 170, sube, 460);
+}
+
+/* ---------- el selector, sólo mientras elegimos ---------- */
+function abrirCambiarVariante(){
+  ABRIR_VAR = (ABRIR_VAR + 1) % ABRIR_VARIANTES.length;
+  try{ localStorage.setItem('cosecha:abrir', String(ABRIR_VAR)); }catch(e){}
+  try{ toast(`Apertura ${ABRIR_VAR+1}/5 · ${ABRIR_VARIANTES[ABRIR_VAR].n}`); }catch(e){}
+}
+addEventListener('keydown', e=>{
+  if(e.shiftKey && (e.key === 'A' || e.key === 'a')
+     && !/^(INPUT|TEXTAREA)$/.test((e.target||{}).tagName||'')){
+    e.preventDefault(); abrirCambiarVariante();
+  }
+});
 
 /* ============================================================
    RULETA DE ELIMINACIÓN + FINAL 1v1 + FIESTA

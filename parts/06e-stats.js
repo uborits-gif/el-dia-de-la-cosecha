@@ -400,7 +400,7 @@ function computeStats(){
     semifinalista: masVeces('semifinal'),
     convocado: conCuadros.slice().sort((x,y)=>y.ps.length-x.ps.length)[0] || null,
     /* igual que en el diario: un torneo es UNO, tenga 8 libros o 32 */
-    modos:   tally(jornadas.filter(j=>j.tipo === 'vasallaje').map(j=>j.modo)),
+    modos:   tally(jornadas.filter(j=>j.tipo === 'vasallaje').map(j=>mayus1(j.modo))),
     lugares: tally(jornadas.filter(j=>j.tipo === 'vasallaje').map(j=>j.lugar)),
   };
   return S;
@@ -1107,6 +1107,7 @@ function construirHistoria(){
 }
 
 /* el juego con el que se definió: icono grande del catálogo */
+const mayus1 = t => { const x = String(t||'').trim(); return x ? x[0].toUpperCase() + x.slice(1) : x; };
 function juegoDe(metodo){
   const m = String(metodo||'').toLowerCase().replace(/^vasallaje\s*·?\s*/,'').trim();
   if(!m) return null;
@@ -1114,9 +1115,10 @@ function juegoDe(metodo){
     const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
     const g = GAMES.find(x=>norm(x.name)===norm(m))
            || GAMES.find(x=>norm(x.name).includes(norm(m)) || norm(m).includes(norm(x.name)));
-    if(g) return { icon:g.icon, name:g.name };
+    if(g) return { icon:(typeof gameIcon==='function' ? gameIcon(g) : g.icon), name:g.name };
   }
-  return { icon:'🎲', name:metodo };
+  // no es un minijuego (un modo de vasallaje, «Papelitos»…): dado y nombre tal cual
+  return { icon:'🎲', name:mayus1(metodo) };
 }
 const HX_RANK = p => /ganador|campe/i.test(p||'') ? 4 : /^final$/i.test(p||'') ? 3 : /semi/i.test(p||'') ? 2 : 1;
 
@@ -1159,17 +1161,78 @@ function screenHistoria(foco){
     const rk = p => HX_RANK(p && p.puesto);
     let N = 1; while(N < ps.length) N *= 2;
     const K = Math.log2(N);
-    const byRank = ps.slice().sort((a,b)=>rk(b)-rk(a));
-    while(byRank.length < N) byRank.push(null);
-    let seed = [1];
-    while(seed.length < N){ const m = seed.length*2 + 1; seed = seed.flatMap(x=>[x, m-x]); }
-    const capas = [ seed.map(s=>byRank[s-1]) ];
+    /* Los cruces REALES de esa noche. Desde que se guardan (bitácora 'cruces'),
+       el cuadro muestra quién peleó contra quién de verdad. Para los torneos
+       de antes no existe el dato: ahí se siembra por puesto, como siempre,
+       pero la tarjeta lo aclara en vez de hacerlo pasar por cierto. */
+    const limpio = t => String(t||'').replace(/[·|]/g,'-').trim();
+    const crucesDe = pp => (typeof evList === 'function' ? evList(pp.b,'cruces') : [])
+      .filter(e=>e.fecha === j.fecha);
+    /* de dos libros, cuál le ganó al otro esa noche */
+    const ganoDe = (a, b)=>{
+      if(!a) return b; if(!b) return a;
+      const e = crucesDe(a).find(x=>limpio(x.extra).endsWith(limpio(b.b.titulo)));
+      if(e) return /^gan/.test(String(e.extra)) ? a : b;
+      return rk(a) >= rk(b) ? a : b;                    // sin dato: el que llegó más lejos
+    };
+    /* la primera ronda, tal como se jugó: pares sin repetir (lo anotan los dos) */
+    const porTitulo = new Map(ps.map(x=>[limpio(x.b.titulo), x]));
+    const RONDAS = ['dieciseisavos','octavos','cuartos','semifinal','final'];
+    const paresPorRonda = new Map();
+    ps.forEach(pp=>crucesDe(pp).forEach(e=>{
+      const m = String(e.extra||'').match(/^(gan|perd)\S*\s+\S+\s+([\s\S]+)$/);
+      const otro = m ? porTitulo.get(limpio(m[2])) : null;
+      if(!otro || otro === pp) return;
+      const ronda = String(e.quien||'').toLowerCase().trim();
+      if(!paresPorRonda.has(ronda)) paresPorRonda.set(ronda, new Map());
+      const clave = [String(pp.b.id), String(otro.b.id)].sort().join('|');
+      if(!paresPorRonda.get(ronda).has(clave)) paresPorRonda.get(ronda).set(clave, [pp, otro]);
+    }));
+    /* El orden de las hojas se arma DESDE LA FINAL HACIA ATRÁS: cada finalista
+       se abre en el cruce que ganó, y así hasta la primera ronda. Ordenarlas
+       por el orden en que aparecen los cruces no alcanza — los dos que se
+       enfrentaron en la final pueden terminar en la misma mitad del cuadro y
+       el dibujo los cruza en semis. (Pasó: Condenada, que perdió la final,
+       aparecía peleando la semi contra Diez negritos.) */
+    const rondas = RONDAS.filter(r => paresPorRonda.has(r));   // de la primera a la final
+    const parDe = (p, ri)=>{
+      const m = paresPorRonda.get(rondas[ri]);
+      if(!m) return null;
+      for(const pr of m.values()) if(pr[0] === p || pr[1] === p) return pr;
+      return null;
+    };
+    const hojasDe = (p, ri)=>{
+      if(ri < 0) return [p];
+      const par = parDe(p, ri);
+      if(!par) return [p];
+      return [...hojasDe(par[0], ri-1), ...hojasDe(par[1], ri-1)];
+    };
+    let orden = null;
+    const finM = paresPorRonda.get('final');
+    if(finM && finM.size === 1 && rondas.length){
+      const [a, b] = [...finM.values()][0];
+      const iFin = rondas.indexOf('final');
+      const h = [...hojasDe(a, iFin-1), ...hojasDe(b, iFin-1)];
+      // sólo vale si salieron todos los libros, sin repetir
+      if(h.length === ps.length && new Set(h).size === h.length) orden = h;
+    }
+    const reconstruido = !orden;
+
+    let capas;
+    if(orden){
+      const c0 = orden.slice();
+      while(c0.length < N) c0.push(null);
+      capas = [c0.slice(0, N)];
+    }else{
+      const byRank = ps.slice().sort((a,b)=>rk(b)-rk(a));
+      while(byRank.length < N) byRank.push(null);
+      let seed = [1];
+      while(seed.length < N){ const m = seed.length*2 + 1; seed = seed.flatMap(x=>[x, m-x]); }
+      capas = [ seed.map(s=>byRank[s-1]) ];
+    }
     for(let r=1; r<=K; r++){
       const prev = capas[r-1], nxt = [];
-      for(let i=0;i<prev.length;i+=2){
-        const a = prev[i], b = prev[i+1];
-        nxt.push(!a ? b : !b ? a : (rk(a) >= rk(b) ? a : b));
-      }
+      for(let i=0;i<prev.length;i+=2) nxt.push(ganoDe(prev[i], prev[i+1]));
       capas.push(nxt);
     }
     const cw = N>16 ? 13 : N>8 ? 17 : 23, ch = Math.round(cw*1.5);
@@ -1216,7 +1279,9 @@ function screenHistoria(foco){
     }
     return `<div class="hx-treewrap"><div class="hx-tree" style="width:${W}px;height:${H}px;">
       <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${paths.join('')}</svg>
-      ${nodos.join('')}</div></div>`;
+      ${nodos.join('')}</div>${reconstruido
+        ? `<div class="hx-recon" title="De este torneo se guardó hasta dónde llegó cada libro, pero no contra quién jugó">cuadro reconstruido — los cruces de esa noche no quedaron anotados</div>`
+        : ''}</div>`;
   };
 
   show(`
@@ -1285,7 +1350,7 @@ function screenHistoria(foco){
     try{ Sound.fx.click(); }catch(e){}
     toast('Dirección de esta jornada copiada a la barra');
   }));
-  $$('.hx-cell', document).forEach(el=>el.addEventListener('click', ()=>{
+  $$('.hx-cell, .hx-tn', document).forEach(el=>el.addEventListener('click', ()=>{
     const id = el.dataset.id;
     const list = [...State.read, ...State.vault];
     const i = list.findIndex(x=>String(x.id)===id);

@@ -231,6 +231,12 @@ const META_FIELDS = [
   { key:'victorias',     file:'victorias',       aliases:['victoria','ganadas'],              label:'Victorias',        sec:'club', auto:true, log:true, ev:'método' },
   { key:'anulaciones',   file:'anulaciones',     aliases:['anulacion','anulación'],           label:'Anulaciones',      sec:'club', auto:true, log:true, ev:'motivo' },
   { key:'puestos',       file:'puestos',         aliases:['puesto','cuadro'],                 label:'Puestos',          sec:'club', auto:true, log:true, ev:'torneo' },
+  /* ⚔️ contra quién peleó, cruce por cruce. Los `puestos` guardan hasta DÓNDE
+     llegó un libro, pero no contra quién: sin esto, el cuadro de la historia
+     tenía que adivinar los enfrentamientos a partir de los puestos, y los
+     inventaba. Así se perdió «Condenada vs Van a morir todos».
+     El extra dice "ganó a Rival" o "perdió con Rival".                     */
+  { key:'cruces',        file:'cruces',          aliases:['enfrentamientos','duelos'],        label:'Cruces',           sec:'club', auto:true, log:true, ev:'ronda' },
   { key:'premios',       file:'premios',         aliases:['premio','mencion','mención'],      label:'Premios',          sec:'club', auto:true, log:true, ev:'premio' },
   { key:'puntajes',      file:'puntajes',        aliases:['puntaje','estrellas'],             label:'Puntajes',         sec:'club' },
   { key:'diasLectura',   file:'dias de lectura', aliases:['días de lectura'],                 label:'Leído en',         sec:'club', num:true, suffix:' días' },
@@ -1013,14 +1019,21 @@ const App = {
     // no se va solo al cambiar de pantalla: se limpia acá
     document.querySelectorAll("body > .sc-telon").forEach(e=>e.remove());
     const appEl = $('#app');
-    const old = appEl.querySelector('.screen.in');
-    if(old){
+    /* Se van TODAS las pantallas que había, no sólo la que tenía .in.
+       La clase .in la pone un doble requestAnimationFrame, así que una pantalla
+       creada y reemplazada antes de ese cuadro —navegando rápido, o con la
+       pestaña en segundo plano, donde rAF no corre— nunca la recibía y no se
+       borraba nunca. Quedaba en el DOM sin .in ni .out, y una pantalla sin .out
+       sigue en el flujo con min-height:100vh: cada una sumaba una pantalla
+       entera de scroll de más. */
+    appEl.querySelectorAll('.screen').forEach(old=>{
       old.classList.remove('in');
-      old.classList.add('out');
+      old.classList.add('out');           // .out la saca del flujo además de ocultarla
       // sin ids: que los selectores no encuentren la pantalla saliente
       old.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+      old.removeAttribute('id');
       setTimeout(()=>old.remove(), 420);
-    }
+    });
     const scr = document.createElement('div');
     scr.className = 'screen';
     scr.innerHTML = `<div class="wrap">${html}</div>`;

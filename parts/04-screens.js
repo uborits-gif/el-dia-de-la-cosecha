@@ -875,6 +875,10 @@ function showPlacard(list, startIdx, opts={}){
   Sound.fx.abrirLibro();
   render(0);
   requestAnimationFrame(()=>placeArrows(render._scene));   // ya con las fuentes medidas
+  // 📖 el libro sale de donde lo tocaste y la ficha entra detrás.
+  // Va por setTimeout y no por rAF: con la pestaña en segundo plano el rAF
+  // no corre, y la apertura quedaba sin engancharse nunca.
+  setTimeout(()=>{ if(typeof abrirFicha === 'function') abrirFicha(ov, list[idx]); }, 0);
 }
 
 /* ============================================================
@@ -1329,8 +1333,8 @@ function buildVaultGrande(container, books, opts={}){
   };
   const applyActive = (i)=>{
     if(i === active) return;
-    if(active >= 0) pose(slots[active], false);
-    active = i; pose(slots[active], true);
+    if(active >= 0){ pose(slots[active], false); slots[active].classList.remove('presente'); }
+    active = i; pose(slots[active], true); slots[active].classList.add('presente');
     const bk = books[active];
     $('#vgTitle', root).textContent = bk.titulo;
     $('#vgAuthor', root).textContent = bk.autor || '';

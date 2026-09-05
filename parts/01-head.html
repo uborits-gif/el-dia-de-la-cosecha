@@ -3400,7 +3400,10 @@ body.demo #app{padding-top:20px;}
 .hx-sub{font-size:11.5px;color:var(--grey);margin-top:3px;}
 .hx-game{display:flex;align-items:center;gap:9px;padding:6px 13px 6px 8px;border-radius:12px;
   background:rgba(255,255,255,.04);border:1px solid var(--border-soft);}
-.hx-game-ico{font-size:26px;line-height:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));}
+.hx-game-ico{font-size:26px;line-height:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));
+  display:flex;align-items:center;justify-content:center;height:34px;}
+/* los juegos con ilustración propia traen un <img>, no un emoji */
+.hx-game-ico .gt-img{width:34px;height:34px;}
 .hx-game-n{font-family:'Fraunces',serif;font-weight:700;font-size:12.5px;color:var(--bone);max-width:130px;line-height:1.15;}
 .hx-tipo{font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;white-space:nowrap;}
 .hx-tipo.cos{color:var(--amber);} .hx-tipo.vasa{color:#E8C34A;}
@@ -3444,7 +3447,11 @@ body.demo #app{padding-top:20px;}
 .hx-flag .f-win{color:#E8C34A;} .hx-flag .f-out{color:#ff9a9a;}
 .hx-flag .f-res{color:#6BF7A6;} .hx-flag .f-anu{color:var(--grey);}
 /* el vasallaje: EL CUADRO en miniatura, con sus llaves */
-.hx-treewrap{margin-top:14px;overflow-x:auto;scrollbar-width:none;display:flex;justify-content:center;}
+.hx-treewrap{margin-top:14px;overflow-x:auto;scrollbar-width:none;display:flex;justify-content:center;
+  flex-direction:column;align-items:center;}
+/* cuando el torneo es viejo y sus cruces no quedaron anotados, se dice */
+.hx-recon{margin-top:8px;font-size:10.5px;letter-spacing:.06em;color:var(--grey);
+  text-align:center;font-style:italic;}
 .hx-treewrap::-webkit-scrollbar{display:none;}
 .hx-tree{position:relative;flex:none;}
 .hx-tree svg{position:absolute;inset:0;overflow:visible;}
@@ -3455,6 +3462,11 @@ body.demo #app{padding-top:20px;}
   border-radius:2.5px;background-size:cover;background-position:center;background-color:var(--card-hi);
   box-shadow:0 3px 8px rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.1);}
 .hx-tn.champ{border:1.5px solid #E8C34A;box-shadow:0 0 0 3px rgba(232,195,74,.2),0 6px 16px rgba(0,0,0,.7);z-index:3;}
+/* los libros del cuadro abren su ficha, igual que los de las cosechas */
+.hx-tn{cursor:pointer;transition:transform .16s, box-shadow .16s;}
+.hx-tn:hover{transform:translate(-50%,-50%) scale(1.16);z-index:4;
+  box-shadow:0 6px 18px rgba(0,0,0,.75);}
+.hx-tn.champ:hover{transform:translate(-50%,-50%) scale(1.12);}
 .hx-tn-crown{position:absolute;top:-11px;left:50%;transform:translateX(-50%);font-size:14px;
   filter:drop-shadow(0 2px 3px rgba(0,0,0,.8));}
 .hx-winner{margin-top:14px;padding:9px 13px;border-radius:10px;font-size:13px;color:var(--bone-dim);
@@ -3949,7 +3961,13 @@ body.demo #app{padding-top:20px;}
 :root{ --look:none; }
 #ambient, #grain, #vignette, #app, #flowbar, #toast,
 #muteBtn, #resetBtn, #demoBtn, #demoBar, #abortBtn,
-.overlay, .libtip, .coltip, .esp, .pp-boomflash, .sc-telon{ filter:var(--look); }
+.overlay, .libtip, .coltip, .esp, .pp-boomflash, .sc-telon, .pl-vuelo{ filter:var(--look); }
+/* 📖 las capas del libro que vuela al abrir la ficha: cada una lleva UNA
+   propiedad (posición, arco, escala, deformación) para que se compongan
+   solas y ninguna curva pise a la otra. Ver parts/06h-abrir.js */
+.pl-arco, .pl-esc, .pl-def{ width:100%; height:100%; transform-origin:50% 50%; }
+.pl-vuelo, .pl-arco, .pl-esc, .pl-def{ will-change:transform; }
+.pl-vuelo .book-scene{ display:block; }
 
 /* el panel se queda afuera del filtro, si no no se puede juzgar nada */
 .look{position:fixed;right:14px;bottom:14px;z-index:9999;width:min(300px,92vw);
