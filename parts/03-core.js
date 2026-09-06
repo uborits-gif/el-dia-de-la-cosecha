@@ -92,6 +92,17 @@ const State = {
 const PLAYER_COLOR = { a:'var(--pa)', b:'var(--pb)' };
 const PLAYER_RGB   = { a:'201,248,57', b:'124,212,255' };
 
+/* ✏️ Los íconos de los botones de la ficha, dibujados.
+   Antes eran caracteres de texto (✕ ‹ › ⌄): cada sistema los dibuja con otro
+   grosor y otra altura, así que los cuatro botones nunca quedaban parejos.
+   Trazo de 2, puntas redondeadas, todos en la misma caja de 24. */
+const _ico = d => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none"
+  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ICO_X     = _ico('<path d="M6 6l12 12M18 6L6 18"/>');
+const ICO_IZQ   = _ico('<path d="M14.5 5.5L8 12l6.5 6.5"/>');
+const ICO_DER   = _ico('<path d="M9.5 5.5L16 12l-6.5 6.5"/>');
+const ICO_ABAJO = _ico('<path d="M5.5 9.5L12 16l6.5-6.5"/>');
+
 /* ---------- leídos por defecto (cosechas pasadas) ---------- */
 const DEFAULT_READ = [
   { id:'r-mar', titulo:'Yo que nunca supe de los hombres', readDate:'mar 2026',
@@ -985,14 +996,24 @@ function attachOrbit(scene, b, glare){
     // ¿estamos mirando la contra? (baseY cerca de 180°) → apagar el brillo de la tapa
     if(glare){ const face = ((base % 360) + 360) % 360; glare.style.setProperty('--glare', (face>90 && face<270) ? '0' : '0.16'); }
   };
-  const up = ()=>{ if(!dragging) return; dragging=false; b.classList.add('snappy'); scene.classList.toggle('grabbing', false);
-    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); };
+  const up = ()=>{ if(!dragging) return; dragging=false;
+    b.classList.remove('libre'); b.classList.add('snappy');   // suelta: frena cortito
+    scene.classList.toggle('grabbing', false);
+    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up);
+    document.removeEventListener('pointercancel', up); };
   scene.addEventListener('dragstart', e=>e.preventDefault());   // nada de arrastrar la imagen
   scene.addEventListener('pointerdown', (e)=>{
     e.preventDefault();
     dragging = true; moved = false; lastX = e.clientX; lastY = e.clientY;
-    b.classList.remove('snappy'); scene.classList.add('grabbing');
+    // 'libre' apaga la transición: sin esto queda la de .55s por defecto y el
+    // libro gira siempre atrasado respecto del dedo (se siente duro y trabado)
+    b.classList.remove('snappy'); b.classList.add('libre');
+    scene.classList.add('grabbing');
+    // en el teléfono el dedo se sale del libro enseguida: con la captura los
+    // eventos siguen llegando y el giro no se corta a mitad
+    try{ scene.setPointerCapture(e.pointerId); }catch(err){}
     document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
   });
   // un toque/clic (sin arrastrar) da vuelta el libro media vuelta: tapa ↔ contra
   scene.addEventListener('click', ()=>{

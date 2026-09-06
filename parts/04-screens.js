@@ -382,9 +382,9 @@ function showPlacard(list, startIdx, opts={}){
   const ov = overlay('', 'placard-ov');
   ov.innerHTML = `
     <div class="pl2-frame ov-pop" id="plFrame">
-      <button class="btn btn-ghost btn-sm" data-esc id="plClose">✕</button>
-      ${list.length>1?`<button class="pl2-arrow prev" id="plPrev">‹</button>
-                       <button class="pl2-arrow next" id="plNext">›</button>`:''}
+      <button class="pl2-btn pl2-close" data-esc id="plClose" aria-label="Cerrar la ficha">${ICO_X}</button>
+      ${list.length>1?`<button class="pl2-btn pl2-arrow prev" id="plPrev" aria-label="Libro anterior">${ICO_IZQ}</button>
+                       <button class="pl2-btn pl2-arrow next" id="plNext" aria-label="Libro siguiente">${ICO_DER}</button>`:''}
       <div class="pl2-view" id="plView"></div>
     </div>`;
 
@@ -588,7 +588,7 @@ function showPlacard(list, startIdx, opts={}){
             <div class="pl2-t">${escapeHtml(b.titulo)}</div>
             ${subBits?`<div class="pl2-sub">${escapeHtml(subBits)}</div>`:''}
           </div>
-          <button class="pl2-exp" id="plExpand" aria-label="Ver la ficha completa">⌄</button>
+          <button class="pl2-btn pl2-exp" id="plExpand" aria-label="Ver la ficha completa">${ICO_ABAJO}</button>
         </div>`;
     $('.pl2-book', scene).appendChild(bookEl(b, { size:bs(270), baseY:-26, detail:true, orbit:true }));
 
@@ -655,10 +655,41 @@ function showPlacard(list, startIdx, opts={}){
   /* las flechas viven en el marco: se plantan al lado del libro y no se mueven más.
      Se mide con offset* y NO con getBoundingClientRect: el rect viene escalado
      mientras corre la animación de entrada y las flechas quedaban 22px arriba. */
+  /* Dónde viven las flechas.
+     En pantalla angosta NO flotan: se meten adentro de la barra del título,
+     que ya es la fila de controles. Flotando quedaban encima de la barra
+     tapando el número y el desplegar, y encima no se movían al desplegar la
+     ficha porque su posición se calcula una sola vez.
+     En pantalla ancha sí flotan, a los costados de la tapa, donde sobra
+     lugar y no molestan. */
   function placeArrows(scene){
     const bk = $('.pl2-book', scene), fr = $('#plFrame', ov);
     const prev = $('#plPrev', ov), next = $('#plNext', ov);
-    if(!bk || !fr || !prev || !bk.offsetWidth) return;
+    if(!bk || !fr || !prev) return;
+    const pill = $('.pl2-pill', scene);
+    const exp  = $('#plExpand', scene);
+
+    /* Las flechas viven SIEMPRE en el marco, nunca adentro de la tarjeta:
+       al cambiar de libro la tarjeta se desliza un 112%, y si van adentro se
+       escapan de abajo del dedo justo cuando las estás usando —y por medio
+       segundo no hay nada que tocar—. Quietas, sólo cambia lo que muestran. */
+    [prev, next].forEach(a=>{ if(a.parentElement !== fr) fr.appendChild(a); });
+
+    if(innerWidth <= 980 && pill){
+      // en el teléfono se apoyan sobre la barra, en el hueco que ella les deja
+      const pr = pill.getBoundingClientRect(), fRect = fr.getBoundingClientRect();
+      const alto = prev.offsetHeight || 40;
+      [prev, next].forEach(a=>{
+        a.style.top = (pr.top - fRect.top + pr.height/2) + 'px';
+        a.style.right = 'auto';
+        a.style.marginTop = (-alto/2) + 'px';
+      });
+      prev.style.left = (pr.left - fRect.left + 10) + 'px';
+      next.style.left = (pr.left - fRect.left + 10 + alto + 6) + 'px';
+      return;
+    }
+    [prev, next].forEach(a=>a.style.marginTop = '');
+    if(!bk.offsetWidth) return;
     let x = 0, y = 0;
     for(let el = bk; el && el !== fr; el = el.offsetParent){ x += el.offsetLeft; y += el.offsetTop; }
     [prev, next].forEach(a=>{ a.style.top = (y + bk.offsetHeight/2) + 'px'; });

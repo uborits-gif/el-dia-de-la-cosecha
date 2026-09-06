@@ -254,7 +254,7 @@ function abrirFicha(ov, book, intento){
   const base = hayVuelo ? 190 : 0;
   const entra = (el, ms, kf, dur)=>{
     if(!el) return;
-    anim.push(el.animate(kf, { duration:dur||520, delay:ms, easing:E_PANEL, fill:'both' }));
+    anim.push(el.animate(kf, { duration:dur||420, delay:ms, easing:E_PANEL, fill:'both' }));
   };
   const sube = [{ opacity:0, transform:'translateY(20px) scale(.985)' },
                 { opacity:1, transform:'translateY(0) scale(1)' }];

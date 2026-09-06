@@ -212,6 +212,8 @@ h1.title{
   transition:transform .55s var(--ease-pop);
 }
 .book3d.snappy{transition:transform .18s ease-out;}
+/* arrastrando: sin transición, el libro sigue al dedo al instante */
+.book3d.libre{transition:none;}
 /* giro 360° al abrir la ficha (muestra lomo y contratapa) */
 .book3d.spin360{animation:bookSpin360 1.15s cubic-bezier(.3,.05,.2,1) 1;}
 @keyframes bookSpin360{
@@ -1568,7 +1570,11 @@ h1.title.sz-hero{
 /* ---- ficha v3: layout Criterion (libro al centro, paneles a los lados) ----
    El marco no se mueve; adentro, la ficha entera se desliza en X. */
 .pl2-frame{position:relative;width:min(1180px,97vw);}
-.pl2-frame > #plClose{position:absolute;top:-34px;right:0;z-index:9;}
+/* El cerrar va arriba a la IZQUIERDA: el botón de sonido vive fijo arriba a
+   la derecha y los dos se pisaban. Va con position:fixed, que dentro del
+   overlay (que tiene filter) se ancla al overlay y no se mueve al scrollear
+   la ficha — así siempre está a mano, sin importar cuánto midas de alto. */
+.pl2-frame > #plClose{position:fixed;top:14px;left:14px;z-index:9;}
 .pl2-view{display:grid;overflow:hidden;}
 .pl2-view > .placard2{grid-area:1/1;width:100%;}
 .pl2-view > .placard2.going{pointer-events:none;}
@@ -1634,13 +1640,39 @@ h1.title.sz-hero{
 }
 .pl2-t{font-family:'Fraunces',serif;font-weight:800;font-size:20px;line-height:1.1;}
 .pl2-sub{font-size:12px;color:var(--bone-dim);margin-top:3px;letter-spacing:.02em;}
-.pl2-arrow{
-  position:absolute;top:50%;transform:translateY(-50%);z-index:5;
-  width:46px;height:46px;border-radius:50%;background:rgba(14,31,18,.9);
-  border:1.5px solid var(--border);color:var(--bone);font-size:18px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;transition:.2s var(--ease-pop);
+/* ---- los botones de la ficha: cerrar, anterior, siguiente, desplegar ----
+   Un solo lenguaje para los cuatro: círculo, vidrio esmerilado, el mismo
+   ícono dibujado y el mismo gesto al apretar. 46px, que es blanco cómodo
+   para el dedo, y el ícono adentro a 20. */
+.pl2-btn{
+  width:46px;height:46px;flex:none;padding:0;border-radius:50%;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(10,20,12,.72);border:1px solid rgba(242,245,236,.16);
+  color:var(--bone);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  box-shadow:0 6px 20px -8px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.06);
+  transition:background .22s, border-color .22s, color .22s,
+             transform .34s var(--ease-pop), box-shadow .22s;
 }
-.pl2-arrow:hover{border-color:var(--amber);color:var(--amber);transform:translateY(-50%) scale(1.12);}
+.pl2-btn svg{width:20px;height:20px;display:block;
+  transition:transform .34s var(--ease-pop);}
+.pl2-btn:active{transform:scale(.88);transition-duration:.09s;}
+.pl2-btn:focus-visible{outline:2px solid var(--amber);outline-offset:3px;}
+/* el brillo sólo donde hay mouse: en el teléfono el :hover se queda pegado */
+@media (hover:hover){
+  .pl2-btn:hover{background:rgba(18,34,20,.92);border-color:rgba(201,248,57,.55);
+    color:var(--amber);box-shadow:0 10px 26px -10px rgba(0,0,0,.8),
+    0 0 0 4px rgba(201,248,57,.09);}
+  .pl2-btn:hover svg{transform:scale(1.1);}
+  .pl2-arrow.prev:hover svg{transform:scale(1.1) translateX(-1.5px);}
+  .pl2-arrow.next:hover svg{transform:scale(1.1) translateX(1.5px);}
+}
+/* entran con la ficha, escalonados, en vez de aparecer de golpe */
+.pl2-btn{animation:plBtnIn .5s var(--ease-out) both;}
+.pl2-close{animation-delay:.18s;}
+.pl2-arrow.prev{animation-delay:.26s;} .pl2-arrow.next{animation-delay:.3s;}
+@keyframes plBtnIn{from{opacity:0;scale:.72;}to{opacity:1;scale:1;}}
+
+.pl2-arrow{position:absolute;top:50%;margin-top:-23px;z-index:5;}
 .pl2-arrow.prev{left:-4px;} .pl2-arrow.next{right:-4px;}
 /* ---- lomo a mano: 💧 color · 💧 tinta · 🎲 tipografía ---- */
 .pl2-tools{
@@ -1778,10 +1810,7 @@ h1.title.sz-hero{
   /* la barra del título: se toca la flechita para desplegar */
   .pl2-pill{order:2;width:100%;max-width:none;margin:0;justify-self:stretch;
     border-radius:20px;padding:14px 14px 14px 18px;box-shadow:0 -14px 44px -22px rgba(0,0,0,.9);}
-  .pl2-exp{display:flex;align-items:center;justify-content:center;flex:none;
-    width:36px;height:36px;border-radius:50%;border:1px solid var(--border);
-    background:rgba(20,34,22,.85);color:var(--bone);font-size:20px;line-height:1;
-    cursor:pointer;transition:transform .32s var(--ease-pop);}
+  .pl2-exp{display:flex;animation-delay:.34s;}
   /* paneles (sinopsis + historial): parte de la misma hoja cuando se abre */
   .pl2-panel{order:3;width:100%;max-height:none;overflow:visible;box-shadow:none;
     border:none;border-radius:0;padding:20px;
@@ -1796,8 +1825,19 @@ h1.title.sz-hero{
   .placard2:not(.pl2-open) .pl2-right{display:none;}
   /* abierto: la barra se pega a la hoja y la flechita gira */
   .placard2.pl2-open .pl2-pill{border-radius:20px 20px 0 0;}
-  .placard2.pl2-open .pl2-exp{transform:rotate(180deg);}
-  .pl2-arrow.prev{left:2px;} .pl2-arrow.next{right:2px;}
+  /* gira el ÍCONO, no el botón: así el apretar sigue teniendo su gesto */
+  .placard2.pl2-open .pl2-exp svg{transform:rotate(180deg);}
+  /* las flechas se apoyan sobre la barra, en un hueco que ella les reserva:
+     así no tapan nada y —al vivir en el marco— no se mueven cuando la
+     tarjeta se desliza para cambiar de libro */
+  .pl2-arrow{width:40px;height:40px;animation-delay:.22s;}
+  .pl2-arrow svg{width:17px;height:17px;}
+  .pl2-exp{width:40px;height:40px;}
+  .pl2-exp svg{width:17px;height:17px;}
+  .pl2-pill{gap:8px;padding:11px 12px 11px 108px;}
+  .pl2-num{font-size:13px;padding:5px 9px;}
+  .pl2-t{font-size:17px;}
+  .pl2-sub{font-size:11px;}
 }
 .pl-link{display:inline-flex;align-items:center;gap:7px;margin-top:18px;font-size:13px;color:var(--amber);text-decoration:none;border:1px solid rgba(201,248,57,.3);border-radius:999px;padding:9px 18px;transition:.2s;}
 .pl-link:hover{background:rgba(201,248,57,.1);border-color:var(--amber);}
@@ -3446,6 +3486,9 @@ body.demo #app{padding-top:20px;}
 .hx-chips{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;}
 .hx-chips i{font-style:normal;font-size:7.5px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;
   padding:3px 5px;border-radius:4px;line-height:1;white-space:nowrap;}
+/* cada cubo trae la palabra entera y una abreviatura: en pantalla ancha se
+   lee la larga, en el teléfono la corta (ver el bloque de 560px) */
+.hx-chips .cc{display:none;}
 .hx-chips .k-eleg{background:rgba(107,247,166,.16);color:#8df3b8;border:1px solid rgba(107,247,166,.3);}
 .hx-chips .k-win {background:rgba(232,195,74,.24);color:#ffdd7a;border:1px solid rgba(232,195,74,.55);}
 .hx-chips .k-res {background:rgba(232,150,74,.18);color:#f0b478;border:1px solid rgba(232,150,74,.36);}
@@ -3483,8 +3526,36 @@ body.demo #app{padding-top:20px;}
   background:linear-gradient(90deg,rgba(232,195,74,.12),transparent);border-left:2px solid #E8C34A;}
 .hx-winner b{color:var(--bone);}
 @media (max-width:560px){
-  .hx-line{padding-left:26px;margin-top:24px;} .hx-dot{left:-24px;} .hx-card{padding:14px;}
+  .hx-line{padding-left:22px;margin-top:24px;} .hx-dot{left:-20px;} .hx-card{padding:12px;}
   .hx-teams{flex-direction:column;} .hx-game-ico{font-size:22px;}
+  /* la cabecera se apila: la fecha pide 150px y el chip del juego otros 190,
+     que juntos no entran y el chip se salía de la tarjeta */
+  .hx-top{flex-direction:column;align-items:stretch;gap:9px;}
+  .hx-when{flex:none;min-width:0;}
+  .hx-tipo{order:-1;}                       /* el tipo arriba, como volanta */
+  .hx-game{align-self:flex-start;max-width:100%;}
+  .hx-game-n{max-width:none;}
+  /* En el teléfono la fila flexible se rompía: las celdas se estiraban y la
+     última quedaba suelta en una fila propia. Grilla de 4 columnas fijas —
+     nunca se estira, y si la última fila queda a medias las celdas siguen
+     midiendo lo mismo, así que no hay libros sueltos. */
+  .hx-team{flex:1 1 100%;}
+  .hx-team-box{display:grid;grid-template-columns:repeat(5,1fr);
+    gap:7px 5px;padding:8px 7px;align-content:start;}
+  .hx-cell{flex:none;width:auto;max-width:none;min-width:0;gap:3px;}
+  .hx-cell:hover{transform:none;}
+  .hx-mini{border-radius:3px;box-shadow:0 3px 8px rgba(0,0,0,.55);}
+  .hx-crown{top:-6px;right:-5px;font-size:11px;}
+  /* sin título: la tapa alcanza para reconocerlo y el nombre está a un toque
+     (queda en el title y en la ficha). Es lo que más altura ahorra. */
+  .hx-name{display:none;}
+  /* los cubos, en versión corta: en 48px no entra «sinopsis» */
+  .hx-chips{gap:2px;}
+  .hx-chips i{font-size:7px;padding:2px 3px;gap:0;letter-spacing:0;}
+  .hx-chips .cl{display:none;}
+  .hx-chips .cc{display:inline;}
+  .hx-chips .k-nadie{display:none;}
+  .hx-team-n{margin:1px 0 8px;font-size:9px;}
 }
 
 /* — ADN: grilla de tiles con ilustración — */
@@ -4624,6 +4695,17 @@ const State = {
 const PLAYER_COLOR = { a:'var(--pa)', b:'var(--pb)' };
 const PLAYER_RGB   = { a:'201,248,57', b:'124,212,255' };
 
+/* ✏️ Los íconos de los botones de la ficha, dibujados.
+   Antes eran caracteres de texto (✕ ‹ › ⌄): cada sistema los dibuja con otro
+   grosor y otra altura, así que los cuatro botones nunca quedaban parejos.
+   Trazo de 2, puntas redondeadas, todos en la misma caja de 24. */
+const _ico = d => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none"
+  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ICO_X     = _ico('<path d="M6 6l12 12M18 6L6 18"/>');
+const ICO_IZQ   = _ico('<path d="M14.5 5.5L8 12l6.5 6.5"/>');
+const ICO_DER   = _ico('<path d="M9.5 5.5L16 12l-6.5 6.5"/>');
+const ICO_ABAJO = _ico('<path d="M5.5 9.5L12 16l6.5-6.5"/>');
+
 /* ---------- leídos por defecto (cosechas pasadas) ---------- */
 const DEFAULT_READ = [
   { id:'r-mar', titulo:'Yo que nunca supe de los hombres', readDate:'mar 2026',
@@ -5517,14 +5599,24 @@ function attachOrbit(scene, b, glare){
     // ¿estamos mirando la contra? (baseY cerca de 180°) → apagar el brillo de la tapa
     if(glare){ const face = ((base % 360) + 360) % 360; glare.style.setProperty('--glare', (face>90 && face<270) ? '0' : '0.16'); }
   };
-  const up = ()=>{ if(!dragging) return; dragging=false; b.classList.add('snappy'); scene.classList.toggle('grabbing', false);
-    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); };
+  const up = ()=>{ if(!dragging) return; dragging=false;
+    b.classList.remove('libre'); b.classList.add('snappy');   // suelta: frena cortito
+    scene.classList.toggle('grabbing', false);
+    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up);
+    document.removeEventListener('pointercancel', up); };
   scene.addEventListener('dragstart', e=>e.preventDefault());   // nada de arrastrar la imagen
   scene.addEventListener('pointerdown', (e)=>{
     e.preventDefault();
     dragging = true; moved = false; lastX = e.clientX; lastY = e.clientY;
-    b.classList.remove('snappy'); scene.classList.add('grabbing');
+    // 'libre' apaga la transición: sin esto queda la de .55s por defecto y el
+    // libro gira siempre atrasado respecto del dedo (se siente duro y trabado)
+    b.classList.remove('snappy'); b.classList.add('libre');
+    scene.classList.add('grabbing');
+    // en el teléfono el dedo se sale del libro enseguida: con la captura los
+    // eventos siguen llegando y el giro no se corta a mitad
+    try{ scene.setPointerCapture(e.pointerId); }catch(err){}
     document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
   });
   // un toque/clic (sin arrastrar) da vuelta el libro media vuelta: tapa ↔ contra
   scene.addEventListener('click', ()=>{
@@ -6036,9 +6128,9 @@ function showPlacard(list, startIdx, opts={}){
   const ov = overlay('', 'placard-ov');
   ov.innerHTML = `
     <div class="pl2-frame ov-pop" id="plFrame">
-      <button class="btn btn-ghost btn-sm" data-esc id="plClose">✕</button>
-      ${list.length>1?`<button class="pl2-arrow prev" id="plPrev">‹</button>
-                       <button class="pl2-arrow next" id="plNext">›</button>`:''}
+      <button class="pl2-btn pl2-close" data-esc id="plClose" aria-label="Cerrar la ficha">${ICO_X}</button>
+      ${list.length>1?`<button class="pl2-btn pl2-arrow prev" id="plPrev" aria-label="Libro anterior">${ICO_IZQ}</button>
+                       <button class="pl2-btn pl2-arrow next" id="plNext" aria-label="Libro siguiente">${ICO_DER}</button>`:''}
       <div class="pl2-view" id="plView"></div>
     </div>`;
 
@@ -6242,7 +6334,7 @@ function showPlacard(list, startIdx, opts={}){
             <div class="pl2-t">${escapeHtml(b.titulo)}</div>
             ${subBits?`<div class="pl2-sub">${escapeHtml(subBits)}</div>`:''}
           </div>
-          <button class="pl2-exp" id="plExpand" aria-label="Ver la ficha completa">⌄</button>
+          <button class="pl2-btn pl2-exp" id="plExpand" aria-label="Ver la ficha completa">${ICO_ABAJO}</button>
         </div>`;
     $('.pl2-book', scene).appendChild(bookEl(b, { size:bs(270), baseY:-26, detail:true, orbit:true }));
 
@@ -6309,10 +6401,41 @@ function showPlacard(list, startIdx, opts={}){
   /* las flechas viven en el marco: se plantan al lado del libro y no se mueven más.
      Se mide con offset* y NO con getBoundingClientRect: el rect viene escalado
      mientras corre la animación de entrada y las flechas quedaban 22px arriba. */
+  /* Dónde viven las flechas.
+     En pantalla angosta NO flotan: se meten adentro de la barra del título,
+     que ya es la fila de controles. Flotando quedaban encima de la barra
+     tapando el número y el desplegar, y encima no se movían al desplegar la
+     ficha porque su posición se calcula una sola vez.
+     En pantalla ancha sí flotan, a los costados de la tapa, donde sobra
+     lugar y no molestan. */
   function placeArrows(scene){
     const bk = $('.pl2-book', scene), fr = $('#plFrame', ov);
     const prev = $('#plPrev', ov), next = $('#plNext', ov);
-    if(!bk || !fr || !prev || !bk.offsetWidth) return;
+    if(!bk || !fr || !prev) return;
+    const pill = $('.pl2-pill', scene);
+    const exp  = $('#plExpand', scene);
+
+    /* Las flechas viven SIEMPRE en el marco, nunca adentro de la tarjeta:
+       al cambiar de libro la tarjeta se desliza un 112%, y si van adentro se
+       escapan de abajo del dedo justo cuando las estás usando —y por medio
+       segundo no hay nada que tocar—. Quietas, sólo cambia lo que muestran. */
+    [prev, next].forEach(a=>{ if(a.parentElement !== fr) fr.appendChild(a); });
+
+    if(innerWidth <= 980 && pill){
+      // en el teléfono se apoyan sobre la barra, en el hueco que ella les deja
+      const pr = pill.getBoundingClientRect(), fRect = fr.getBoundingClientRect();
+      const alto = prev.offsetHeight || 40;
+      [prev, next].forEach(a=>{
+        a.style.top = (pr.top - fRect.top + pr.height/2) + 'px';
+        a.style.right = 'auto';
+        a.style.marginTop = (-alto/2) + 'px';
+      });
+      prev.style.left = (pr.left - fRect.left + 10) + 'px';
+      next.style.left = (pr.left - fRect.left + 10 + alto + 6) + 'px';
+      return;
+    }
+    [prev, next].forEach(a=>a.style.marginTop = '');
+    if(!bk.offsetWidth) return;
     let x = 0, y = 0;
     for(let el = bk; el && el !== fr; el = el.offsetParent){ x += el.offsetLeft; y += el.offsetTop; }
     [prev, next].forEach(a=>{ a.style.top = (y + bk.offsetHeight/2) + 'px'; });
@@ -17408,14 +17531,26 @@ function screenHistoria(foco){
     const cls = ['hx-cell', chico?'mini':'', gano?'win':'', p.descartadoPor?'out':'',
                  p.rescatadoPor?'resc':'', (!p.elegido && !gano && !p.puesto && !p.descartadoPor && !p.rescatadoPor)?'nadie':''].filter(Boolean).join(' ');
     // los CUBOS: un bloque por cada cosa que le pasó al libro ese día
+    /* Cada cubo lleva su palabra completa y una versión corta. En el teléfono
+       la grilla deja ~64px por libro: ahí entra el ícono y una letra, no
+       «sinopsis». El CSS cambia una por otra según el ancho, y el title lo
+       aclara al mantener apretado. */
+    const PUE_CORTO = { cuartos:'4º', semifinal:'SF', final:'F', dieciseisavos:'16º', octavos:'8º' };
+    const cubo = (cls, ico, largo, corto, tip)=>
+      `<i class="${cls}"${tip?` title="${escapeHtml(tip)}"`:''}>${ico}` +
+      `<span class="cl">${escapeHtml(largo)}</span>` +
+      (corto ? `<span class="cc">${escapeHtml(corto)}</span>` : '') + `</i>`;
     const cubos = [];
-    if(p.elegido)       cubos.push(`<i class="k-eleg">🌾 ${escapeHtml(p.elegido)}</i>`);
-    if(gano)            cubos.push(`<i class="k-win">🏆 ganó</i>`);
-    if(p.rescatadoPor)  cubos.push(`<i class="k-res">⛏ rescate</i>`);
-    if(p.descartadoPor) cubos.push(`<i class="k-out">🗡 descarte</i>`);
-    if(p.puesto && !gano) cubos.push(`<i class="k-pue">⚔ ${escapeHtml(p.puesto)}</i>`);
-    if(p.anulado)       cubos.push(`<i class="k-anu">🚫 anulado</i>`);
-    if(!cubos.length)   cubos.push(`<i class="k-nadie">· nadie lo eligió</i>`);
+    if(p.elegido)       cubos.push(cubo('k-eleg','🌾 ', p.elegido, p.elegido[0].toUpperCase(), 'Lo eligió por '+p.elegido));
+    if(gano)            cubos.push(cubo('k-win','🏆 ', 'ganó', '', 'Ganó la noche'));
+    if(p.rescatadoPor)  cubos.push(cubo('k-res','⛏ ', 'rescate', '', 'Rescatado de la bóveda'));
+    if(p.descartadoPor) cubos.push(cubo('k-out','🗡 ', 'descarte', '', 'Lo descartaron'));
+    if(p.puesto && !gano) cubos.push(cubo('k-pue','⚔ ', p.puesto,
+                            PUE_CORTO[String(p.puesto).toLowerCase()] || '', 'Llegó a '+p.puesto));
+    if(p.anulado)       cubos.push(cubo('k-anu','🚫 ', 'anulado', '', 'Ganó y se volvió a sortear'));
+    // sin marcas no se pone nada: en el teléfono el cartel «nadie lo eligió»
+    // ocupaba más que el libro. La ausencia ya lo dice.
+    if(!cubos.length)   cubos.push(`<i class="k-nadie"><span class="cl">· nadie lo eligió</span></i>`);
     if(chico) return `<div class="${cls}" data-id="${escapeHtml(String(b.id))}" title="${escapeHtml(b.titulo)}">
       <div class="hx-mini" ${cov(b)}>${gano?'<span class="hx-crown">🏆</span>':''}</div></div>`;
     return `<div class="${cls}" data-id="${escapeHtml(String(b.id))}" title="${escapeHtml(b.titulo)}">
@@ -18246,7 +18381,7 @@ function abrirFicha(ov, book, intento){
   const base = hayVuelo ? 190 : 0;
   const entra = (el, ms, kf, dur)=>{
     if(!el) return;
-    anim.push(el.animate(kf, { duration:dur||520, delay:ms, easing:E_PANEL, fill:'both' }));
+    anim.push(el.animate(kf, { duration:dur||420, delay:ms, easing:E_PANEL, fill:'both' }));
   };
   const sube = [{ opacity:0, transform:'translateY(20px) scale(.985)' },
                 { opacity:1, transform:'translateY(0) scale(1)' }];
