@@ -110,6 +110,51 @@ const ALIAS={
   suspenseful:'suspense', tearjerker:'sad', techworld:'techie', teens:'teen', twisty:'puzzle',
   under200pages:'under200', unhinged:'scary', wittybanter:'snarky'
 };
+/* los nombres en castellano (TROPES_ES, en 03-core.js) apuntan al dibujo del
+   nombre inglés del que salieron. Generado, no editar a mano. */
+Object.assign(ALIAS, {
+  emotivo:'emotional', triste:'sad', oscuro:'dark', psicologico:'psychological',
+  literario:'literary', masde400paginas:'400pages', temassociales:'socialissues',
+  lecturarapida:'fastread', primerapersona:'firstperson', depersonajes:'characterdriven',
+  menosde200paginas:'under200', feminista:'feminist', perturbador:'unsettling', duelo:'grief',
+  internacional:'international', escalofriante:'creepy',
+  variospuntosdevista:'multipleviewpoints', suspenso:'suspense', sobrenatural:'supernatural',
+  familiaelegida:'foundfamily', dramafamiliar:'familydrama', desquiciado:'unhinged',
+  sesudo:'brainy', yaespelicula:'nowamovie', peculiar:'quirky', temaslgbtq:'lgbtqthemes',
+  identidad:'cerebral', humornegro:'darkhumor', mordaz:'snarky', adolescentes:'teen',
+  lacrimogeno:'tearjerker', autorfamoso:'wellknown', vueltasdetuerca:'twisty',
+  multigeneracional:'multigenerational', protagonistamujerfuerte:'strongfemalelead',
+  aspero:'rugged', violenciaexplicita:'graphiccontent', asesinato:'murder',
+  basadoenunclasico:'basedonaclassic', distopico:'dystopian', fuegolento:'slowbuild',
+  llenodeaccion:'actionpacked', aclamadoporlacritica:'criticallyacclaimed',
+  narradorunreliable:'unreliablenarrator', timelinenolineal:'nonlineartimeline',
+  inspirador:'inspirational', atmosferico:'creepy', terrorifico:'scary', mundotech:'techie',
+  personajedelavidareal:'reallifecharacters', naturaleza:'nature', vidadeescritor:'writerslife',
+  librosobrelibros:'bookaboutbooks', lecturaliviana:'lightread',
+  amistadentremujeres:'femalefriendship', busqueda:'quest', drogasyalcohol:'drugsandalcohol',
+  hermanos:'siblings', amorprohibido:'forbiddenlove', dosepocas:'dualtimelines',
+  magico:'magical', romancedefondo:'romance', satirico:'snarky',
+  realismomagico:'magicalrealism', guerra:'war', cinematografico:'movieish',
+  dialogosconchispa:'wittybanter', anos70:'70s', dinamicadehermanas:'sisterdynamic',
+  anos80:'80s', asesinoserial:'serialkiller', prosarecargada:'ornate',
+  inmigracion:'immigration', adicciones:'addictionthemes', primerodelasaga:'firstinseries',
+  dramasuburbano:'suburban', venganza:'revenge', casamiento:'wedding', glamoroso:'glamorous',
+  novelanegra:'hardboiled', poesia:'poetry', gastronomico:'foodie',
+  casaembrujada:'hauntedhouse', brujas:'witchy', romantasia:'romantasy', feliz:'happy',
+  musica:'music', ensayo:'academic', noviazgofingido:'fakedating',
+  trianguloamoroso:'lovetriangle', segundaoportunidad:'secondchanceromance',
+  matrimonioporconveniencia:'marriageofconvenience', infidelidad:'infidelity',
+  prohibido:'forbiddenlove', muypicante:'veryspicy', contenidosexual:'sexualcontent',
+  subidodetono:'salacious', nuevayork:'nyc', invierno:'winterthemes',
+  thrillerjudicial:'legalthriller', policial:'police', academico:'academic',
+  lecturadensa:'heavyread', sincomillas:'noquotes', narradorinsoportable:'unlikeablenarrator',
+  anos60:'60s', anos90:'90s', anos2000:'2000s', segundodelasaga:'secondinseries',
+  tercerodelasaga:'thirdinseries', cuartodelasaga:'fourthintheseries',
+  contenidoexplicito:'graphiccontent', curtido:'rugged', suburbano:'suburban',
+  tecnologico:'techie', muyconocido:'wellknown', enemiestolovers:'enemiestolove',
+  millennial:'millenial',
+});
+
 const helper = `
 /* ilustraciones de tropes (BOTM bookmoji) recoloreadas a shades de verde. */
 function bookmojiKey(t){ return String(t||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,''); }

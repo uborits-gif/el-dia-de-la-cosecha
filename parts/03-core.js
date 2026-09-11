@@ -197,8 +197,11 @@ function toast(msg){
   clearTimeout(t._t);
   t._t = setTimeout(()=>t.classList.remove('show'), 2600);
 }
+/* `String(...)` no es decoración: un año o un número de páginas que entró como
+   número —de un respaldo en JSON, del modo demo— llegaba acá sin .replace y
+   tiraba la ficha entera con «(s || "").replace is not a function». */
 function escapeHtml(s){
-  return (s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  return String(s ?? '').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 function shuffled(arr){
   const a = arr.slice();
@@ -252,7 +255,19 @@ const META_FIELDS = [
   { key:'puntajes',      file:'puntajes',        aliases:['puntaje','estrellas'],             label:'Puntajes',         sec:'club' },
   { key:'diasLectura',   file:'dias de lectura', aliases:['días de lectura'],                 label:'Leído en',         sec:'club', num:true, suffix:' días' },
   { key:'encuentros',    file:'encuentros',      aliases:[],                                  label:'Encuentros',       sec:'club', num:true },
+  /* ojo con el alias `notas`: es de ESTE campo, el de toda la vida. El muro
+     (más abajo) se guarda como `muro`, justamente para no pisarlo — si le
+     hubiéramos puesto `notas`, cualquier respaldo viejo habría entrado al
+     lugar equivocado y la nota del club se perdía. */
   { key:'nota',          file:'nota',            aliases:['notas'],                           label:'Nota del club',    sec:'club' },
+  /* 📅 cuándo lo empezaron y cuándo lo terminaron, con día. `readDate` ya
+     guardaba el mes ("jul 2026") y `diasLectura` el total, pero ninguno de los
+     dos dice qué día se arrancó: no se podía reconstruir una lectura. */
+  { key:'inicio',        file:'empezamos',       aliases:['inicio','empezado'],               label:'Empezamos',        sec:'club' },
+  { key:'fin',           file:'terminamos',      aliases:['fin','terminado'],                 label:'Terminamos',       sec:'club' },
+  /* 📌 el muro: las notas de los dos, en JSON de una sola línea. No es bitácora
+     a propósito — el texto es libre y `·` y `|` la partirían (ver 04k-notas.js) */
+  { key:'notas',         file:'muro',            aliases:['notas del muro'],                  label:'Muro',             sec:'club', hidden:true },
   /* 🎨 el color del libro (Read Your Color): rojo|naranja|amarillo|verde|azul|morado, con matiz */
   { key:'color',         file:'color',           aliases:['colour'],                          label:'Color',            sec:'club' },
   /* ⚡ supercosecha: bitácora propia — "fecha · cláusula común · cláusula del libro" */
@@ -351,33 +366,237 @@ const evTiene = (b,key,fecha)=>evList(b,key).some(e=>e.fecha===fecha);
 const evEsContador = v => /^\d+$/.test(String(v ?? '').trim());
 const evVacio = v => v===undefined || v===null || String(v).trim()==='';
 
-/* 🏷 LOS TROPES VAN TODOS EN INGLÉS.
-   El vocabulario es el de BOTM y es en inglés; unos pocos se habían cargado en
-   castellano y quedaban como una isla rara en el ADN y en la ruleta de tropes
-   (aparecían separados de su equivalente y con el nombre en otro idioma).
-   Acá se renombran de una vez: como corre dentro de migrateBook, se arregla
-   solo cualquier libro que entre —del archivo, de la nube o de un respaldo— y
-   la corrección se vuelve a subir sin que nadie tenga que editar nada a mano.
-   Los dibujos propios se conservan: el nombre nuevo tiene su alias en
-   scripts/gen-bookmoji.js apuntando al mismo SVG.                          */
-const TROPES_EN = {
-  'rebelion':   'Rebellion',
-  'periodismo': 'Journalism',
-  'secta':      'Cult',
-  'ensayo':     'Essays',
-  'ruptura':    'Break up',
+/* 📕 LIBROS RENOMBRADOS.
+   Cambiar un título a mano en una ficha no alcanza: el club vive en dos
+   teléfonos y en la nube, y el que no editó se queda con el nombre viejo.
+   Acá se renombra de una vez —corre dentro de migrateBook— y la corrección se
+   vuelve a subir sola, igual que con los tropes.
+   La clave va normalizada (sin acentos, sin espacios, minúsculas), así que no
+   importa cómo esté escrito el título guardado.
+   OJO: la tabla de colores (COLOR_CLUB, en 04h-color.js) está indexada por
+   título. Cuando agregues un renombre acá, dejá también el título nuevo como
+   clave allá, o el libro pierde el texto que explica su color. */
+const LIBROS_RENOMBRADOS = {
+  'dieznegritos':                  'Y no quedó ninguno',
+  'lascosasquedejamossinterminar': 'El amor que dejamos atrás',
+};
+function renombrarLibro(b){
+  const nuevo = LIBROS_RENOMBRADOS[tropeClave(b.titulo)];
+  if(nuevo && b.titulo !== nuevo) b.titulo = nuevo;
+}
+
+/* 🏷 LOS TROPES VAN TODOS EN CASTELLANO.
+   El vocabulario original es el de BOTM y viene en inglés, pero el club se
+   habla en castellano: la ficha, la ruleta y el ADN se leen mejor si los
+   tropes también. Acá está la traducción completa, y como corre dentro de
+   migrateBook se arregla solo cualquier libro que entre —del archivo, de la
+   nube o de un respaldo— y la corrección se vuelve a subir sin que nadie
+   tenga que editar nada a mano.
+   Dos cosas para no romper:
+   · Los dibujos siguen atados al nombre inglés. Cada nombre nuevo tiene su
+     alias en scripts/gen-bookmoji.js apuntando al mismo SVG.
+   · La traducción tiene que ser IDEMPOTENTE: traducir dos veces da lo mismo
+     que traducir una. Por eso ningún valor en castellano puede ser, a su vez,
+     una clave que lleve a otra cosa (ojo con 'Romance', 'Rural', 'Western').
+   Los que ya estaban en castellano de antes —Rebelión, Periodismo, Secta,
+   Ensayo, Ruptura— no son clave de nada, así que quedan como están; y su
+   versión inglesa cae justo encima de ellos, con lo cual se vuelven a juntar. */
+const TROPES_ES = {
+  /* --- los que están cargados en las fichas, del más usado al menos --- */
+  'emotional':             'Emotivo',
+  'sad':                   'Triste',
+  'dark':                  'Oscuro',
+  'psychological':         'Psicológico',
+  'literary':              'Literario',
+  '400pages':              'Más de 400 páginas',
+  'socialissues':          'Temas sociales',
+  'fastread':              'Lectura rápida',
+  'firstperson':           'Primera persona',
+  'buzzy':                 'Buzzy',
+  'characterdriven':       'De personajes',
+  'under200pages':         'Menos de 200 páginas',
+  'feminist':              'Feminista',
+  'unsettling':            'Perturbador',
+  'grief':                 'Duelo',
+  'international':         'Internacional',
+  'creepy':                'Escalofriante',
+  'multipleviewpoints':    'Varios puntos de vista',
+  'cerebral':              'Cerebral',
+  'suspenseful':           'Suspenso',
+  'supernatural':          'Sobrenatural',
+  'comingofage':           'Coming of age',
+  'foundfamily':           'Familia elegida',
+  'familydrama':           'Drama familiar',
+  'unhinged':              'Desquiciado',
+  'brainy':                'Sesudo',
+  'nowamovie':             'Ya es película',
+  'quirky':                'Peculiar',
+  'serious':               'Serio',
+  'lgbtqthemes':           'Temas LGBTQ+',
+  'identity':              'Identidad',
+  'darkhumor':             'Humor negro',
+  'snarky':                'Mordaz',
+  'teens':                 'Adolescentes',
+  'tearjerker':            'Lacrimógeno',
+  'romance':               'Romance',
+  'famousauthor':          'Autor famoso',
+  'marriageissues':        'Marriage issues',
+  'lol':                   'LOL',
+  'twisty':                'Vueltas de tuerca',
+  'multigenerational':     'Multigeneracional',
+  'strongfemalelead':      'Protagonista mujer fuerte',
+  'gritty':                'Áspero',
+  'graphicviolence':       'Violencia explícita',
+  'murder':                'Asesinato',
+  'basedonaclassic':       'Basado en un clásico',
+  'dystopian':             'Distópico',
+  'slowbuild':             'Fuego lento',
+  'actionpacked':          'Lleno de acción',
+  'criticallyacclaimed':   'Aclamado por la crítica',
+  'unreliablenarrator':    'Narrador unreliable',
+  'nonlineartimeline':     'Timeline no lineal',
+  'inspirational':         'Inspirador',
+  'atmospheric':           'Atmosférico',
+  'cozy':                  'Cozy',
+  'scary':                 'Terrorífico',
+  'techworld':             'Mundo tech',
+  'reallifecharacters':    'Personaje de la vida real',
+  'rural':                 'Rural',
+  'nature':                'Naturaleza',
+  'writerslife':           'Vida de escritor',
+  'bookaboutbooks':        'Libro sobre libros',
+  'lightread':             'Lectura liviana',
+  'femalefriendships':     'Amistad entre mujeres',
+  'amnesia':               'Amnesia',
+  'quest':                 'Búsqueda',
+  'island':                'Isla',
+  'drugalcoholuse':        'Drogas y alcohol',
+  'siblings':              'Hermanos',
+  'forbiddenlove':         'Amor prohibido',
+  'dualtimelines':         'Dos épocas',
+  'murdermystery':         'Murder mystery',
+  'magical':               'Mágico',
+  'underdog':              'Underdog',
+  'romancesubplot':        'Romance de fondo',
+  'satirical':             'Satírico',
+  'magicalrealism':        'Realismo mágico',
+  'rebellion':             'Rebelión',
+  'war':                   'Guerra',
+  'movieish':              'Cinematográfico',
+  'wittybanter':           'Diálogos con chispa',
+  '70s':                   'Años 70',
+  'journalism':            'Periodismo',
+  'mamadrama':             'Mama drama',
+  'sisterdynamic':         'Dinámica de hermanas',
+  '80s':                   'Años 80',
+  'serialkiller':          'Asesino serial',
+  'ornate':                'Prosa recargada',
+  'immigration':           'Inmigración',
+  'addictionthemes':       'Adicciones',
+  'whodunit':              'Whodunit',
+  'puzzle':                'Puzzle',
+  'catandmouse':           'Cat and mouse',
+  'firstinseries':         'Primero de la saga',
+  'suburbandrama':         'Drama suburbano',
+  'revenge':               'Venganza',
+  'wedding':               'Casamiento',
+  'glamorous':             'Glamoroso',
+  'hardboiled':            'Novela negra',
+  'cult':                  'Secta',
+  'poetry':                'Poesía',
+  'foodie':                'Gastronómico',
+  'hauntedhouse':          'Casa embrujada',
+  'witchy':                'Brujas',
+  'romantasy':             'Romantasía',
+  'happy':                 'Feliz',
+  'music':                 'Música',
+  'essays':                'Ensayo',
+  'breakup':               'Ruptura',
+
+  /* --- del vocabulario, todavía sin estrenar --- */
+  'enemiestolovers':       'Enemies to lovers',
+  'friendstolovers':       'Friends to lovers',
+  'fakedating':            'Noviazgo fingido',
+  'lovetriangle':          'Triángulo amoroso',
+  'secondchanceromance':   'Segunda oportunidad',
+  'marriageofconvenience': 'Matrimonio por conveniencia',
+  'infidelity':            'Infidelidad',
+  'forbidden':             'Prohibido',
+  'veryspicy':             'Muy picante',
+  'sexualcontent':         'Contenido sexual',
+  'salacious':             'Subido de tono',
+  'roadtrip':              'Roadtrip',
+  'western':               'Western',
+  'nyc':                   'Nueva York',
+  'winterthemes':          'Invierno',
+  'legalthriller':         'Thriller judicial',
+  'police':                'Policial',
+  'academic':              'Académico',
+  'heavyread':             'Lectura densa',
+  'noquotes':              'Sin comillas',
+  'unlikeablenarrator':    'Narrador insoportable',
+  'millennial':            'Millennial',
+  '60s':                   'Años 60',
+  '90s':                   'Años 90',
+  '2000s':                 'Años 2000',
+  'secondinseries':        'Segundo de la saga',
+  'thirdinseries':         'Tercero de la saga',
+  'fourthintheseries':     'Cuarto de la saga',
+
+  /* --- variantes y sinónimos que también hay que atajar --- */
+  'graphiccontent':        'Contenido explícito',
+  'rugged':                'Curtido',
+  'suburban':              'Suburbano',
+  'techie':                'Tecnológico',
+  'teen':                  'Adolescentes',
+  'wellknown':             'Muy conocido',
+  'suspense':              'Suspenso',
+  'femalefriendship':      'Amistad entre mujeres',
+  'enemiestolove':         'Enemies to lovers',
+  'multigenerational':     'Multigeneracional',
+  'familychosen':          'Familia elegida',
+  'drugandalcoholuse':     'Drogas y alcohol',
+  'darkhumour':            'Humor negro',
+  'essay':                 'Ensayo',
+  'breakup':               'Ruptura',
+  '400pages':              'Más de 400 páginas',
+  'under200':              'Menos de 200 páginas',
+
+  /* --- la primera tanda de traducciones, corregida después: el club llegó
+     a guardar estos nombres, así que hay que seguir atajándolos --- */
+  'variasvoces':           'Varios puntos de vista',
+  'seleerapido':           'Lectura rápida',
+  'quienlohizo':           'Whodunit',
+  'iniciacion':            'Coming of age',
+  'delmomento':            'Buzzy',
+  'carcajada':             'LOL',
+  'crisisdepareja':        'Marriage issues',
+  'protagonistafuerte':    'Protagonista mujer fuerte',
+  'narradorpocofiable':    'Narrador unreliable',
+  'reconfortante':         'Cozy',
+  'tiemponolineal':        'Timeline no lineal',
+  'personajesreales':      'Personaje de la vida real',
+  'desfavorecido':         'Underdog',
+  'misteriodeasesinato':   'Murder mystery',
+  'dramamaterno':          'Mama drama',
+  'entrehermanas':         'Dinámica de hermanas',
+  'gatoyraton':            'Cat and mouse',
+  'rompecabezas':          'Puzzle',
+  'deenemigosaamantes':    'Enemies to lovers',
+  'deamigosaamantes':      'Friends to lovers',
+  'viajeenruta':           'Roadtrip',
 };
 /* misma normalización que bookmojiKey: sin acentos, sin espacios, minúsculas */
 const tropeClave = t => String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .toLowerCase().replace(/[^a-z0-9]/g,'');
-function tropesAlIngles(b){
+function tropesAlCastellano(b){
   if(evVacio(b.tropes)) return;
   const vistos = new Set();
   const lista = String(b.tropes).split(',')
     .map(t => t.trim())
     .filter(Boolean)
-    .map(t => TROPES_EN[tropeClave(t)] || t)
-    // renombrar puede dejar dos iguales (si el libro ya tenía el nombre inglés)
+    .map(t => TROPES_ES[tropeClave(t)] || t)
+    // traducir puede dejar dos iguales (si el libro ya tenía el nombre nuevo)
     .filter(t => { const k = tropeClave(t); if(vistos.has(k)) return false; vistos.add(k); return true; });
   b.tropes = lista.join(', ');
 }
@@ -425,7 +644,8 @@ function migrateBook(b){
     while(list.length < num(b.vasallajes)) list.unshift({ fecha:'', quien:'Vasallaje', extra:'puesto ?' });
     evWrite(b, 'puestos', list);
   }
-  tropesAlIngles(b);
+  renombrarLibro(b);
+  tropesAlCastellano(b);
   META_FIELDS.filter(f=>f.legacy).forEach(f=>delete b[f.key]);
   return b;
 }

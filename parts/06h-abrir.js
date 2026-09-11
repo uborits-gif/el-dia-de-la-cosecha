@@ -90,6 +90,19 @@ function abrirFicha(ov, book, intento){
     return;
   }
 
+  /* 🚩 EL MARCO NO PUEDE MOVERSE MIENTRAS EL LIBRO VUELA.
+     `.ov-pop` es la entrada genérica de todos los overlays: medio segundo de
+     translateY(26px) + scale(.92), con rebote. El vuelo, en cambio, mide el
+     destino en el cuadro 0 y aterriza exactamente ahí. Si el destino sigue
+     creciendo y subiendo por detrás, el libro cae 31px abajo y un 10% más
+     chico de lo que corresponde, y al cambiar el clon por el libro real se ve
+     el salto — ese era el glitch al agrandarse.
+     Acá la ficha ya tiene entrada propia (el vuelo y los tres bloques), así que
+     la genérica sobra: se cambia por un fundido que no mueve nada, y el destino
+     queda quieto desde el primer cuadro. */
+  const marco = ov.querySelector('.pl2-frame') || ov.querySelector('.ov-pop');
+  if(marco) marco.classList.add('pl2-quieto');
+
   /* 🫁 se congela la respiración ANTES de medir: si el libro está a mitad de
      su vaivén, todo el vuelo aterriza corrido y al cambiarlo se ve el tirón */
   const flota = destino.querySelector('.book-float');

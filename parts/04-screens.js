@@ -528,6 +528,7 @@ function showPlacard(list, startIdx, opts={}){
       ['puestos','Puestos', 'fecha · torneo · puesto'],
       ['clausulas','Cláusulas ⚡', 'fecha · común · la del libro'],
       ['puntajes','Puntajes', 'Maru 4.5 | Uri 3'],
+      ['inicio','Empezamos', '10 sep 2026'],['fin','Terminamos', '28 sep 2026'],
       ['diasLectura','Leído en (días)', ''],['encuentros','Encuentros', ''],['nota','Nota', ''],
     ];
     const editForm = `<div class="pl2-edit">${EDITF.map(([k,l,ph])=>
@@ -578,7 +579,10 @@ function showPlacard(list, startIdx, opts={}){
             ${pills.length?`<div class="pl-badges" style="margin:0 0 14px;">${pills.join('')}</div>`:''}
             ${esActual?`<button class="btn btn-amber btn-sm fin-btn" id="fichaFin">Terminamos el libro</button>`
               : esLeido?`<div class="rate-box" id="rateBox"></div>`:''}
+            ${(b.inicio||b.fin)?`<div class="pl2-sec"><div class="pl2-rows">
+              ${row('Empezamos', b.inicio)}${row('Terminamos', b.fin)}</div></div>`:''}
             ${tl.length?`<div class="tl">${tl.join('')}</div>`:`<div class="pl-empty">Todavía sin historia. Ya va a tener.</div>`}
+            ${(esActual||esLeido) && typeof muroHTML==='function' ? muroHTML(b) : ''}
             ${b.nota?`<p class="pl-nota">${escapeHtml(b.nota)}</p>`:''}
             ${opts.source==='vault'?`<button class="pl2-del" id="plDel">🗑 Sacar de la bóveda</button>`:''}`}
         </div>
@@ -614,6 +618,7 @@ function showPlacard(list, startIdx, opts={}){
     if(plExp) plExp.addEventListener('click', ()=>{ try{ Sound.fx.click(); }catch(e){}
       scene.classList.toggle('pl2-open');
       plExp.setAttribute('aria-label', scene.classList.contains('pl2-open') ? 'Cerrar la ficha' : 'Ver la ficha completa');
+      placeArrows(scene);
     });
     const plDel = $('#plDel', scene);
     if(plDel) plDel.addEventListener('click', async ()=>{
@@ -634,6 +639,22 @@ function showPlacard(list, startIdx, opts={}){
     wireSpineTools(b, scene);
     wireRatings(b, scene);
     if($('#fichaFin', scene)) $('#fichaFin', scene).addEventListener('click', ()=>ceremoniaFinal(b));
+
+    /* 📌 el muro se repinta solo. Cambiar de lector o borrar una nota no tiene
+       por qué volver a armar la ficha entera —eso dispararía el carrusel y el
+       vuelo del libro—, así que se reemplaza sólo su sección y se reenganchan
+       los botones del nodo nuevo. */
+    const engancharMuro = sec => {
+      if(!sec || typeof muroMontar !== 'function') return;
+      muroMontar(sec, b, ()=>{
+        const caja = document.createElement('div');
+        caja.innerHTML = muroHTML(b);
+        const nuevo = caja.firstElementChild;
+        sec.replaceWith(nuevo);
+        engancharMuro(nuevo);
+      });
+    };
+    engancharMuro($('.nt-sec', scene));
     // lápiz: editar y guardar en la app
     $('#plEdit', ov).addEventListener('click', ()=>{ Sound.fx.click(); render(0, !editing); });
     if(editing){
@@ -674,6 +695,12 @@ function showPlacard(list, startIdx, opts={}){
        escapan de abajo del dedo justo cuando las estás usando —y por medio
        segundo no hay nada que tocar—. Quietas, sólo cambia lo que muestran. */
     [prev, next].forEach(a=>{ if(a.parentElement !== fr) fr.appendChild(a); });
+
+    /* Con la ficha expandida se esconden. Están apoyadas sobre la barra, y la
+       barra se va con el scroll: quedaban flotando en el medio del panel,
+       tapando justo lo que estás leyendo (se veía feo sobre el muro). Mientras
+       leés la ficha entera no se cambia de libro: se cierra y se cambia. */
+    fr.classList.toggle('pl2-expandida', scene.classList.contains('pl2-open'));
 
     if(innerWidth <= 980 && pill){
       // en el teléfono se apoyan sobre la barra, en el hueco que ella les deja
@@ -814,6 +841,9 @@ function showPlacard(list, startIdx, opts={}){
       setRating(b, State.players.a, vals.a);
       setRating(b, State.players.b, vals.b);
       syncBook(b, ['puntajes']);
+      // 📅 queda escrito el día que lo terminaron. Esto además destapa el muro:
+      // hasta acá cada uno veía sólo sus notas (ver libroTerminado, 04k-notas.js)
+      if(!b.fin){ b.fin = fechaHoy(); syncBook(b, ['fin']); }
       // días de lectura automáticos: desde que lo ganaron hasta hoy
       if(!b.diasLectura){
         const d0 = parseFecha(fechaVictoria(b));

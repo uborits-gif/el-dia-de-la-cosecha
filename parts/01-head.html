@@ -1560,6 +1560,17 @@ h1.title.sz-hero{
 /* ---- ficha v3: layout Criterion (libro al centro, paneles a los lados) ----
    El marco no se mueve; adentro, la ficha entera se desliza en X. */
 .pl2-frame{position:relative;width:min(1180px,97vw);}
+/* la ficha tiene su propia entrada —el libro vuela y los bloques entran detrás—
+   así que la genérica de los overlays se reemplaza por un fundido: cualquier
+   transform acá le mueve el piso al libro que está volando (ver 06h-abrir.js) */
+.pl2-frame.pl2-quieto{animation:plMarcoIn .34s ease-out;}
+/* ver placeArrows: con la ficha abierta las flechas tapan el texto.
+   `animation:none` no es decorativo: .pl2-btn entra con plBtnIn y fill `both`,
+   así que su opacity:1 final gana por cascada sobre cualquier regla normal —
+   sin apagar la animación, esto no hacía absolutamente nada. */
+.pl2-frame.pl2-expandida #plPrev,
+.pl2-frame.pl2-expandida #plNext{animation:none;opacity:0;pointer-events:none;transition:opacity .2s;}
+@keyframes plMarcoIn{from{opacity:0;}to{opacity:1;}}
 /* El cerrar va arriba a la IZQUIERDA: el botón de sonido vive fijo arriba a
    la derecha y los dos se pisaban. Va con position:fixed, que dentro del
    overlay (que tiene filter) se ancla al overlay y no se mueve al scrollear
@@ -2556,6 +2567,227 @@ body.demo #app{padding-top:20px;}
 .st-rsub{font-size:11.5px;color:var(--bone-dim);margin-top:2px;}
 .st-rcov{width:34px;height:51px;border-radius:3px;flex:none;background-size:cover;background-position:center;
   background-color:var(--card-hi);box-shadow:0 5px 12px rgba(0,0,0,.55);}
+/* ---- 🫀 EL RETRATO DEL LECTOR ----
+   Cuatro tarjetas: el paladar, los autores, los géneros y el tamaño. Entran en
+   una rejilla que se parte sola; en el teléfono queda una abajo de la otra. */
+.st-tars{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));margin-top:6px;}
+.st-tar{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px 20px 18px;}
+.st-tar-ojo{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--grey);font-weight:600;}
+.st-tar-t{font-family:'Fraunces',serif;font-weight:700;font-size:19px;margin:5px 0 16px;}
+.st-tar-pie{margin-top:14px;padding-top:12px;border-top:1px solid var(--border-soft);
+  font-size:11.5px;color:var(--grey);line-height:1.5;}
+
+/* el aro del paladar y la rosca de géneros comparten el agujero del centro */
+.st-aro, .str-aro{
+  width:132px;height:132px;border-radius:50%;flex:none;display:grid;place-items:center;
+  position:relative;
+}
+.str-centro{
+  width:86px;height:86px;border-radius:50%;background:var(--card);
+  display:grid;place-items:center;align-content:center;text-align:center;
+}
+.str-centro b{font-family:'Fraunces',serif;font-weight:900;font-size:27px;line-height:1;color:var(--bone);}
+.str-centro em{font-style:normal;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--grey);margin-top:4px;}
+
+.st-pal{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+.st-pal-txt{flex:1;min-width:150px;}
+.st-pal-txt b{display:block;font-family:'Fraunces',serif;font-weight:700;font-size:16px;line-height:1.2;}
+.st-pal-txt em{display:block;font-style:normal;font-size:12px;color:var(--bone-dim);margin-top:5px;line-height:1.5;}
+.st-pal-txt span{display:block;font-size:12px;color:var(--amber);margin-top:7px;font-weight:600;}
+/* las cinco columnas de estrellas: se leen de un vistazo, sin ejes ni grilla */
+.st-estrellas{display:flex;align-items:flex-end;gap:10px;margin-top:20px;}
+.st-est{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.st-est b{font-size:12px;font-weight:700;color:var(--bone-dim);font-variant-numeric:tabular-nums;}
+.st-est i{display:block;width:100%;border-radius:5px;background:linear-gradient(180deg,var(--amber),#9CC22B);}
+.st-est span{font-size:10px;color:var(--grey);}
+
+.st-rosca{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+.str-ley{flex:1;min-width:140px;display:grid;gap:6px;}
+.str-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--bone-dim);}
+.str-item i{width:9px;height:9px;border-radius:50%;flex:none;}
+.str-item span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.str-item b{color:var(--bone);font-variant-numeric:tabular-nums;}
+
+.st-autores{margin-top:14px;display:grid;gap:2px;}
+.st-aut{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid rgba(30,61,38,.35);}
+.st-aut:first-child{border-top:none;}
+.st-aut em{font-style:normal;font-size:14px;width:18px;text-align:center;flex:none;}
+.st-aut span{flex:1;min-width:0;font-size:13.5px;color:var(--bone);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.st-aut b{font-size:11.5px;color:var(--bone-dim);font-weight:600;flex:none;}
+.st-aut b.top{color:var(--amber);}
+
+/* un premio que se ganaron varios: el ícono se alinea arriba porque la tarjeta
+   ya no es una línea sola, y cada libro entra con su portada */
+.st-rec-multi{align-items:flex-start;}
+.st-rec-multi .st-rico{padding-top:2px;}
+.st-rline{display:flex;align-items:center;gap:12px;margin-top:9px;}
+.st-rlmain{flex:1;min-width:0;}
+
+/* ---- 📌 EL MURO DEL LIBRO (04k-notas.js) ----
+   Un corcho con papelitos pegados con cinta. El corcho va en la madera oscura
+   del club (--wood-*) y no en el tan del original: acá el fondo es verde noche
+   y un marrón claro quedaba como un parche. Los papeles sí son pasteles, que es
+   lo único que se lee bien sobre madera. */
+.nt-sec{margin-top:26px;}
+.nt-yo{
+  border:1px solid var(--pc);color:var(--pc);background:transparent;
+  border-radius:999px;padding:3px 10px;font:inherit;font-size:9px;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;cursor:pointer;
+  transition:background .18s;
+}
+.nt-yo:hover{background:color-mix(in srgb, var(--pc) 16%, transparent);}
+.nt-nueva{
+  display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  padding:11px 14px;margin-bottom:12px;cursor:pointer;
+  border:1px dashed var(--border);border-radius:14px;background:rgba(201,248,57,.04);
+  color:var(--bone);font:inherit;transition:border-color .18s, background .18s;
+}
+.nt-nueva:hover{border-color:var(--amber);background:rgba(201,248,57,.09);}
+.nt-nueva i{
+  flex:none;width:26px;height:26px;border-radius:50%;background:var(--amber);color:var(--bg);
+  display:grid;place-items:center;font-style:normal;font-weight:800;font-size:17px;line-height:1;
+}
+.nt-nueva b{display:block;font-size:13px;font-weight:600;}
+.nt-nueva em{display:block;font-style:normal;font-size:11px;color:var(--grey);margin-top:1px;}
+
+.nt-corcho{
+  border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:14px;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(0,0,0,.22) 0 1.5px, transparent 2px) 0 0/22px 22px,
+    radial-gradient(circle at 70% 65%, rgba(255,255,255,.05) 0 1.5px, transparent 2px) 0 0/31px 29px,
+    linear-gradient(160deg, var(--wood-3), var(--wood-1) 55%, var(--wood-2));
+  box-shadow:inset 0 2px 10px rgba(0,0,0,.5), 0 8px 22px -12px rgba(0,0,0,.8);
+  border:1px solid rgba(0,0,0,.45);
+}
+.nt-nota{
+  position:relative;padding:16px 14px 10px;border-radius:3px;color:#1B2417;
+  box-shadow:0 8px 18px -8px rgba(0,0,0,.75);
+  /* cada papel se pega un poco torcido: el ángulo sale del índice, no al azar,
+     así no baila cada vez que se vuelve a dibujar el muro */
+  transform:rotate(calc(var(--g, 0) * 1deg));
+}
+.nt-nota:nth-child(odd){--g:-.9;}
+.nt-nota:nth-child(even){--g:1.1;}
+.nt-nota:nth-child(3n){--g:-.4;}
+.nt-cinta{
+  position:absolute;top:-7px;left:50%;width:60px;height:16px;transform:translateX(-50%) rotate(-1.5deg);
+  background:rgba(242,245,236,.38);border-left:1px solid rgba(255,255,255,.18);
+  border-right:1px solid rgba(255,255,255,.18);
+}
+.nt-cab{display:flex;justify-content:flex-end;}
+.nt-fecha{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,36,23,.5);}
+.nt-texto{
+  font-family:'Fraunces',serif;font-size:14.5px;line-height:1.5;margin:5px 0 10px;
+  word-break:break-word;
+}
+.nt-pie{display:flex;align-items:center;gap:8px;border-top:1px solid rgba(27,36,23,.16);padding-top:7px;}
+.nt-tipo{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(27,36,23,.62);}
+.nt-ref{font-size:10px;color:rgba(27,36,23,.5);}
+.nt-firma{
+  margin-left:auto;flex:none;width:19px;height:19px;border-radius:50%;
+  background:var(--pc);color:#0B1409;display:grid;place-items:center;
+  font-size:10px;font-weight:800;
+}
+.nt-borrar{
+  flex:none;border:0;background:transparent;cursor:pointer;padding:0 2px;
+  color:rgba(27,36,23,.4);font-size:13px;line-height:1;transition:color .18s;
+}
+.nt-borrar:hover{color:var(--danger);}
+/* un spoiler llega tapado: se lee tocándolo */
+.nt-spoiler{cursor:pointer;}
+.nt-spoiler .nt-texto{filter:blur(6px);transition:filter .3s;user-select:none;}
+.nt-spoiler.abierto .nt-texto{filter:none;user-select:auto;}
+
+/* los papeles */
+.nt-amarilla{background:#F6E8A0;}
+.nt-rosa    {background:#F6C9D4;}
+.nt-verde   {background:#BFE8D0;}
+.nt-celeste {background:#C3DDF5;}
+.nt-lila    {background:#D9CBF0;}
+.nt-durazno {background:#F8D5B0;}
+
+.nt-corcho.vacio{padding:26px 16px;}
+.nt-vacio{text-align:center;color:rgba(242,245,236,.72);}
+.nt-vacio b{display:block;font-family:'Fraunces',serif;font-size:15px;margin:12px 0 4px;color:var(--bone);}
+.nt-vacio em{display:block;font-style:normal;font-size:11.5px;line-height:1.5;color:rgba(242,245,236,.52);}
+.nt-fantasma{display:inline-flex;align-items:flex-end;gap:-6px;}
+.nt-fantasma i{
+  display:block;width:34px;height:34px;border-radius:2px;margin-right:-9px;
+  box-shadow:0 5px 12px -6px rgba(0,0,0,.8);
+}
+.nt-fantasma i:nth-child(1){background:#F6E8A0;transform:rotate(-7deg);}
+.nt-fantasma i:nth-child(2){background:#F6C9D4;transform:rotate(2deg);}
+.nt-fantasma i:nth-child(3){background:#BFE8D0;transform:rotate(8deg);}
+
+.nt-tapadas{
+  margin-top:11px;padding:9px 12px;border-radius:11px;
+  background:rgba(201,248,57,.05);border:1px solid var(--border-soft);
+  font-size:11.5px;line-height:1.5;color:var(--bone-dim);
+}
+
+/* — quién sos — */
+.nt-quien{display:flex;gap:12px;justify-content:center;}
+.nt-quien-b{
+  flex:1;max-width:170px;cursor:pointer;font:inherit;color:var(--bone);
+  border:1px solid var(--border);border-radius:16px;padding:18px 12px;
+  background:var(--card);transition:border-color .18s, transform .18s, background .18s;
+}
+.nt-quien-b:hover{border-color:var(--pc);background:var(--card-hi);transform:translateY(-2px);}
+.nt-quien-b i{
+  display:grid;place-items:center;width:46px;height:46px;margin:0 auto 10px;
+  border-radius:50%;background:var(--pc);color:#0B1409;
+  font-style:normal;font-weight:800;font-size:22px;
+}
+.nt-quien-b b{display:block;font-size:14px;font-weight:600;}
+
+/* — la hoja de nota nueva — */
+.nt-hoja{max-height:88vh;overflow-y:auto;}
+.nt-hoja-cab{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin:-4px 0 18px;
+}
+.nt-hoja-t{font-family:'Fraunces',serif;font-weight:700;font-size:17px;}
+.nt-campo{margin-bottom:16px;}
+.nt-lab{
+  display:block;margin-bottom:7px;font-size:9.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--grey);font-weight:600;
+}
+.nt-lab em{font-style:normal;letter-spacing:.06em;text-transform:none;opacity:.75;}
+.nt-tipos{display:flex;flex-wrap:wrap;gap:7px;}
+.nt-chip{
+  cursor:pointer;font:inherit;font-size:12px;padding:6px 12px;border-radius:999px;
+  border:1px solid var(--border);background:transparent;color:var(--bone-dim);
+  transition:border-color .18s, color .18s, background .18s;
+}
+.nt-chip:hover{border-color:var(--amber);color:var(--bone);}
+.nt-chip.on{background:var(--amber);border-color:var(--amber);color:var(--bg);font-weight:600;}
+.nt-hoja textarea, .nt-hoja input{
+  width:100%;font:inherit;font-size:14px;color:var(--bone);
+  background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;padding:11px 13px;
+  resize:vertical;
+}
+.nt-hoja textarea:focus, .nt-hoja input:focus{outline:none;border-color:var(--amber);}
+.nt-ref-fila{display:flex;gap:9px;align-items:center;}
+.nt-segm{display:flex;border:1px solid var(--border);border-radius:11px;overflow:hidden;flex:none;}
+.nt-segm button{
+  cursor:pointer;font:inherit;font-size:12px;padding:8px 11px;border:0;
+  background:transparent;color:var(--bone-dim);transition:background .18s, color .18s;
+}
+.nt-segm button.on{background:var(--card-hi);color:var(--bone);font-weight:600;}
+.nt-colores{display:flex;gap:9px;}
+.nt-col{
+  width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent;
+  box-shadow:0 3px 8px -4px rgba(0,0,0,.8);transition:transform .18s, border-color .18s;
+}
+.nt-col:hover{transform:scale(1.1);}
+.nt-col.on{border-color:var(--bone);transform:scale(1.12);}
+.nt-firma-av{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--grey);margin-top:2px;}
+.nt-firma-av i{
+  flex:none;width:24px;height:24px;border-radius:50%;background:var(--pc);color:#0B1409;
+  display:grid;place-items:center;font-style:normal;font-weight:800;font-size:12px;
+}
+.nt-firma-av b{color:var(--bone);font-weight:600;}
 
 /* — ilustraciones de tropes (bookmoji monocromas) — */
 .bmj{display:inline-flex;align-items:center;justify-content:center;width:1em;height:1em;flex:none;line-height:0;color:inherit;}

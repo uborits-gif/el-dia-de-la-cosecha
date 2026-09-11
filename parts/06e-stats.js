@@ -42,6 +42,23 @@ const FLAGS = {'estados unidos':'🇺🇸','argentina':'🇦🇷','reino unido':
 const flagOf = p => FLAGS[(p||'').toLowerCase().trim()] || '🌍';
 
 /* cuenta ocurrencias y devuelve [[valor, n], …] ordenado */
+/* 📏 los cuatro tamaños de libro, con el nombre que les puso el club. Van acá
+   arriba porque los usan el cálculo y el dibujo. */
+const ANATOMIA = [
+  { n:'Bocados',            min:0,   max:199,  d:'menos de 200 págs' },
+  { n:'Novelas',            min:200, max:399,  d:'200 a 399' },
+  { n:'Tochos',             min:400, max:699,  d:'400 a 699' },
+  { n:'Tremendos ladrillos',min:700, max:1e9,  d:'700 y para arriba' },
+];
+/* el veredicto del paladar: con qué cara reparten las estrellas */
+const PALADAR = [
+  { desde:4.5, t:'Aplauden hasta los malos',   d:'Casi nada baja de cuatro.' },
+  { desde:4.0, t:'Difíciles de decepcionar',   d:'Se entregan rápido y sin culpa.' },
+  { desde:3.5, t:'Generosos, pero con límite', d:'Dan el aprobado, no el abrazo.' },
+  { desde:3.0, t:'Piden más de lo que reciben',d:'Un club exigente, dicho con cariño.' },
+  { desde:0,   t:'Nada les alcanza',           d:'Alguien tiene que decirlo.' },
+];
+
 function tally(arr){
   const m = new Map();
   arr.filter(Boolean).forEach(v=>m.set(v, (m.get(v)||0)+1));
@@ -278,6 +295,38 @@ function computeStats(){
     terco: (iA!=null && iB!=null && iA!==iB) ? { quien: iA>iB?A:B, delta: Math.max(iA,iB) } : null,
   };
 
+  /* ---- 📊 EL RETRATO DEL LECTOR ----
+     Qué puntúan, a quién leen, de qué género y de qué tamaño. Sale todo del
+     estante de honor: la bóveda todavía no se leyó, así que no opina. */
+  S.retrato = (()=>{
+    const leidos = read;
+    // el paladar: cómo reparten las estrellas
+    const notas = leidos.map(b=>ratingAvg(b)).filter(v=>v!=null);
+    const cajas = [0,0,0,0,0];
+    notas.forEach(v=>{ cajas[Math.min(4, Math.max(0, Math.round(v)-1))]++; });
+    const prom = notas.length ? notas.reduce((a,x)=>a+x,0)/notas.length : null;
+    const generosos = notas.filter(v=>v>=4).length;
+    // el salón de autores
+    const autores = tally(leidos.map(b=>String(b.autor||'').trim()).filter(Boolean));
+    // el mapa de géneros
+    const generos = tally(leidos.map(b=>String(b.genero||'').trim()).filter(Boolean));
+    // la anatomía: cuántas páginas tienen los libros que eligen
+    const pags = leidos.map(b=>parseInt(b.paginas,10)).filter(n=>n>0 && n<10000).sort((a,b)=>a-b);
+    const media = pags.length ? Math.round(pags.reduce((a,x)=>a+x,0)/pags.length) : null;
+    const mediana = pags.length
+      ? (pags.length % 2 ? pags[(pags.length-1)/2]
+                         : Math.round((pags[pags.length/2-1] + pags[pags.length/2])/2))
+      : null;
+    const cubos = ANATOMIA.map(c=>[c.n, pags.filter(p=>p>=c.min && p<=c.max).length]);
+    return {
+      paladar: { n: notas.length, prom, cajas, generosos },
+      autores: { top: autores.slice(0,6), distintos: autores.length,
+                 repetidores: autores.filter(([,n])=>n>1).length },
+      generos: { top: generos.slice(0,7), distintos: generos.length },
+      anatomia: { n: pags.length, media, mediana, max: pags[pags.length-1] || null, cubos },
+    };
+  })();
+
   /* ---- 🎨 los colores del club: qué hay, y qué le tocaría a cada uno ---- */
   S.color = (()=>{
     if(typeof colorDeLibro !== 'function') return null;
@@ -479,6 +528,52 @@ function renderStats(container){
       <div class="st-rval">${book ? escapeHtml(book.titulo) : '—'}</div>
       <div class="st-rsub">${book ? sub : 'todavía sin candidato'}</div>
     </div></div>`;
+  /* ⚠️ VARIOS LIBROS, UN SOLO PREMIO. Antes esto se resolvía con un .map que
+     repetía la tarjeta entera, así que «Lo que nadie vio» aparecía dos veces
+     seguidas y parecían dos premios distintos. La etiqueta va UNA vez y los
+     libros cuelgan abajo. */
+  const recMulti = (ico, lab, items) => !items.length ? '' : `<div class="st-rec st-rec-multi">
+    <div class="st-rico">${ico}</div>
+    <div class="st-rmain">
+      <div class="st-rlab">${lab}${items.length>1?` · ${items.length}`:''}</div>
+      ${items.map(it=>`<div class="st-rline" data-id="${escapeHtml(String(it.b.id||''))}">
+        <div class="st-rcov" ${cov(it.b)}></div>
+        <div class="st-rlmain">
+          <div class="st-rval">${escapeHtml(it.b.titulo)}</div>
+          <div class="st-rsub">${it.sub}</div>
+        </div></div>`).join('')}
+    </div></div>`;
+  /* 🍩 la rosca: conic-gradient, sin SVG y sin librería. El agujero es un
+     círculo encima, no una máscara, porque una máscara le comería el borde. */
+  const ROSCA = ['#C9F839','#7CD4FF','#E8C34A','#E06A5E','#8E4EC6','#30A46C','#F76B15'];
+  const rosca = (partes, centro, unidad)=>{
+    const tot = partes.reduce((a,[,n])=>a+n, 0) || 1;
+    let ang = 0;
+    const tramos = partes.map(([,n],i)=>{
+      const ini = ang; ang += n/tot*360;
+      return `${ROSCA[i%ROSCA.length]} ${ini.toFixed(2)}deg ${ang.toFixed(2)}deg`;
+    }).join(',');
+    return `<div class="st-rosca">
+      <div class="str-aro" style="background:conic-gradient(${tramos})">
+        <div class="str-centro"><b>${numHTML(centro)}</b><em>${escapeHtml(unidad)}</em></div>
+      </div>
+      <div class="str-ley">${partes.map(([lab,n],i)=>`<div class="str-item">
+        <i style="background:${ROSCA[i%ROSCA.length]}"></i>
+        <span>${escapeHtml(String(lab))}</span><b>${n}</b></div>`).join('')}</div>
+    </div>`;
+  };
+  /* el aro de una sola medida: se llena hasta donde llega el promedio */
+  const aro = (frac, centro, unidad)=>`<div class="st-aro"
+      style="background:conic-gradient(var(--amber) 0 ${(frac*360).toFixed(2)}deg, rgba(201,248,57,.13) ${(frac*360).toFixed(2)}deg 360deg)">
+      <div class="str-centro"><b>${centro}</b><em>${escapeHtml(unidad)}</em></div></div>`;
+  /* una tarjeta del retrato: ojo arriba, título, y lo que le pongas adentro */
+  const tarjeta = (ojo, titulo, cuerpo, pie) => `<section class="st-tar">
+    <div class="st-tar-ojo">${escapeHtml(ojo)}</div>
+    <h4 class="st-tar-t">${escapeHtml(titulo)}</h4>
+    ${cuerpo}
+    ${pie ? `<div class="st-tar-pie">${pie}</div>` : ''}
+  </section>`;
+
   const vsRow = (lab, a, b) => {
     const tot = (a+b) || 1;
     return `<div class="st-vs-row">
@@ -564,8 +659,8 @@ function renderStats(container){
           const n = evCount(S.fama.david,'rescates');
           return `estuvo en la bóveda, lo rescataron ${n>1?n+' veces':'una vez'} y salió campeón del cuadro`;
         })()) : ''}
-        ${(S.fama.honor||[]).map(h=>rec('🌱','Lo que nadie vio', h.b,
-          `estuvo en la mesa el ${escapeHtml(h.primera)} y ninguno lo eligió — volvió el ${escapeHtml(h.gano)} y se llevó la noche${h.metodo?' ('+escapeHtml(h.metodo)+')':''}`)).join('')}
+        ${recMulti('🌱','Lo que nadie vio', (S.fama.honor||[]).map(h=>({ b:h.b,
+          sub:`estuvo en la mesa el ${escapeHtml(h.primera)} y ninguno lo eligió — volvió el ${escapeHtml(h.gano)} y se llevó la noche${h.metodo?' ('+escapeHtml(h.metodo)+')':''}` })))}
         ${S.fama.anulado ? rec('🚫','El campeón anulado', S.fama.anulado,
           `ganó el ${escapeHtml((evLast(S.fama.anulado,'anulaciones')||{}).fecha||'—')} y decidieron volver a sortear`) : ''}
       </div>
@@ -594,6 +689,62 @@ function renderStats(container){
         ].filter(Boolean))}`;
       })() : '<div class="st-hint">Todavía no puntuaron ningún libro. Al terminar la lectura actual, salen las estrellas.</div>'}
     </section>
+
+    <!-- ═══ EL RETRATO DEL LECTOR ═══ -->
+    ${(()=>{
+      const P = S.retrato;
+      const hay = P.paladar.n || P.autores.distintos || P.generos.distintos || P.anatomia.n;
+      if(!hay) return '';
+      const nDec = v => String(Math.round(v*10)/10).replace('.', ',');
+      const medallas = ['🥇','🥈','🥉'];
+
+      const paladar = P.paladar.n ? (()=>{
+        const v = PALADAR.find(x=>P.paladar.prom >= x.desde) || PALADAR[PALADAR.length-1];
+        const max = Math.max(...P.paladar.cajas) || 1;
+        return tarjeta('Valoraciones', 'Tu paladar literario', `
+          <div class="st-pal">
+            ${aro(P.paladar.prom/5, nDec(P.paladar.prom), 'de 5')}
+            <div class="st-pal-txt">
+              <b>${escapeHtml(v.t)}</b>
+              <em>${P.paladar.n} libro${P.paladar.n===1?' pasó':'s pasaron'} por el tribunal. ${escapeHtml(v.d)}</em>
+              <span>${Math.round(P.paladar.generosos/P.paladar.n*100)}% se llevó 4 estrellas o más</span>
+            </div>
+          </div>
+          <div class="st-estrellas">${P.paladar.cajas.map((n,i)=>`<div class="st-est">
+            <b>${n}</b><i style="height:${n?Math.max(6, n/max*74):3}px;opacity:${n?1:.25}"></i>
+            <span>${i+1}★</span></div>`).join('')}</div>`);
+      })() : '';
+
+      const autores = P.autores.distintos ? tarjeta('Voces más leídas', 'Tu salón de autores', `
+        ${figs([ fig('Autores distintos', P.autores.distintos, ''),
+                 fig('Repetidores', P.autores.repetidores, P.autores.repetidores===1?'volvió':'volvieron') ])}
+        <div class="st-autores">${P.autores.top.map(([a,n],i)=>`<div class="st-aut">
+          <em>${medallas[i] || '·'}</em>
+          <span>${escapeHtml(a)}</span>
+          <b class="${i===0?'top':''}">${n} libro${n===1?'':'s'}</b></div>`).join('')}</div>`,
+        P.autores.top[0] && P.autores.top[0][1] > 1
+          ? `${escapeHtml(P.autores.top[0][0])} paga alquiler en el estante.`
+          : 'Todavía nadie repitió. Un estante de una noche cada uno.') : '';
+
+      const generos = P.generos.distintos
+        ? tarjeta('Géneros más leídos', 'Tu mapa de géneros',
+            rosca(P.generos.top, P.generos.distintos, P.generos.distintos===1?'género':'géneros'))
+        : '';
+
+      const anatomia = P.anatomia.n ? tarjeta('Anatomía de mis libros', 'El tamaño sí cuenta', `
+        ${figs([ fig('Media', P.anatomia.media, 'páginas'),
+                 fig('Mediana', P.anatomia.mediana, 'páginas'),
+                 fig('El más gordo', P.anatomia.max, 'páginas', 'am') ])}
+        ${bars(P.anatomia.cubos.filter(([,n])=>n).length ? P.anatomia.cubos : [],
+               (lab)=>ROSCA[ANATOMIA.findIndex(c=>c.n===lab) % ROSCA.length],
+               lab=>`data-sub="${escapeHtml((ANATOMIA.find(c=>c.n===lab)||{}).d||'')}"`)}`) : '';
+
+      return `<section class="st-sec">
+        <h3 class="st-h"><em>🫀</em> El retrato del lector</h3>
+        <div class="st-note" style="margin:-8px 0 18px;">Lo que dicen los libros que ya leyeron. La bóveda no opina.</div>
+        <div class="st-tars">${paladar}${autores}${generos}${anatomia}</div>
+      </section>`;
+    })()}
 
     <!-- ═══ EL OJO (apuestas) ═══ -->
     ${S.ojo ? (()=>{

@@ -359,6 +359,8 @@ async function finishHarvest(winner, wash){
   const now = new Date();
   const entry = cleanBook(winner);   // se lleva TODO su historial al estante
   entry.readDate = `${meses[now.getMonth()]} ${now.getFullYear()}`;
+  // 📅 el día exacto en que se empezó: readDate sólo guarda el mes
+  if(!entry.inicio) entry.inicio = fechaHoy();
   State.read.push(entry);
   const premios = resolverApuesta([winner]);   // si nadie acertó, silencio
   await persist();

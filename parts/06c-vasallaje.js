@@ -43,27 +43,88 @@ function screenVasallaje(){
 const vsQuoteOf = b => (b.blindQuote || b.sinopsis || '').trim();
 /* cómo se nombra un libro según el modo: a ciegas, solo su frase */
 const vsName = b => (VS.blind && !VS.revealed) ? `«${vsQuoteOf(b)}»` : b.titulo;
-/* 🌍 LOS TRES PAÍSES DE LA CASA — entran al bombo como si fueran tropes.
+/* 🌍🎭 LAS ENTRADAS DE LA CASA — giran en el mismo bombo que los tropes pero
    NO son tropes: no se cargan en la ficha ni aparecen en el ADN. Viven sólo
-   acá, se resuelven contra el campo `país` del libro, y llevan el dibujo de
-   International (ver los alias en scripts/gen-bookmoji.js). */
+   acá y cada una se resuelve contra OTRO campo del libro:
+     · los tres países, contra `país`   · quién lo trajo, contra `traidoPor`
+     · los dos colores de la casa, contra el color de Read Your Color
+   Cada entrada trae su propia cara y su propio cartel, porque «TU TROPE ES
+   Argentina» no se entiende.
+   `peso` existe por los colores: cuando sale Amarillo el cuadro tiene que
+   llenarse sobre todo de Amarillo Inmersivo. Es una prioridad, no un filtro —
+   el resto del amarillo sigue entrando, sólo que menos seguido. */
 const VS_PAISES = ['Argentina', 'Reino Unido', 'Estados Unidos'];
 const esPaisDelBombo = t => VS_PAISES.includes(t);
 /* un libro puede tener más de un país ("Estados Unidos / Irán"): cuenta para
    cada uno, no como una etiqueta suelta */
 const vsPaisesDe = b => String(b.pais||'').split('/').map(x=>x.trim()).filter(Boolean);
+/* los dos colores de la casa, uno de cada uno, con su subtipo preferido */
+const VS_CASAS = [
+  { casa:'amarillo', prioridad:'amarillo-inmersivo' },
+  { casa:'morado',   prioridad:'morado-arquitecto' },
+];
+const vsCaraColor = c => `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="23" fill="${c.hex}"/>`
+  + `<circle cx="32" cy="32" r="13" fill="${c.hex2}"/></svg>`;
+const vsCaraQuien = q => `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="23" fill="#8db207"/>`
+  + `<text x="32" y="42" text-anchor="middle" font-family="Georgia,'Times New Roman',serif"`
+  + ` font-weight="800" font-size="28" fill="#0B1409">${escapeHtml(String(q||'?').slice(0,1).toUpperCase())}</text></svg>`;
+
+function vsEntradas(){
+  const lista = VS_PAISES.map(p=>({
+    t: p, lab:'ESTA NOCHE VIENEN DE', lab2:'Y AHORA VIENEN DE',
+    tiene: b => vsPaisesDe(b).includes(p),
+  }));
+  [State.players.a, State.players.b].filter(Boolean).forEach(quien=>{
+    lista.push({
+      t: `Elegido por ${quien}`, lab:'ESTA NOCHE ELIGE', lab2:'Y DEL OTRO LADO ELIGE',
+      cara: vsCaraQuien(quien),
+      tiene: b => String(b.traidoPor||'').trim().toLowerCase() === String(quien).toLowerCase(),
+    });
+  });
+  VS_CASAS.forEach(({casa, prioridad})=>{
+    const c = (typeof COLORES !== 'undefined') && COLORES[casa];
+    if(!c) return;
+    lista.push({
+      t: c.nombre, lab:'ESTA NOCHE SE LEE EN', lab2:'Y DEL OTRO LADO',
+      cara: vsCaraColor(c),
+      tiene: b => String((typeof colorDeLibro==='function' ? colorDeLibro(b) : b.color)||'').split('-')[0] === casa,
+      peso: b => (typeof colorDeLibro==='function' ? colorDeLibro(b) : b.color) === prioridad ? 3 : 1,
+    });
+  });
+  return lista;
+}
+const vsEntrada = t => vsEntradas().find(e => e.t === t) || null;
+/* la cara que va en el bombo: la propia si la tiene, si no el dibujo del trope */
+const vsCara = t => { const e = vsEntrada(t); return (e && e.cara) || bookmojiSVG(t); };
+/* cómo se llama el modo en la bitácora: «trope: Feminista» pero «Elegido por Uri» */
+const vsModoNombre = t => vsEntrada(t) ? t : `trope: ${t}`;
 
 function vsTropeCounts(){
   const m = new Map();
   State.vault.forEach(b=>(b.tropes||'').split(',').map(t=>t.trim()).filter(Boolean)
     .forEach(t=>m.set(t, (m.get(t)||0)+1)));
-  VS_PAISES.forEach(p=>{
-    const n = State.vault.filter(b=>vsPaisesDe(b).includes(p)).length;
-    if(n) m.set(p, n);
+  vsEntradas().forEach(e=>{
+    const n = State.vault.filter(e.tiene).length;
+    if(n) m.set(e.t, n);
   });
   // desde VS_NEED (4) entran al bombo: los gordos (8+) llenan el cuadro solos,
   // los flacos (4-7) se juntan de a dos. Así participan casi todos los tropes.
   return [...m.entries()].filter(([,n])=>n >= VS_NEED).sort((x,y)=>y[1]-x[1]);
+}
+/* reparte los libros que aporta una entrada. Sin pesos es un sorteo parejo; con
+   pesos se sortea sin reemplazo dándole más boletos al subtipo prioritario. */
+function vsRepartir(t, libres, cuantos){
+  const e = vsEntrada(t);
+  const pool = libres.slice();
+  if(!e || !e.peso) return shuffled(pool).slice(0, cuantos);
+  const elegidos = [];
+  while(elegidos.length < cuantos && pool.length){
+    const pesos = pool.map(b=>Math.max(.0001, e.peso(b)));
+    let r = Math.random() * pesos.reduce((a,x)=>a+x, 0), i = 0;
+    while(i < pool.length-1 && (r -= pesos[i]) > 0) i++;
+    elegidos.push(pool.splice(i,1)[0]);
+  }
+  return elegidos;
 }
 /* ¿alcanza para un cuadro de trope? uno gordo, o dos flacos */
 function vsTropeViable(){
@@ -72,11 +133,12 @@ function vsTropeViable(){
 }
 /* libros de la bóveda que tienen ese trope —o son de ese país— y todavía no
    están en juego */
-const vsBooksWith = (trope, usados=[]) => State.vault.filter(b=>
-  (esPaisDelBombo(trope)
-    ? vsPaisesDe(b).includes(trope)
-    : (b.tropes||'').split(',').map(x=>x.trim()).includes(trope))
-  && !usados.includes(b));
+const vsBooksWith = (trope, usados=[]) => {
+  const e = vsEntrada(trope);
+  const tiene = e ? e.tiene
+    : b => (b.tropes||'').split(',').map(x=>x.trim()).includes(trope);
+  return State.vault.filter(b => tiene(b) && !usados.includes(b));
+};
 
 /* ---- la memoria del cuadro: en qué puesto quedó cada libro ---- */
 /* puestos con nombre de torneo, sin numeritos: cuartos → semifinal → final → ganador */
@@ -87,7 +149,7 @@ const VS_PLACE = {
   r1:        'cuartos',
 };
 function vsStampPlace(b, place){
-  const modo = b._vsTrope ? `trope: ${b._vsTrope}` : (VS.modeLabel || 'los tributos');
+  const modo = b._vsTrope ? vsModoNombre(b._vsTrope) : (VS.modeLabel || 'los tributos');
   const hoy = fechaHoy();
   if(evTiene(b, 'puestos', hoy)) return;      // un cuadro por día: no se anota dos veces
   // OJO: '·' y '|' son delimitadores de la bitácora — se sanean para no romper el parseo
@@ -247,8 +309,8 @@ async function vsModeTrope(){
     </div>
   `);
   const win = $('#vtWin'), go = $('#vtGo'), lab = $('#vtLab'), sub = $('#vtSub'), ico = $('#vtIco');
-  const setFace = t => { ico.innerHTML = bookmojiSVG(t); win.textContent = t; };
-  const chip = t => `<span>${bookmojiHTML(t.trope)} ${escapeHtml(t.trope)}<b>${t.books.length}</b></span>`;
+  const setFace = t => { ico.innerHTML = vsCara(t); win.textContent = t; };
+  const chip = t => `<span><span class="bmj">${vsCara(t.trope)}</span> ${escapeHtml(t.trope)}<b>${t.books.length}</b></span>`;
 
   async function spin(){
     go.disabled = true;
@@ -281,14 +343,15 @@ async function vsModeTrope(){
     const solo = !taken.length && target.libres.length >= VS_NEED*2;
     const cuantos = solo ? VS_NEED*2 : Math.min(need, VS_NEED);
     setFace(target.t);
-    lab.textContent = esPaisDelBombo(target.t)
-      ? (taken.length ? 'Y AHORA VIENEN DE' : 'ESTA NOCHE VIENEN DE')
+    const ent = vsEntrada(target.t);
+    lab.textContent = ent
+      ? (taken.length ? ent.lab2 : ent.lab)
       : (taken.length ? 'TU SEGUNDO TROPE ES' : 'TU TROPE ES');
     $('#vtSlot').classList.add('landed');
     ico.classList.add('pop');
     win.innerHTML = `${escapeHtml(target.t)}<small>${target.libres.length} libros${
       solo ? ' — le sobra' : ` — pone ${cuantos}`}</small>`;
-    const books = shuffled(target.libres).slice(0, cuantos);
+    const books = vsRepartir(target.t, target.libres, cuantos);
     books.forEach(b=>b._vsTrope = target.t);
     ensureColor(books[0]);
     taken.push({ trope: target.t, books });
@@ -312,7 +375,7 @@ async function vsModeTrope(){
     if(taken.length === 1){
       lab.textContent = 'EL CUADRO ENTERO';
       win.innerHTML = `${escapeHtml(taken[0].trope)}<small>los ${VS_NEED*2} lo tienen</small>`;
-      VS.modeLabel = `trope: ${taken[0].trope}`;
+      VS.modeLabel = vsModoNombre(taken[0].trope);
       sub.textContent = 'Gana el que lo tenga mejor.';
       vsSplit(taken[0].books);          // un solo trope: los lados vuelven a ser Maru y Uri
       VS.sideTags = null;
@@ -1374,6 +1437,8 @@ async function finishVasallaje(winners){
     State.read = State.read.filter(r=>r.id!==w.id);
     const entry = cleanBook(w);
     entry.readDate = `${meses[now.getMonth()]} ${now.getFullYear()}`;
+    // 📅 el día exacto en que se empezó: readDate sólo guarda el mes
+    if(!entry.inicio) entry.inicio = fechaHoy();
     State.read.push(entry);
   });
   await persist();
