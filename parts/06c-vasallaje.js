@@ -63,6 +63,61 @@ const VS_CASAS = [
   { casa:'amarillo', prioridad:'amarillo-inmersivo' },
   { casa:'morado',   prioridad:'morado-arquitecto' },
 ];
+/* 🙂😴 DIVERTIDO Y ABURRIDO — el veredicto sobre cada libro, pensado uno por
+   uno igual que los colores (COLOR_CLUB, en 04h-color.js), no deducido de los
+   tropes. Divertido no quiere decir bueno ni aburrido malo: es si el libro se
+   lee solo o si hay que remarlo.
+   NO es un trope: no se carga en la ficha, no se ve en ningún lado y no entra
+   al ADN. Vive sólo acá, para que el Vasallaje pueda sortear un cuadro entero
+   de divertidos, o uno entero de aburridos.
+   Un libro que no esté en ninguna de las dos listas no entra a ese bombo. La
+   clave se normaliza con colorKey, la misma que usa la tabla de colores, así
+   que no importan mayúsculas ni acentos. Si entra un libro nuevo al club,
+   agregalo acá o se queda afuera del sorteo. */
+const VS_ANIMO = {
+  divertido: [
+    'han cantado bingo', 'good material', 'vamos a morir todos', 'el gesto final',
+    'proyecto hail mary', 'the wedding people', 'we were liars', 'dark matter',
+    '10 días en un manicomio', 'distancia de rescate', 'atmosphere', 'las indignas',
+    'el perfume', 'el amor que dejamos atrás', 'las cosas que dejamos sin terminar',
+    'el final se escribe solo', 'trenza del mar esmeralda', 'amanecer en la cosecha',
+    'condenada', 'yesteryear', 'y entonces desperté', 'te daría el sol',
+    'los ojos son la mejor parte', 'antes vivíamos aquí', 'y no quedó ninguno',
+    'diez negritos', 'carrie', 'criaturas luminosas', 'la vida invisible de addie larue',
+    'carl el mazmorrero', 'la casa del mar más azul', 'revival', 'best offer wins',
+  ],
+  aburrido: [
+    'las gratitudes', 'un cuarto propio', 'actos humanos', 'nada', 'la llamada',
+    'el retrato de casada', '1984', 'yo que nunca supe de los hombres', 'la vegetariana',
+    'confesión', 'bajo este sol tremendo', 'private rites', 'martyr', 'dorayaki',
+    'notes on an execution', 'soy un gato', 'pedro páramo', 'número dos',
+    'frankenstein', 'la ladrona de libros', 'la segunda venida de hilda bustamante',
+  ],
+};
+const VS_ANIMO_MAPA = (()=>{
+  const m = {};
+  Object.entries(VS_ANIMO).forEach(([animo, lista])=>lista.forEach(t=>{
+    m[(typeof colorKey === 'function' ? colorKey(t) : String(t).toLowerCase())] = animo;
+  }));
+  return m;
+})();
+const animoDe = b => VS_ANIMO_MAPA[
+  (typeof colorKey === 'function' ? colorKey((b||{}).titulo) : String((b||{}).titulo||'').toLowerCase())
+] || '';
+/* las caras van dibujadas y no como emoji: un emoji dentro de un <text> de SVG
+   no se pinta en todos lados y el bombo quedaba con un círculo pelado, igual
+   que los de Amarillo y Morado */
+const vsCaraAnimo = (hex, rasgos) =>
+  `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="23" fill="${hex}"/>${rasgos}</svg>`;
+const VS_ANIMOS = [
+  { id:'divertido', n:'Divertido', hex:'#C9F839', cara: vsCaraAnimo('#C9F839',
+    '<circle cx="24" cy="27" r="3" fill="#0B1409"/><circle cx="40" cy="27" r="3" fill="#0B1409"/>'
+    + '<path d="M21 36c4 7 18 7 22 0" stroke="#0B1409" stroke-width="3.4" fill="none" stroke-linecap="round"/>') },
+  { id:'aburrido',  n:'Aburrido',  hex:'#68806E', cara: vsCaraAnimo('#68806E',
+    '<path d="M19 27h9M36 27h9" stroke="#0B1409" stroke-width="3.4" stroke-linecap="round"/>'
+    + '<path d="M24 41h16" stroke="#0B1409" stroke-width="3.4" stroke-linecap="round"/>') },
+];
+
 const vsCaraColor = c => `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="23" fill="${c.hex}"/>`
   + `<circle cx="32" cy="32" r="13" fill="${c.hex2}"/></svg>`;
 const vsCaraQuien = q => `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="23" fill="#8db207"/>`
@@ -79,6 +134,13 @@ function vsEntradas(){
       t: `Elegido por ${quien}`, lab:'ESTA NOCHE ELIGE', lab2:'Y DEL OTRO LADO ELIGE',
       cara: vsCaraQuien(quien),
       tiene: b => String(b.traidoPor||'').trim().toLowerCase() === String(quien).toLowerCase(),
+    });
+  });
+  VS_ANIMOS.forEach(v=>{
+    lista.push({
+      t: v.n, lab:'ESTA NOCHE SE JUEGA LO', lab2:'Y DEL OTRO LADO, LO',
+      cara: v.cara,
+      tiene: b => animoDe(b) === v.id,
     });
   });
   VS_CASAS.forEach(({casa, prioridad})=>{
@@ -1630,8 +1692,35 @@ function vsFinalVote(x, z, modoLabel, onWinner){
       finish(votos.a, `Los dos querían ${vsFinalLabel(votos.a,30)}. Sin ruleta: se lee ese.`);
     } else {
       vsFinalRuleta(x, z, votos, (ganador)=>{
-        const quienAcerto = votos.a.id===ganador.id ? A : (votos.b.id===ganador.id ? B : null);
-        const carta = quienAcerto ? ` 🃏 Carta para <b>${escapeHtml(quienAcerto)}</b>: ganó el que elegiste.` : '';
+        /* 🃏 ACÁ LA CARTA SÓLO SE ANUNCIABA.
+           El cartel decía «Carta para Maru» y era nada más que texto: nunca se
+           llamaba a robarCartas, así que la carta no entraba al mazo. Maru ganó
+           una final así y se quedó mirando un cartel. Ahora se reparte antes de
+           anunciarla, y si la mano está llena lo dice en vez de mentir. */
+        const slot = votos.a.id===ganador.id ? 'a' : (votos.b.id===ganador.id ? 'b' : null);
+        /* 👁 ESTO TAMBIÉN ES UNA APUESTA, y El Ojo tiene que contarla.
+           La estadística de quién tiene más ojo sale de Cartas.historial, que
+           hasta ahora sólo escribía la apuesta de la cosecha. El voto secreto
+           de la final es una apuesta igual —se vota a ciegas y el que acierta
+           cobra— así que queda anotado con la misma forma.
+           Sólo cuando NO hubo acuerdo: si los dos querían el mismo libro nadie
+           arriesgó nada, y contarlo sería regalarles un acierto a cada uno. */
+        if(typeof Cartas !== 'undefined' && Cartas.historial){
+          Cartas.historial.push({
+            fecha: fechaHoy(), ganador: ganador.titulo,
+            a: { titulo: votos.a.titulo, acerto: votos.a.id === ganador.id },
+            b: { titulo: votos.b.titulo, acerto: votos.b.id === ganador.id },
+          });
+          if(typeof persistCartas === 'function') persistCartas();
+        }
+        let carta = '';
+        if(slot){
+          const quien = escapeHtml(State.players[slot] || (slot==='a'?A:B));
+          const ganadas = (typeof robarCartas === 'function') ? robarCartas(slot, 1) : [];
+          carta = ganadas.length
+            ? ` 🃏 Carta para <b>${quien}</b>: ganó el que elegiste.`
+            : ` 🃏 <b>${quien}</b> acertó, pero tiene la mano llena.`;
+        }
         finish(ganador, `No hubo acuerdo. La ruleta habló.${carta}`);
       });
     }
@@ -1711,6 +1800,41 @@ function recordDuelo(x, z, votos, ganador, acuerdo, modoLabel){
     ganador: ganador.titulo, acuerdo, cruzado,
   });
   persistDuelos();
+}
+
+/* ---------- 🩹 EL MAZO VUELVE A CERO, MENOS LA DE MARU ----------
+   El mazo quedó contaminado: una tanda de pruebas en una copia local escribía
+   en el club de verdad (ver SYNC_LOCAL en 04e-sync.js, que ya lo impide), y
+   encima el primer intento de saldar la deuda pagaba una carta por cada final
+   que pareciera adeudada. Entre las dos cosas quedaron cartas inventadas en
+   las dos manos.
+   La única carta que de verdad se ganó alguien es la de Maru: la final del
+   Vasallaje anunciaba «Carta para X» y no la repartía (eso quedó arreglado
+   arriba, ahora se roba antes de anunciarla) y ella votó a Carrie y acertó.
+   Así que el mazo se vacía y queda esa sola, sorteada del mazo. Uri sin
+   ninguna: ninguna de las que tenía se la ganó jugando.
+   La marca viaja con el club, no con el teléfono, así que no la revive un
+   mazo viejo que baje de la nube. */
+const CARTAS_REPARO_V = 3;
+async function vsCartaDeMaru(){
+  if(!Cartas || !Cartas.mano) return;
+  if((+Cartas.reparo || 0) >= CARTAS_REPARO_V) return;
+  // por NOMBRE y no por casilla: en el club real `a` es Uri, no Maru
+  const slot = ['a','b'].find(w => String(State.players[w]||'').trim().toLowerCase() === 'maru');
+  if(!slot) return;
+  const otro = slot === 'a' ? 'b' : 'a';
+  const mano = Cartas.mano[slot] || [];
+  // si ya tenía una sola, esa se respeta; si no, se sortea una del mazo
+  const queda = mano.length === 1 ? mano[0]
+    : (typeof DECK !== 'undefined' ? DECK[Math.floor(Math.random()*DECK.length)].id : null);
+  if(!queda) return;
+  Cartas.mano[slot] = [queda];
+  Cartas.mano[otro] = [];
+  Cartas.reparo = CARTAS_REPARO_V;
+  if(typeof persistCartas === 'function') await persistCartas();
+  const def = (typeof cartaDef === 'function') ? cartaDef(queda) : null;
+  try{ toast(`🃏 El mazo quedó limpio. La única carta ganada es de ${State.players[slot]}: ${def ? def.nombre : queda}.`); }catch(e){}
+  return queda;
 }
 
 /* ---------- higiene de los duelos de final ----------

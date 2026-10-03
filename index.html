@@ -2685,7 +2685,8 @@ body.demo #app{padding-top:20px;}
   background:rgba(242,245,236,.38);border-left:1px solid rgba(255,255,255,.18);
   border-right:1px solid rgba(255,255,255,.18);
 }
-.nt-cab{display:flex;justify-content:flex-end;}
+.nt-cab{display:flex;justify-content:flex-end;align-items:center;gap:7px;}
+.nt-candado{margin-right:auto;font-size:11px;opacity:.55;}
 .nt-fecha{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,36,23,.5);}
 .nt-texto{
   font-family:'Fraunces',serif;font-size:14.5px;line-height:1.5;margin:5px 0 10px;
@@ -2708,6 +2709,17 @@ body.demo #app{padding-top:20px;}
 .nt-spoiler{cursor:pointer;}
 .nt-spoiler .nt-texto{filter:blur(6px);transition:filter .3s;user-select:none;}
 .nt-spoiler.abierto .nt-texto{filter:none;user-select:auto;}
+
+/* la nota del otro mientras el libro no está terminado: se ve el papel, la
+   fecha, el tipo y de quién es — pero no lo que dice. Ojo: el texto viaja igual
+   al dispositivo (tiene que viajar, o no se sincronizaría), así que esto es un
+   candado de buena fe entre dos personas, no una caja fuerte. */
+.nt-cerrada{cursor:default;}
+.nt-cerrada .nt-texto{
+  filter:blur(7px);user-select:none;-webkit-user-select:none;pointer-events:none;
+  transition:filter .45s var(--ease-out);
+}
+.nt-cerrada .nt-tipo, .nt-cerrada .nt-ref{opacity:.55;}
 
 /* los papeles */
 .nt-amarilla{background:#F6E8A0;}
@@ -8346,7 +8358,11 @@ const DECK = [
 const cartaDef = id => DECK.find(c=>c.id===id);
 const MANO_MAX = 5;
 
-const Cartas = { mano:{ a:[], b:[] }, historial:[] };
+/* `reparo` viaja CON el club, no en el dispositivo: marca qué arreglos de una
+   sola vez ya se le hicieron al mazo. Si viviera en localStorage, el teléfono
+   que lo arregló quedaría marcado y el otro —que todavía tiene el mazo viejo—
+   se lo volvería a pisar por la nube, sin que ninguno de los dos lo rehaga. */
+const Cartas = { mano:{ a:[], b:[] }, historial:[], reparo:0 };
 
 /* ---------- persistencia ---------- */
 async function loadCartas(){
@@ -8355,7 +8371,7 @@ async function loadCartas(){
   if(!raw){ try{ raw = localStorage.getItem('cosecha:cartas'); }catch(e){} }
   try{
     const d = raw ? JSON.parse(raw) : null;
-    if(d && d.mano){ Cartas.mano = d.mano; Cartas.historial = d.historial || []; }
+    if(d && d.mano){ Cartas.mano = d.mano; Cartas.historial = d.historial || []; Cartas.reparo = +d.reparo || 0; }
   }catch(e){}
 }
 async function persistCartas(){
@@ -8926,6 +8942,20 @@ const FB_CONFIG = {
 };
 const FB_VER = '10.12.2';
 
+/* 🚧 UNA COPIA DE PRUEBA NO TOCA EL CLUB.
+   El club real se abre de dos maneras: este archivo a mano (file://) o GitHub
+   Pages. Pero la config de Firebase está acá adentro, así que CUALQUIER copia
+   —un `http-server` en localhost para probar un cambio— se conectaba al mismo
+   documento `club/main` y escribía ahí. Probar algo en local le cambiaba los
+   libros y las cartas al club de verdad, y se propagaba a los dos teléfonos.
+   Ya pasó: una tanda de pruebas en localhost le dejó cartas que nadie ganó.
+   Desde un servidor local no se sincroniza: ni sube ni baja. */
+const SYNC_LOCAL = (()=>{
+  const h = String(location.hostname || '').toLowerCase();
+  return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1'
+      || /\.(localhost|test|local)$/.test(h);
+})();
+
 const Sync = {
   ready:false, on:false, error:'',
   clientId: Math.random().toString(36).slice(2),
@@ -8960,6 +8990,12 @@ function syncEnJuego(){
 /* ---------- arranque ---------- */
 async function initSync(){
   loadLocalAt();
+  if(SYNC_LOCAL){
+    Sync.ready = false;
+    Sync.error = 'local';          // el cartel del home lo dice con todas las letras
+    try{ renderSync(document.querySelector('#syncBox')); }catch(e){}
+    return;
+  }
   try{
     const appMod = await import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app.js`);
     const fsMod  = await import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-firestore.js`);
@@ -9048,6 +9084,8 @@ async function aplicarRemoto(d){
     if(club.mazo){
       Cartas.mano = club.mazo.mano || { a:[], b:[] };
       Cartas.historial = club.mazo.historial || [];
+      // si vuelve sin marca, el mazo que llegó es anterior al arreglo: se rehace
+      Cartas.reparo = +club.mazo.reparo || 0;
     }
     if(Array.isArray(club.duelos)) State.duelos = club.duelos;
     if(club.sorter && typeof club.sorter === 'object') State.sorter = club.sorter;
@@ -9074,7 +9112,7 @@ function syncPayload(){
     read: State.read,
     vault: State.vault,
     players: State.players,
-    mazo: { mano: Cartas.mano, historial: Cartas.historial },
+    mazo: { mano: Cartas.mano, historial: Cartas.historial, reparo: Cartas.reparo || 0 },
     duelos: State.duelos || [],
     sorter: State.sorter || {},
   };
@@ -9149,9 +9187,15 @@ function renderSync(box){
     return;
   }
   const on = Sync.on;
-  const titulo = on ? 'Sincronización activada'
+  /* en una copia local el cartel tiene que gritarlo: lo que toques acá no es
+     el club, y lo que hagas en el club no se ve acá */
+  const local = Sync.error === 'local';
+  const titulo = local ? '🚧 Copia de prueba — no es tu club'
+               : on ? 'Sincronización activada'
                     : (Sync.error ? 'Sin conexión con la nube' : 'Conectando…');
-  const sub = on
+  const sub = local
+    ? 'Esto se abrió desde un servidor local. No sube ni baja nada: lo que pase acá no le toca un pelo al club de verdad.'
+    : on
     ? 'Todo se guarda y aparece solo en todos tus dispositivos, en vivo.'
     : (Sync.error ? 'No pude conectar. Se reintenta solo cuando vuelva internet.'
                   : 'Conectando con la nube…');
@@ -11689,30 +11733,66 @@ function notasDe(b){
   try{ const v = JSON.parse(b.notas || '[]'); return Array.isArray(v) ? v : []; }
   catch(e){ return []; }
 }
+/* ⚠️ EL LIBRO DE LA FICHA PUEDE SER UNA COPIA.
+   showPlacard recibe listas armadas al vuelo, así que el objeto que estás
+   mirando no siempre es el que vive en State.read / State.vault — y persist()
+   guarda ESOS. Escribir sólo en la copia dejaba la nota dibujada en pantalla
+   y no la subía nunca: en el otro teléfono no aparecía jamás.
+   Además, si mientras tenés la ficha abierta baja algo de la nube,
+   aplicarRemoto reemplaza los dos arrays por objetos NUEVOS y tu `b` queda
+   huérfano. Por eso se busca el original por id en el momento de guardar, no
+   se guarda una referencia de antes. (Es el mismo problema que resuelve
+   syncBook en 04-screens.js, pero eso es una función privada de esa pantalla.) */
+function libroDelClub(b){
+  const id = b && b.id;
+  if(!id) return null;
+  return (State.read || []).find(x=>x.id === id)
+      || (State.vault || []).find(x=>x.id === id)
+      || null;
+}
 async function notasGuardar(b, lista){
-  b.notas = lista.length ? JSON.stringify(lista) : '';
+  const txt = lista.length ? JSON.stringify(lista) : '';
+  b.notas = txt;
+  const real = libroDelClub(b);
+  if(real && real !== b) real.notas = txt;
   if(typeof persist === 'function') await persist();
 }
 /* ¿ya se puede destapar todo? Cuando el libro está terminado: o quedó escrita
    la fecha de fin, o ya lo puntuaron (que es lo que hace la ceremonia). */
 const libroTerminado = b => !!(b && (b.fin || (typeof ratingAvg === 'function' && ratingAvg(b) != null)));
 
-/* qué notas ve el que está mirando */
+/* Qué ve el que está mirando. Las del otro NO se esconden: están en el corcho,
+   borroneadas, y se destapan cuando se termina el libro. Ver el papel pegado y
+   no poder leerlo es la mitad de la gracia — sabés que escribió, no qué dice.
+   (Antes se ocultaban y quedaba sólo un cartel con el número, que era mucho
+   más aburrido.) */
 function notasVisibles(b, quien){
+  const abierto = libroTerminado(b);
   const todas = notasDe(b);
-  if(libroTerminado(b)) return { visibles: todas, tapadas: 0 };
-  const mias = todas.filter(n => n.quien === quien);
-  return { visibles: mias, tapadas: todas.length - mias.length };
+  return {
+    notas: todas.map(n => ({ n, cerrada: !abierto && !!quien && n.quien !== quien })),
+    cerradas: abierto ? 0 : todas.filter(n => quien && n.quien !== quien).length,
+    abierto,
+  };
 }
 
 /* ---------- el muro ---------- */
-function notaHTML(n, quien){
+function notaHTML(n, quien, cerrada){
   const t = tipoDe(n.tipo);
   const ref = n.ref ? `${(NOTAS_REF_N[n.refTipo] || 'pág.')} ${escapeHtml(String(n.ref))}` : '';
-  const propia = n.quien === quien;
-  return `<div class="nt-nota nt-${escapeHtml(n.color || 'amarilla')}${n.tipo==='spoiler'?' nt-spoiler':''}" data-id="${escapeHtml(String(n.id))}">
+  const propia = !cerrada && n.quien === quien;
+  // un spoiler propio se destapa tocándolo; uno del otro está cerrado igual que
+  // el resto y NO se abre tocándolo, o la llave no serviría de nada
+  const clases = ['nt-nota', 'nt-' + (n.color || 'amarilla')];
+  if(cerrada) clases.push('nt-cerrada');
+  else if(n.tipo === 'spoiler') clases.push('nt-spoiler');
+  return `<div class="${escapeHtml(clases.join(' '))}" data-id="${escapeHtml(String(n.id))}"
+      ${cerrada ? `title="La escribió ${escapeHtml(String(n.quien||''))}. Se lee cuando terminen el libro."` : ''}>
     <i class="nt-cinta"></i>
-    <div class="nt-cab"><span class="nt-fecha">${escapeHtml(n.fecha || '')}</span></div>
+    <div class="nt-cab">
+      ${cerrada ? '<span class="nt-candado">🔒</span>' : ''}
+      <span class="nt-fecha">${escapeHtml(n.fecha || '')}</span>
+    </div>
     <div class="nt-texto">${escapeHtml(n.texto || '').replace(/\n/g, '<br>')}</div>
     <div class="nt-pie">
       <span class="nt-tipo">${t.ico} ${escapeHtml(t.n)}</span>
@@ -11726,23 +11806,22 @@ const NOTAS_REF_N = { pag:'pág.', cap:'cap.', pct:'%' };
 
 function muroHTML(b){
   const quien = yoValido();
-  const { visibles, tapadas } = notasVisibles(b, quien);
-  const terminado = libroTerminado(b);
+  const { notas, cerradas, abierto } = notasVisibles(b, quien);
   return `<div class="pl2-sec nt-sec" data-libro="${escapeHtml(String(b.id||''))}">
     <h4 class="pl2-h" style="display:flex;align-items:center;justify-content:space-between;">El muro
       ${quien ? `<button class="nt-yo" id="ntYo" style="--pc:${colorDeQuien(quien)}" title="Cambiar de lector">${escapeHtml(quien)}</button>` : ''}
     </h4>
     <button class="nt-nueva" id="ntNueva">
-      <i>+</i><span><b>Nueva nota</b><em>${terminado ? 'Lo que quedó para decir' : 'Nadie la ve hasta que terminen'}</em></span>
+      <i>+</i><span><b>Nueva nota</b><em>${abierto ? 'Lo que quedó para decir' : 'Se pega borroneada hasta que terminen'}</em></span>
     </button>
-    <div class="nt-corcho${visibles.length?'':' vacio'}" id="ntCorcho">
-      ${visibles.length
-        ? visibles.map(n=>notaHTML(n, quien)).join('')
+    <div class="nt-corcho${notas.length?'':' vacio'}" id="ntCorcho">
+      ${notas.length
+        ? notas.map(x=>notaHTML(x.n, quien, x.cerrada)).join('')
         : `<div class="nt-vacio"><span class="nt-fantasma"><i></i><i></i><i></i></span>
              <b>El muro está vacío</b>
-             <em>Anotá una cita, una bronca, una teoría. Total, no la ve nadie.</em></div>`}
+             <em>Anotá una cita, una bronca, una teoría. Total, no la lee nadie todavía.</em></div>`}
     </div>
-    ${tapadas ? `<div class="nt-tapadas">🔒 ${escapeHtml(elOtro(quien)||'El otro')} escribió ${tapadas} nota${tapadas>1?'s':''}. Se destapan cuando terminen el libro.</div>` : ''}
+    ${cerradas ? `<div class="nt-tapadas">🔒 ${cerradas} de ${escapeHtml(elOtro(quien)||'el otro')} están borroneadas. Se leen cuando terminen el libro.</div>` : ''}
   </div>`;
 }
 
@@ -14465,6 +14544,61 @@ const VS_CASAS = [
   { casa:'amarillo', prioridad:'amarillo-inmersivo' },
   { casa:'morado',   prioridad:'morado-arquitecto' },
 ];
+/* 🙂😴 DIVERTIDO Y ABURRIDO — el veredicto sobre cada libro, pensado uno por
+   uno igual que los colores (COLOR_CLUB, en 04h-color.js), no deducido de los
+   tropes. Divertido no quiere decir bueno ni aburrido malo: es si el libro se
+   lee solo o si hay que remarlo.
+   NO es un trope: no se carga en la ficha, no se ve en ningún lado y no entra
+   al ADN. Vive sólo acá, para que el Vasallaje pueda sortear un cuadro entero
+   de divertidos, o uno entero de aburridos.
+   Un libro que no esté en ninguna de las dos listas no entra a ese bombo. La
+   clave se normaliza con colorKey, la misma que usa la tabla de colores, así
+   que no importan mayúsculas ni acentos. Si entra un libro nuevo al club,
+   agregalo acá o se queda afuera del sorteo. */
+const VS_ANIMO = {
+  divertido: [
+    'han cantado bingo', 'good material', 'vamos a morir todos', 'el gesto final',
+    'proyecto hail mary', 'the wedding people', 'we were liars', 'dark matter',
+    '10 días en un manicomio', 'distancia de rescate', 'atmosphere', 'las indignas',
+    'el perfume', 'el amor que dejamos atrás', 'las cosas que dejamos sin terminar',
+    'el final se escribe solo', 'trenza del mar esmeralda', 'amanecer en la cosecha',
+    'condenada', 'yesteryear', 'y entonces desperté', 'te daría el sol',
+    'los ojos son la mejor parte', 'antes vivíamos aquí', 'y no quedó ninguno',
+    'diez negritos', 'carrie', 'criaturas luminosas', 'la vida invisible de addie larue',
+    'carl el mazmorrero', 'la casa del mar más azul', 'revival', 'best offer wins',
+  ],
+  aburrido: [
+    'las gratitudes', 'un cuarto propio', 'actos humanos', 'nada', 'la llamada',
+    'el retrato de casada', '1984', 'yo que nunca supe de los hombres', 'la vegetariana',
+    'confesión', 'bajo este sol tremendo', 'private rites', 'martyr', 'dorayaki',
+    'notes on an execution', 'soy un gato', 'pedro páramo', 'número dos',
+    'frankenstein', 'la ladrona de libros', 'la segunda venida de hilda bustamante',
+  ],
+};
+const VS_ANIMO_MAPA = (()=>{
+  const m = {};
+  Object.entries(VS_ANIMO).forEach(([animo, lista])=>lista.forEach(t=>{
+    m[(typeof colorKey === 'function' ? colorKey(t) : String(t).toLowerCase())] = animo;
+  }));
+  return m;
+})();
+const animoDe = b => VS_ANIMO_MAPA[
+  (typeof colorKey === 'function' ? colorKey((b||{}).titulo) : String((b||{}).titulo||'').toLowerCase())
+] || '';
+/* las caras van dibujadas y no como emoji: un emoji dentro de un <text> de SVG
+   no se pinta en todos lados y el bombo quedaba con un círculo pelado, igual
+   que los de Amarillo y Morado */
+const vsCaraAnimo = (hex, rasgos) =>
+  `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="23" fill="${hex}"/>${rasgos}</svg>`;
+const VS_ANIMOS = [
+  { id:'divertido', n:'Divertido', hex:'#C9F839', cara: vsCaraAnimo('#C9F839',
+    '<circle cx="24" cy="27" r="3" fill="#0B1409"/><circle cx="40" cy="27" r="3" fill="#0B1409"/>'
+    + '<path d="M21 36c4 7 18 7 22 0" stroke="#0B1409" stroke-width="3.4" fill="none" stroke-linecap="round"/>') },
+  { id:'aburrido',  n:'Aburrido',  hex:'#68806E', cara: vsCaraAnimo('#68806E',
+    '<path d="M19 27h9M36 27h9" stroke="#0B1409" stroke-width="3.4" stroke-linecap="round"/>'
+    + '<path d="M24 41h16" stroke="#0B1409" stroke-width="3.4" stroke-linecap="round"/>') },
+];
+
 const vsCaraColor = c => `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="23" fill="${c.hex}"/>`
   + `<circle cx="32" cy="32" r="13" fill="${c.hex2}"/></svg>`;
 const vsCaraQuien = q => `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="23" fill="#8db207"/>`
@@ -14481,6 +14615,13 @@ function vsEntradas(){
       t: `Elegido por ${quien}`, lab:'ESTA NOCHE ELIGE', lab2:'Y DEL OTRO LADO ELIGE',
       cara: vsCaraQuien(quien),
       tiene: b => String(b.traidoPor||'').trim().toLowerCase() === String(quien).toLowerCase(),
+    });
+  });
+  VS_ANIMOS.forEach(v=>{
+    lista.push({
+      t: v.n, lab:'ESTA NOCHE SE JUEGA LO', lab2:'Y DEL OTRO LADO, LO',
+      cara: v.cara,
+      tiene: b => animoDe(b) === v.id,
     });
   });
   VS_CASAS.forEach(({casa, prioridad})=>{
@@ -16032,8 +16173,35 @@ function vsFinalVote(x, z, modoLabel, onWinner){
       finish(votos.a, `Los dos querían ${vsFinalLabel(votos.a,30)}. Sin ruleta: se lee ese.`);
     } else {
       vsFinalRuleta(x, z, votos, (ganador)=>{
-        const quienAcerto = votos.a.id===ganador.id ? A : (votos.b.id===ganador.id ? B : null);
-        const carta = quienAcerto ? ` 🃏 Carta para <b>${escapeHtml(quienAcerto)}</b>: ganó el que elegiste.` : '';
+        /* 🃏 ACÁ LA CARTA SÓLO SE ANUNCIABA.
+           El cartel decía «Carta para Maru» y era nada más que texto: nunca se
+           llamaba a robarCartas, así que la carta no entraba al mazo. Maru ganó
+           una final así y se quedó mirando un cartel. Ahora se reparte antes de
+           anunciarla, y si la mano está llena lo dice en vez de mentir. */
+        const slot = votos.a.id===ganador.id ? 'a' : (votos.b.id===ganador.id ? 'b' : null);
+        /* 👁 ESTO TAMBIÉN ES UNA APUESTA, y El Ojo tiene que contarla.
+           La estadística de quién tiene más ojo sale de Cartas.historial, que
+           hasta ahora sólo escribía la apuesta de la cosecha. El voto secreto
+           de la final es una apuesta igual —se vota a ciegas y el que acierta
+           cobra— así que queda anotado con la misma forma.
+           Sólo cuando NO hubo acuerdo: si los dos querían el mismo libro nadie
+           arriesgó nada, y contarlo sería regalarles un acierto a cada uno. */
+        if(typeof Cartas !== 'undefined' && Cartas.historial){
+          Cartas.historial.push({
+            fecha: fechaHoy(), ganador: ganador.titulo,
+            a: { titulo: votos.a.titulo, acerto: votos.a.id === ganador.id },
+            b: { titulo: votos.b.titulo, acerto: votos.b.id === ganador.id },
+          });
+          if(typeof persistCartas === 'function') persistCartas();
+        }
+        let carta = '';
+        if(slot){
+          const quien = escapeHtml(State.players[slot] || (slot==='a'?A:B));
+          const ganadas = (typeof robarCartas === 'function') ? robarCartas(slot, 1) : [];
+          carta = ganadas.length
+            ? ` 🃏 Carta para <b>${quien}</b>: ganó el que elegiste.`
+            : ` 🃏 <b>${quien}</b> acertó, pero tiene la mano llena.`;
+        }
         finish(ganador, `No hubo acuerdo. La ruleta habló.${carta}`);
       });
     }
@@ -16113,6 +16281,41 @@ function recordDuelo(x, z, votos, ganador, acuerdo, modoLabel){
     ganador: ganador.titulo, acuerdo, cruzado,
   });
   persistDuelos();
+}
+
+/* ---------- 🩹 EL MAZO VUELVE A CERO, MENOS LA DE MARU ----------
+   El mazo quedó contaminado: una tanda de pruebas en una copia local escribía
+   en el club de verdad (ver SYNC_LOCAL en 04e-sync.js, que ya lo impide), y
+   encima el primer intento de saldar la deuda pagaba una carta por cada final
+   que pareciera adeudada. Entre las dos cosas quedaron cartas inventadas en
+   las dos manos.
+   La única carta que de verdad se ganó alguien es la de Maru: la final del
+   Vasallaje anunciaba «Carta para X» y no la repartía (eso quedó arreglado
+   arriba, ahora se roba antes de anunciarla) y ella votó a Carrie y acertó.
+   Así que el mazo se vacía y queda esa sola, sorteada del mazo. Uri sin
+   ninguna: ninguna de las que tenía se la ganó jugando.
+   La marca viaja con el club, no con el teléfono, así que no la revive un
+   mazo viejo que baje de la nube. */
+const CARTAS_REPARO_V = 3;
+async function vsCartaDeMaru(){
+  if(!Cartas || !Cartas.mano) return;
+  if((+Cartas.reparo || 0) >= CARTAS_REPARO_V) return;
+  // por NOMBRE y no por casilla: en el club real `a` es Uri, no Maru
+  const slot = ['a','b'].find(w => String(State.players[w]||'').trim().toLowerCase() === 'maru');
+  if(!slot) return;
+  const otro = slot === 'a' ? 'b' : 'a';
+  const mano = Cartas.mano[slot] || [];
+  // si ya tenía una sola, esa se respeta; si no, se sortea una del mazo
+  const queda = mano.length === 1 ? mano[0]
+    : (typeof DECK !== 'undefined' ? DECK[Math.floor(Math.random()*DECK.length)].id : null);
+  if(!queda) return;
+  Cartas.mano[slot] = [queda];
+  Cartas.mano[otro] = [];
+  Cartas.reparo = CARTAS_REPARO_V;
+  if(typeof persistCartas === 'function') await persistCartas();
+  const def = (typeof cartaDef === 'function') ? cartaDef(queda) : null;
+  try{ toast(`🃏 El mazo quedó limpio. La única carta ganada es de ${State.players[slot]}: ${def ? def.nombre : queda}.`); }catch(e){}
+  return queda;
 }
 
 /* ---------- higiene de los duelos de final ----------
@@ -19900,7 +20103,9 @@ function confirmReset(){
   await loadFotos();
   await loadCartas();
   try{ await colorMigrar(); await colorAplicarAlClub(); colorSembrarPersonas(); }catch(e){}
-  try{ await duelosLimpiar(); }catch(e){}   // ⚔️ fuera los duelos de prueba   // 🎨 el color pensado de cada libro
+  try{ await duelosLimpiar(); }catch(e){}   // ⚔️ fuera los duelos de prueba
+  try{ await vsCartaDeMaru(); }catch(e){}   // 🃏 la carta que quedó debiendo el Vasallaje
+   // 🎨 el color pensado de cada libro
   await revertirSiQuedoAMedias();  // se cerró la tab a mitad de una partida → todo vuelve como estaba
   await syncAlArrancar();          // trae del club de GitHub si hay uno conectado
   try{ demoAlArrancar(); }catch(e){}       // 🧪 el botón de la demo (y seguir en ella si quedó abierta)

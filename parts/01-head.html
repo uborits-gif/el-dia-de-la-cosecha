@@ -2675,7 +2675,8 @@ body.demo #app{padding-top:20px;}
   background:rgba(242,245,236,.38);border-left:1px solid rgba(255,255,255,.18);
   border-right:1px solid rgba(255,255,255,.18);
 }
-.nt-cab{display:flex;justify-content:flex-end;}
+.nt-cab{display:flex;justify-content:flex-end;align-items:center;gap:7px;}
+.nt-candado{margin-right:auto;font-size:11px;opacity:.55;}
 .nt-fecha{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,36,23,.5);}
 .nt-texto{
   font-family:'Fraunces',serif;font-size:14.5px;line-height:1.5;margin:5px 0 10px;
@@ -2698,6 +2699,17 @@ body.demo #app{padding-top:20px;}
 .nt-spoiler{cursor:pointer;}
 .nt-spoiler .nt-texto{filter:blur(6px);transition:filter .3s;user-select:none;}
 .nt-spoiler.abierto .nt-texto{filter:none;user-select:auto;}
+
+/* la nota del otro mientras el libro no está terminado: se ve el papel, la
+   fecha, el tipo y de quién es — pero no lo que dice. Ojo: el texto viaja igual
+   al dispositivo (tiene que viajar, o no se sincronizaría), así que esto es un
+   candado de buena fe entre dos personas, no una caja fuerte. */
+.nt-cerrada{cursor:default;}
+.nt-cerrada .nt-texto{
+  filter:blur(7px);user-select:none;-webkit-user-select:none;pointer-events:none;
+  transition:filter .45s var(--ease-out);
+}
+.nt-cerrada .nt-tipo, .nt-cerrada .nt-ref{opacity:.55;}
 
 /* los papeles */
 .nt-amarilla{background:#F6E8A0;}

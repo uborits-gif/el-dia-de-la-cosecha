@@ -19,6 +19,20 @@ const FB_CONFIG = {
 };
 const FB_VER = '10.12.2';
 
+/* 🚧 UNA COPIA DE PRUEBA NO TOCA EL CLUB.
+   El club real se abre de dos maneras: este archivo a mano (file://) o GitHub
+   Pages. Pero la config de Firebase está acá adentro, así que CUALQUIER copia
+   —un `http-server` en localhost para probar un cambio— se conectaba al mismo
+   documento `club/main` y escribía ahí. Probar algo en local le cambiaba los
+   libros y las cartas al club de verdad, y se propagaba a los dos teléfonos.
+   Ya pasó: una tanda de pruebas en localhost le dejó cartas que nadie ganó.
+   Desde un servidor local no se sincroniza: ni sube ni baja. */
+const SYNC_LOCAL = (()=>{
+  const h = String(location.hostname || '').toLowerCase();
+  return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1'
+      || /\.(localhost|test|local)$/.test(h);
+})();
+
 const Sync = {
   ready:false, on:false, error:'',
   clientId: Math.random().toString(36).slice(2),
@@ -53,6 +67,12 @@ function syncEnJuego(){
 /* ---------- arranque ---------- */
 async function initSync(){
   loadLocalAt();
+  if(SYNC_LOCAL){
+    Sync.ready = false;
+    Sync.error = 'local';          // el cartel del home lo dice con todas las letras
+    try{ renderSync(document.querySelector('#syncBox')); }catch(e){}
+    return;
+  }
   try{
     const appMod = await import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app.js`);
     const fsMod  = await import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-firestore.js`);
@@ -141,6 +161,8 @@ async function aplicarRemoto(d){
     if(club.mazo){
       Cartas.mano = club.mazo.mano || { a:[], b:[] };
       Cartas.historial = club.mazo.historial || [];
+      // si vuelve sin marca, el mazo que llegó es anterior al arreglo: se rehace
+      Cartas.reparo = +club.mazo.reparo || 0;
     }
     if(Array.isArray(club.duelos)) State.duelos = club.duelos;
     if(club.sorter && typeof club.sorter === 'object') State.sorter = club.sorter;
@@ -167,7 +189,7 @@ function syncPayload(){
     read: State.read,
     vault: State.vault,
     players: State.players,
-    mazo: { mano: Cartas.mano, historial: Cartas.historial },
+    mazo: { mano: Cartas.mano, historial: Cartas.historial, reparo: Cartas.reparo || 0 },
     duelos: State.duelos || [],
     sorter: State.sorter || {},
   };
@@ -242,9 +264,15 @@ function renderSync(box){
     return;
   }
   const on = Sync.on;
-  const titulo = on ? 'Sincronización activada'
+  /* en una copia local el cartel tiene que gritarlo: lo que toques acá no es
+     el club, y lo que hagas en el club no se ve acá */
+  const local = Sync.error === 'local';
+  const titulo = local ? '🚧 Copia de prueba — no es tu club'
+               : on ? 'Sincronización activada'
                     : (Sync.error ? 'Sin conexión con la nube' : 'Conectando…');
-  const sub = on
+  const sub = local
+    ? 'Esto se abrió desde un servidor local. No sube ni baja nada: lo que pase acá no le toca un pelo al club de verdad.'
+    : on
     ? 'Todo se guarda y aparece solo en todos tus dispositivos, en vivo.'
     : (Sync.error ? 'No pude conectar. Se reintenta solo cuando vuelva internet.'
                   : 'Conectando con la nube…');

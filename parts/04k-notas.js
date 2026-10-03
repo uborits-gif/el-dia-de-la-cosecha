@@ -89,30 +89,66 @@ function notasDe(b){
   try{ const v = JSON.parse(b.notas || '[]'); return Array.isArray(v) ? v : []; }
   catch(e){ return []; }
 }
+/* ⚠️ EL LIBRO DE LA FICHA PUEDE SER UNA COPIA.
+   showPlacard recibe listas armadas al vuelo, así que el objeto que estás
+   mirando no siempre es el que vive en State.read / State.vault — y persist()
+   guarda ESOS. Escribir sólo en la copia dejaba la nota dibujada en pantalla
+   y no la subía nunca: en el otro teléfono no aparecía jamás.
+   Además, si mientras tenés la ficha abierta baja algo de la nube,
+   aplicarRemoto reemplaza los dos arrays por objetos NUEVOS y tu `b` queda
+   huérfano. Por eso se busca el original por id en el momento de guardar, no
+   se guarda una referencia de antes. (Es el mismo problema que resuelve
+   syncBook en 04-screens.js, pero eso es una función privada de esa pantalla.) */
+function libroDelClub(b){
+  const id = b && b.id;
+  if(!id) return null;
+  return (State.read || []).find(x=>x.id === id)
+      || (State.vault || []).find(x=>x.id === id)
+      || null;
+}
 async function notasGuardar(b, lista){
-  b.notas = lista.length ? JSON.stringify(lista) : '';
+  const txt = lista.length ? JSON.stringify(lista) : '';
+  b.notas = txt;
+  const real = libroDelClub(b);
+  if(real && real !== b) real.notas = txt;
   if(typeof persist === 'function') await persist();
 }
 /* ¿ya se puede destapar todo? Cuando el libro está terminado: o quedó escrita
    la fecha de fin, o ya lo puntuaron (que es lo que hace la ceremonia). */
 const libroTerminado = b => !!(b && (b.fin || (typeof ratingAvg === 'function' && ratingAvg(b) != null)));
 
-/* qué notas ve el que está mirando */
+/* Qué ve el que está mirando. Las del otro NO se esconden: están en el corcho,
+   borroneadas, y se destapan cuando se termina el libro. Ver el papel pegado y
+   no poder leerlo es la mitad de la gracia — sabés que escribió, no qué dice.
+   (Antes se ocultaban y quedaba sólo un cartel con el número, que era mucho
+   más aburrido.) */
 function notasVisibles(b, quien){
+  const abierto = libroTerminado(b);
   const todas = notasDe(b);
-  if(libroTerminado(b)) return { visibles: todas, tapadas: 0 };
-  const mias = todas.filter(n => n.quien === quien);
-  return { visibles: mias, tapadas: todas.length - mias.length };
+  return {
+    notas: todas.map(n => ({ n, cerrada: !abierto && !!quien && n.quien !== quien })),
+    cerradas: abierto ? 0 : todas.filter(n => quien && n.quien !== quien).length,
+    abierto,
+  };
 }
 
 /* ---------- el muro ---------- */
-function notaHTML(n, quien){
+function notaHTML(n, quien, cerrada){
   const t = tipoDe(n.tipo);
   const ref = n.ref ? `${(NOTAS_REF_N[n.refTipo] || 'pág.')} ${escapeHtml(String(n.ref))}` : '';
-  const propia = n.quien === quien;
-  return `<div class="nt-nota nt-${escapeHtml(n.color || 'amarilla')}${n.tipo==='spoiler'?' nt-spoiler':''}" data-id="${escapeHtml(String(n.id))}">
+  const propia = !cerrada && n.quien === quien;
+  // un spoiler propio se destapa tocándolo; uno del otro está cerrado igual que
+  // el resto y NO se abre tocándolo, o la llave no serviría de nada
+  const clases = ['nt-nota', 'nt-' + (n.color || 'amarilla')];
+  if(cerrada) clases.push('nt-cerrada');
+  else if(n.tipo === 'spoiler') clases.push('nt-spoiler');
+  return `<div class="${escapeHtml(clases.join(' '))}" data-id="${escapeHtml(String(n.id))}"
+      ${cerrada ? `title="La escribió ${escapeHtml(String(n.quien||''))}. Se lee cuando terminen el libro."` : ''}>
     <i class="nt-cinta"></i>
-    <div class="nt-cab"><span class="nt-fecha">${escapeHtml(n.fecha || '')}</span></div>
+    <div class="nt-cab">
+      ${cerrada ? '<span class="nt-candado">🔒</span>' : ''}
+      <span class="nt-fecha">${escapeHtml(n.fecha || '')}</span>
+    </div>
     <div class="nt-texto">${escapeHtml(n.texto || '').replace(/\n/g, '<br>')}</div>
     <div class="nt-pie">
       <span class="nt-tipo">${t.ico} ${escapeHtml(t.n)}</span>
@@ -126,23 +162,22 @@ const NOTAS_REF_N = { pag:'pág.', cap:'cap.', pct:'%' };
 
 function muroHTML(b){
   const quien = yoValido();
-  const { visibles, tapadas } = notasVisibles(b, quien);
-  const terminado = libroTerminado(b);
+  const { notas, cerradas, abierto } = notasVisibles(b, quien);
   return `<div class="pl2-sec nt-sec" data-libro="${escapeHtml(String(b.id||''))}">
     <h4 class="pl2-h" style="display:flex;align-items:center;justify-content:space-between;">El muro
       ${quien ? `<button class="nt-yo" id="ntYo" style="--pc:${colorDeQuien(quien)}" title="Cambiar de lector">${escapeHtml(quien)}</button>` : ''}
     </h4>
     <button class="nt-nueva" id="ntNueva">
-      <i>+</i><span><b>Nueva nota</b><em>${terminado ? 'Lo que quedó para decir' : 'Nadie la ve hasta que terminen'}</em></span>
+      <i>+</i><span><b>Nueva nota</b><em>${abierto ? 'Lo que quedó para decir' : 'Se pega borroneada hasta que terminen'}</em></span>
     </button>
-    <div class="nt-corcho${visibles.length?'':' vacio'}" id="ntCorcho">
-      ${visibles.length
-        ? visibles.map(n=>notaHTML(n, quien)).join('')
+    <div class="nt-corcho${notas.length?'':' vacio'}" id="ntCorcho">
+      ${notas.length
+        ? notas.map(x=>notaHTML(x.n, quien, x.cerrada)).join('')
         : `<div class="nt-vacio"><span class="nt-fantasma"><i></i><i></i><i></i></span>
              <b>El muro está vacío</b>
-             <em>Anotá una cita, una bronca, una teoría. Total, no la ve nadie.</em></div>`}
+             <em>Anotá una cita, una bronca, una teoría. Total, no la lee nadie todavía.</em></div>`}
     </div>
-    ${tapadas ? `<div class="nt-tapadas">🔒 ${escapeHtml(elOtro(quien)||'El otro')} escribió ${tapadas} nota${tapadas>1?'s':''}. Se destapan cuando terminen el libro.</div>` : ''}
+    ${cerradas ? `<div class="nt-tapadas">🔒 ${cerradas} de ${escapeHtml(elOtro(quien)||'el otro')} están borroneadas. Se leen cuando terminen el libro.</div>` : ''}
   </div>`;
 }
 

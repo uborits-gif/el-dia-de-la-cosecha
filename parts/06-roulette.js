@@ -513,7 +513,9 @@ function confirmReset(){
   await loadFotos();
   await loadCartas();
   try{ await colorMigrar(); await colorAplicarAlClub(); colorSembrarPersonas(); }catch(e){}
-  try{ await duelosLimpiar(); }catch(e){}   // ⚔️ fuera los duelos de prueba   // 🎨 el color pensado de cada libro
+  try{ await duelosLimpiar(); }catch(e){}   // ⚔️ fuera los duelos de prueba
+  try{ await vsCartaDeMaru(); }catch(e){}   // 🃏 la carta que quedó debiendo el Vasallaje
+   // 🎨 el color pensado de cada libro
   await revertirSiQuedoAMedias();  // se cerró la tab a mitad de una partida → todo vuelve como estaba
   await syncAlArrancar();          // trae del club de GitHub si hay uno conectado
   try{ demoAlArrancar(); }catch(e){}       // 🧪 el botón de la demo (y seguir en ella si quedó abierta)

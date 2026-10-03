@@ -30,7 +30,11 @@ const DECK = [
 const cartaDef = id => DECK.find(c=>c.id===id);
 const MANO_MAX = 5;
 
-const Cartas = { mano:{ a:[], b:[] }, historial:[] };
+/* `reparo` viaja CON el club, no en el dispositivo: marca qué arreglos de una
+   sola vez ya se le hicieron al mazo. Si viviera en localStorage, el teléfono
+   que lo arregló quedaría marcado y el otro —que todavía tiene el mazo viejo—
+   se lo volvería a pisar por la nube, sin que ninguno de los dos lo rehaga. */
+const Cartas = { mano:{ a:[], b:[] }, historial:[], reparo:0 };
 
 /* ---------- persistencia ---------- */
 async function loadCartas(){
@@ -39,7 +43,7 @@ async function loadCartas(){
   if(!raw){ try{ raw = localStorage.getItem('cosecha:cartas'); }catch(e){} }
   try{
     const d = raw ? JSON.parse(raw) : null;
-    if(d && d.mano){ Cartas.mano = d.mano; Cartas.historial = d.historial || []; }
+    if(d && d.mano){ Cartas.mano = d.mano; Cartas.historial = d.historial || []; Cartas.reparo = +d.reparo || 0; }
   }catch(e){}
 }
 async function persistCartas(){
