@@ -90,6 +90,9 @@ const RUTAS = [
   { re:/^\/jornada\/(.+)$/,         ver:m=>screenHistoria(m[1]) },
   { re:/^\/wrapped(?:\/(\d{4}))?$/, ver:m=>screenWrapped(m[1]) },
   { re:/^\/sorter$/,                ver:()=>screenSorter() },
+  /* desde el teléfono no hay teclado suelto para escribir la palabra: la
+     dirección es la única forma cómoda de prender el modo Halloween */
+  { re:/^\/halloween$/,             ver:()=>{ hwToggle(); Ruta.ir('/'); } },
   { re:/^\/libro\/(.+)$/,           ver:m=>abrirLibroDeRuta(m[1]) },
   /* el ritual de la cosecha no se navega: se retoma o se abandona */
   { re:/^\/cosecha/,                ver:()=>{ if(!rutaEnRitual()) screenHome(); } },

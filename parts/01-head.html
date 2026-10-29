@@ -39,6 +39,91 @@
   --am1: rgba(201,248,57,.055);
   --am2: rgba(22,64,32,.4);
 }
+/* ---- 🎃 MODO HALLOWEEN (06i-halloween.js) ----
+   No hay un rediseño: hay una piel. Como toda la paleta sale de estas
+   variables, pisarlas acá tiñe la app entera —botones, lomos, barras, badges,
+   el marcador— sin tocar una sola regla de componente. El verde del club pasa
+   a naranja de calabaza, el fondo a noche morada, y listo. */
+html[data-hw]{
+  --bg: #0B0611;
+  --bg-soft: #1A0E22;
+  --card: #190E20;
+  --card-hi: #26132E;
+  --border: #4A2350;
+  --border-soft: #331741;
+  --bone: #FDF1E3;
+  --bone-dim: #C9A9BE;
+  --grey: #8A6A8C;
+  --amber: #FF8A1E;          /* calabaza */
+  --amber-soft: #FFC46B;
+  --danger: #E0453B;
+  --pa: #FF8A1E;             /* uno naranja */
+  --pb: #B86BF0;             /* el otro morado */
+  --wood-1:#3A1D18; --wood-2:#1F0E12; --wood-3:#55291D;
+  --am1: rgba(255,138,30,.07);
+  --am2: rgba(58,20,70,.45);
+}
+
+/* z-index -1, igual que #ambient: los adornos van DETRÁS del contenido.
+   Con la capa por encima la luna le tapaba el botón de empezar la cosecha —
+   adornar no puede costar legibilidad. */
+#hwCapa{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;}
+/* la luna: una sola sombra interior le alcanza para tener cara */
+.hw-luna{
+  position:absolute;top:-80px;right:-70px;width:250px;height:250px;border-radius:50%;
+  background:radial-gradient(circle at 38% 36%, #FFE9B8, #F7C86A 55%, #E0A23F);
+  box-shadow:inset -22px 14px 0 -6px rgba(120,80,20,.22), 0 0 130px 50px rgba(255,170,60,.1);
+  opacity:.22;
+}
+.hw-tela{
+  position:absolute;width:150px;height:150px;opacity:.2;
+  background:
+    radial-gradient(circle at 0 0, transparent 28px, rgba(253,241,227,.55) 29px, transparent 30px),
+    radial-gradient(circle at 0 0, transparent 58px, rgba(253,241,227,.55) 59px, transparent 60px),
+    radial-gradient(circle at 0 0, transparent 92px, rgba(253,241,227,.5) 93px, transparent 94px),
+    radial-gradient(circle at 0 0, transparent 126px, rgba(253,241,227,.42) 127px, transparent 128px),
+    linear-gradient(45deg,  transparent 49.4%, rgba(253,241,227,.5) 49.6%, transparent 50.2%),
+    linear-gradient(0deg,   transparent 49.4%, rgba(253,241,227,.5) 49.6%, transparent 50.2%),
+    linear-gradient(90deg,  transparent 49.4%, rgba(253,241,227,.5) 49.6%, transparent 50.2%),
+    linear-gradient(22deg,  transparent 49.4%, rgba(253,241,227,.38) 49.6%, transparent 50.2%),
+    linear-gradient(68deg,  transparent 49.4%, rgba(253,241,227,.38) 49.6%, transparent 50.2%);
+}
+/* las dos telas en esquinas opuestas y lejos de la luna: encimada con la luna,
+   la de arriba a la derecha parecía un alambre y no una telaraña */
+.hw-tela.tl{top:0;left:0;}
+.hw-tela.tr{bottom:0;right:0;transform:scale(-1,-1);}
+.hw-bat{position:absolute;color:#25102E;opacity:.85;will-change:transform;}
+.hw-bat svg{display:block;width:100%;height:auto;}
+.hw-bat.b1{width:62px;top:16%;animation:hwVuela 19s linear infinite, hwAletea .42s ease-in-out infinite alternate;}
+.hw-bat.b2{width:40px;top:33%;opacity:.5;animation:hwVuela 27s linear infinite 5s, hwAletea .55s ease-in-out infinite alternate;}
+.hw-bat.b3{width:84px;top:62%;opacity:.38;animation:hwVuela 34s linear infinite 12s, hwAletea .66s ease-in-out infinite alternate;}
+@keyframes hwVuela{
+  from{ transform:translateX(-18vw) translateY(0); }
+  25% { transform:translateX(22vw)  translateY(-26px); }
+  50% { transform:translateX(58vw)  translateY(18px); }
+  75% { transform:translateX(88vw)  translateY(-14px); }
+  to  { transform:translateX(124vw) translateY(4px); }
+}
+@keyframes hwAletea{ from{ scale:1 .78; } to{ scale:1 1.06; } }
+.hw-zapallo{
+  position:absolute;left:22px;bottom:-18px;width:104px;color:#FF8A1E;opacity:.5;
+  filter:drop-shadow(0 0 26px rgba(255,138,30,.35));
+  animation:hwTitila 3.4s ease-in-out infinite;
+}
+.hw-zapallo svg{display:block;width:100%;height:auto;}
+/* el titileo lleva la opacidad adentro: una animación le gana a la regla
+   normal, así que poner opacity afuera no hacía nada (la trampa de plBtnIn) */
+@keyframes hwTitila{ 0%,100%{opacity:.46;} 42%{opacity:.3;} 55%{opacity:.54;} 70%{opacity:.36;} }
+@media (max-width: 760px){
+  .hw-luna{width:170px;height:170px;top:-50px;right:-44px;}
+  .hw-tela{width:104px;height:104px;}
+  .hw-zapallo{width:82px;left:8px;}
+}
+@media (prefers-reduced-motion: reduce){
+  .hw-bat{animation:none;left:-200px;}
+  .hw-zapallo{animation:none;}
+}
+
 *{box-sizing:border-box;}
 html{scroll-behavior:smooth;}
 body{
