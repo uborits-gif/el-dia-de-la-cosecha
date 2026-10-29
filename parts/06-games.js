@@ -291,7 +291,7 @@ const GAMES = [
 
 function screenGameSelect(){
   Flow.set(5);
-  App.ambient('rgba(201,248,57,.05)', 'rgba(50,24,60,.4)');
+  App.ambient('rgba(var(--rgb-amber),.05)', 'rgba(50,24,60,.4)');
   Sound.startMusic('lobby');
   show(`
     <div class="eyebrow">Los finalistas están listos</div>
@@ -402,7 +402,7 @@ function launchGame(g, tile){
 
 /* después de "Volver a jugar": repetir el mismo método o elegir otro */
 function offerReplay(){
-  App.ambient('rgba(201,248,57,.05)', 'rgba(50,24,60,.4)');
+  App.ambient('rgba(var(--rgb-amber),.05)', 'rgba(50,24,60,.4)');
   const g = currentGame;
   const ov = overlay(`
     <div class="ov-pop center" style="max-width:500px;">

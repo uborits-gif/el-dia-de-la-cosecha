@@ -1288,7 +1288,7 @@ const App = {
   /* tiñe el fondo ambiente; sin args vuelve al default */
   ambient(a, b){
     const el = $('#ambient');
-    el.style.setProperty('--am1', a || 'rgba(201,248,57,.055)');
+    el.style.setProperty('--am1', a || 'rgba(var(--rgb-amber),.055)');
     el.style.setProperty('--am2', b || 'rgba(22,64,32,.4)');
   },
 };

@@ -39,6 +39,9 @@
   --grey: #68806E;
   --amber: #C9F839;
   --amber-soft: #DFFF7A;
+  /* la misma lima en terna, para los rgba() que estaban escritos a mano: así
+     una sola línea le cambia el color a las 72 transparencias de toda la app */
+  --rgb-amber: 201,248,57;
   --danger: #E06A5E;
   --pa: #C9F839;   /* jugadora A (Maru) */
   --pb: #7CD4FF;   /* jugador B (Uri) */
@@ -46,7 +49,7 @@
   --radius: 20px;
   --ease-pop: cubic-bezier(.34,1.56,.64,1);
   --ease-out: cubic-bezier(.22,.9,.26,1);
-  --am1: rgba(201,248,57,.055);
+  --am1: rgba(var(--rgb-amber),.055);
   --am2: rgba(22,64,32,.4);
 }
 /* ---- 🎃 MODO HALLOWEEN (06i-halloween.js) ----
@@ -66,6 +69,7 @@ html[data-hw]{
   --grey: #8A6A8C;
   --amber: #FF8A1E;          /* calabaza */
   --amber-soft: #FFC46B;
+  --rgb-amber: 255,138,30;
   --danger: #E0453B;
   --pa: #FF8A1E;             /* uno naranja */
   --pb: #B86BF0;             /* el otro morado */
@@ -124,14 +128,87 @@ html[data-hw]{
 /* el titileo lleva la opacidad adentro: una animación le gana a la regla
    normal, así que poner opacity afuera no hacía nada (la trampa de plBtnIn) */
 @keyframes hwTitila{ 0%,100%{opacity:.46;} 42%{opacity:.3;} 55%{opacity:.54;} 70%{opacity:.36;} }
+/* 🌩 el relámpago tapa TODO, hasta una ficha abierta, así que no vive en la
+   capa de adornos (que va detrás) sino arriba de todo. No intercepta clicks. */
+.hw-rayo{
+  position:fixed;inset:0;z-index:9995;pointer-events:none;background:#FFF6E2;
+  opacity:0;animation:hwFogonazo .7s ease-out forwards;
+}
+.hw-rayo.fuerte{animation-duration:1.2s;}
+/* dos destellos y un resplandor que se va: un solo flash parece un bug */
+@keyframes hwFogonazo{
+  0%{opacity:0;} 3%{opacity:.92;} 8%{opacity:.1;} 12%{opacity:.78;}
+  18%{opacity:.05;} 26%{opacity:.34;} 100%{opacity:0;}
+}
+/* el temblor del golpe */
+.hw-tiembla{animation:hwTemblor .7s cubic-bezier(.36,.07,.19,.97);}
+@keyframes hwTemblor{
+  10%,90%{transform:translate3d(-2px,1px,0);}
+  20%,80%{transform:translate3d(4px,-2px,0);}
+  30%,50%,70%{transform:translate3d(-6px,2px,0);}
+  40%,60%{transform:translate3d(6px,-1px,0);}
+}
+
+/* niebla: dos bandas que cruzan a distinta velocidad */
+.hw-niebla{
+  position:absolute;left:-50%;bottom:0;width:200%;height:190px;
+  background:radial-gradient(60% 100% at 20% 100%, rgba(200,170,220,.09), transparent 70%),
+             radial-gradient(45% 100% at 55% 100%, rgba(255,180,120,.07), transparent 70%),
+             radial-gradient(55% 100% at 85% 100%, rgba(180,150,210,.08), transparent 70%);
+}
+.hw-niebla.n1{animation:hwNiebla 46s linear infinite;}
+.hw-niebla.n2{height:120px;opacity:.7;animation:hwNiebla 71s linear infinite reverse;}
+@keyframes hwNiebla{ from{transform:translateX(0);} to{transform:translateX(25%);} }
+
+/* la araña baja de su hilo, se queda colgando y vuelve a subir */
+.hw-hilo{
+  position:absolute;top:0;right:17%;display:flex;flex-direction:column;align-items:center;
+  animation:hwBaja 26s ease-in-out infinite;
+}
+.hw-hilo > i{display:block;width:1px;height:96px;background:linear-gradient(rgba(253,241,227,.42), rgba(253,241,227,.16));}
+.hw-arana{display:block;width:34px;color:#1C0F24;filter:drop-shadow(0 2px 5px rgba(0,0,0,.6));}
+.hw-arana svg{display:block;width:100%;height:auto;}
+@keyframes hwBaja{
+  0%,100%{transform:translateY(-150px);} 14%,38%{transform:translateY(0);} 52%{transform:translateY(-150px);}
+}
+
+/* el fantasma cruza bien despacio y se desvanece en las puntas */
+.hw-fantasma{
+  position:absolute;top:46%;width:72px;color:#E8DCF2;opacity:0;
+  animation:hwFlota 38s ease-in-out infinite;
+}
+.hw-fantasma svg{display:block;width:100%;height:auto;}
+@keyframes hwFlota{
+  0%{transform:translate(-14vw,0);opacity:0;}
+  12%{opacity:.16;}
+  50%{transform:translate(48vw,-34px);opacity:.2;}
+  88%{opacity:.1;}
+  100%{transform:translate(112vw,10px);opacity:0;}
+}
+
+/* los títulos con un halo de calabaza: el detalle que termina de vestir */
+/* los 133 dibujos de tropes traen el verde cocido adentro del SVG (ver
+   gen-bookmoji.js): no hay variable que pisar, así que se les gira el tono.
+   El filtro acá es inofensivo — son iconos chicos y no contienen nada fixed. */
+html[data-hw] .bmj{ filter:hue-rotate(-78deg) saturate(1.35) brightness(1.05); }
+html[data-hw] h1, html[data-hw] h2.serif{ text-shadow:0 0 26px rgba(255,138,30,.22); }
+html[data-hw] .eyebrow{ text-shadow:0 0 14px rgba(255,138,30,.35); }
+
 @media (max-width: 760px){
   .hw-luna{width:170px;height:170px;top:-50px;right:-44px;}
   .hw-tela{width:104px;height:104px;}
   .hw-zapallo{width:82px;left:8px;}
+  .hw-fantasma{width:52px;}
+  .hw-hilo{right:9%;}
 }
 @media (prefers-reduced-motion: reduce){
-  .hw-bat{animation:none;left:-200px;}
-  .hw-zapallo{animation:none;}
+  .hw-bat, .hw-zapallo, .hw-niebla, .hw-hilo, .hw-fantasma{animation:none;}
+  .hw-bat{left:-200px;}
+  .hw-fantasma{opacity:.12;}
+  .hw-hilo{transform:translateY(0);}
+  .hw-tiembla{animation:none;}
+  /* el fogonazo se queda en un resplandor tenue, sin parpadeo */
+  .hw-rayo{animation:none;opacity:.14;transition:opacity .5s;}
 }
 
 *{box-sizing:border-box;}
@@ -231,7 +308,7 @@ h1.title{
 .btn-primary:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 16px 34px -14px rgba(242,245,236,.45);}
 .btn-primary:active{transform:translateY(-1px) scale(.99);}
 .btn-amber{background:var(--amber);color:#0A1209;}
-.btn-amber:hover{transform:translateY(-3px) scale(1.02);background:var(--amber-soft);box-shadow:0 16px 40px -12px rgba(201,248,57,.45);}
+.btn-amber:hover{transform:translateY(-3px) scale(1.02);background:var(--amber-soft);box-shadow:0 16px 40px -12px rgba(var(--rgb-amber),.45);}
 .btn-amber:active{transform:translateY(-1px) scale(.99);}
 .btn-ghost{background:transparent;color:var(--bone-dim);border:1.5px solid var(--border);}
 .btn-ghost:hover{border-color:var(--bone-dim);color:var(--bone);transform:translateY(-2px);}
@@ -256,7 +333,7 @@ h1.title{
 }
 .fb-lab{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--grey);transition:.3s;white-space:nowrap;}
 .fb-step.done .fb-dot{background:var(--grey);}
-.fb-step.act .fb-dot{background:var(--amber);box-shadow:0 0 10px rgba(201,248,57,.7);transform:scale(1.3);}
+.fb-step.act .fb-dot{background:var(--amber);box-shadow:0 0 10px rgba(var(--rgb-amber),.7);transform:scale(1.3);}
 .fb-step.act .fb-lab{color:var(--bone);}
 .fb-sep{width:14px;height:1px;background:var(--border-soft);flex:none;}
 .fb-note{font-size:10.5px;color:var(--amber);letter-spacing:.1em;text-transform:uppercase;padding-left:10px;border-left:1px solid var(--border-soft);margin-left:6px;white-space:nowrap;}
@@ -519,7 +596,7 @@ h1.title{
 .vault-slot:hover .book3d, .vault-slot.sel .book3d{
   transform:translate3d(16px, 0, 58px) rotateY(24deg);
 }
-.vault-slot.sel .book3d{filter:drop-shadow(0 0 18px rgba(201,248,57,.35));}
+.vault-slot.sel .book3d{filter:drop-shadow(0 0 18px rgba(var(--rgb-amber),.35));}
 /* lomo premium: color EXACTO del borde de la tapa (--sc), sombreado de cilindro */
 .bf-spine.vb-solid{
   background:
@@ -587,7 +664,7 @@ h1.title{
 .vd-badge{
   display:inline-flex;align-items:center;gap:6px;
   font-size:10px;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--amber);border:1px solid rgba(201,248,57,.3);border-radius:999px;
+  color:var(--amber);border:1px solid rgba(var(--rgb-amber),.3);border-radius:999px;
   padding:4px 10px;margin-top:8px;
 }
 .vd-hint{font-size:12px;color:var(--grey);font-style:italic;}
@@ -604,7 +681,7 @@ h1.title{
   padding:22px;min-height:210px;display:flex;flex-direction:column;
   transition:border-color .3s, box-shadow .3s;
 }
-.up-card.loaded{border-color:rgba(201,248,57,.55);box-shadow:0 0 0 1px rgba(201,248,57,.12), 0 18px 40px -24px rgba(201,248,57,.18);}
+.up-card.loaded{border-color:rgba(var(--rgb-amber),.55);box-shadow:0 0 0 1px rgba(var(--rgb-amber),.12), 0 18px 40px -24px rgba(var(--rgb-amber),.18);}
 .up-card h3{font-family:'Fraunces',serif;font-weight:600;font-size:17px;margin:0 0 4px;display:flex;align-items:center;gap:8px;}
 .up-dot{width:9px;height:9px;border-radius:50%;flex:none;}
 .up-card .up-sub{font-size:12px;color:var(--grey);margin-bottom:14px;}
@@ -614,8 +691,8 @@ h1.title{
   cursor:pointer;transition:.25s;text-align:center;padding:16px;
   color:var(--bone-dim);font-size:13px;
 }
-.up-drop:hover{border-color:var(--amber);color:var(--bone);background:rgba(201,248,57,.03);}
-.up-drop.has{border-style:solid;border-color:rgba(201,248,57,.5);color:var(--amber-soft);}
+.up-drop:hover{border-color:var(--amber);color:var(--bone);background:rgba(var(--rgb-amber),.03);}
+.up-drop.has{border-style:solid;border-color:rgba(var(--rgb-amber),.5);color:var(--amber-soft);}
 .up-count{font-family:'Fraunces',serif;font-size:32px;font-weight:700;color:var(--amber);line-height:1;}
 .up-paste{margin-top:10px;font-size:11.5px;color:var(--grey);text-decoration:underline;cursor:pointer;background:none;border:none;font-family:'Inter';transition:.2s;}
 .up-paste:hover{color:var(--bone);}
@@ -644,7 +721,7 @@ h1.title{
 .seal-book i{
   position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   width:5px;height:5px;border-radius:50%;background:var(--amber);
-  box-shadow:0 0 6px rgba(201,248,57,.8);
+  box-shadow:0 0 6px rgba(var(--rgb-amber),.8);
 }
 .seal-book.nocover i{background:var(--grey);box-shadow:none;}
 .seal-book.warn{border:1px solid var(--danger);border-left-width:3px;}
@@ -827,7 +904,7 @@ h1.title{
 .wb-inner{transition:.16s ease;border-radius:8px;}
 .wheel-book.lit .wb-inner{
   transform:scale(1.16) translateY(-7px);
-  filter:brightness(1.4) drop-shadow(0 0 22px rgba(201,248,57,.75));
+  filter:brightness(1.4) drop-shadow(0 0 22px rgba(var(--rgb-amber),.75));
 }
 .wb-tag{
   font-size:8.5px;color:var(--grey);text-align:center;margin-top:6px;letter-spacing:.16em;text-transform:uppercase;
@@ -878,11 +955,11 @@ h1.title{
 .duel-book .wb-inner{transition:.18s ease;}
 .duel-book.lit .wb-inner{
   transform:scale(1.1) translateY(-8px);
-  filter:brightness(1.45) drop-shadow(0 0 30px rgba(201,248,57,.8));
+  filter:brightness(1.45) drop-shadow(0 0 30px rgba(var(--rgb-amber),.8));
 }
 .duel-vs{
   font-family:'Fraunces',serif;font-size:52px;font-weight:900;color:var(--amber);
-  text-shadow:0 0 26px rgba(201,248,57,.55);
+  text-shadow:0 0 26px rgba(var(--rgb-amber),.55);
   animation:vsPulse 1.6s ease-in-out infinite;
 }
 @keyframes vsPulse{0%,100%{transform:scale(1);opacity:.9;}50%{transform:scale(1.12);opacity:1;}}
@@ -953,12 +1030,12 @@ h1.title{
 }
 .game-tile::after{
   content:'';position:absolute;inset:0;opacity:0;transition:.25s;
-  background:radial-gradient(90% 80% at 50% 0%, rgba(201,248,57,.16), transparent 70%);
+  background:radial-gradient(90% 80% at 50% 0%, rgba(var(--rgb-amber),.16), transparent 70%);
 }
 .game-tile:hover{transform:translateY(-4px);border-color:var(--bone-dim);}
-.game-tile.lit{border-color:var(--amber);transform:translateY(-4px) scale(1.03);box-shadow:0 16px 34px -18px rgba(201,248,57,.6);}
+.game-tile.lit{border-color:var(--amber);transform:translateY(-4px) scale(1.03);box-shadow:0 16px 34px -18px rgba(var(--rgb-amber),.6);}
 .game-tile.lit::after{opacity:1;}
-.game-tile.chosen{border-color:var(--amber);box-shadow:0 0 0 2px rgba(201,248,57,.4), 0 20px 40px -16px rgba(201,248,57,.5);animation:tilePop .5s var(--ease-pop);}
+.game-tile.chosen{border-color:var(--amber);box-shadow:0 0 0 2px rgba(var(--rgb-amber),.4), 0 20px 40px -16px rgba(var(--rgb-amber),.5);animation:tilePop .5s var(--ease-pop);}
 @keyframes tilePop{0%{transform:scale(1);}45%{transform:scale(1.09);}100%{transform:scale(1.04);}}
 .gt-icon{font-size:26px;line-height:1;margin-bottom:10px;height:44px;display:flex;align-items:center;}
 .gt-img{
@@ -1043,7 +1120,7 @@ h1.title{
 .rl-runner img{width:100%;height:100%;object-fit:cover;display:block;}
 .race-lane.go .rl-runner{animation:runnerBob .34s ease-in-out infinite;}
 @keyframes runnerBob{0%,100%{transform:translateY(-50%) rotate(-2deg);}50%{transform:translateY(-58%) rotate(2.5deg);}}
-.race-lane.rl-win .rl-bar{border-color:var(--amber);box-shadow:0 0 18px rgba(201,248,57,.45), inset 0 2px 5px rgba(0,0,0,.5);}
+.race-lane.rl-win .rl-bar{border-color:var(--amber);box-shadow:0 0 18px rgba(var(--rgb-amber),.45), inset 0 2px 5px rgba(0,0,0,.5);}
 .race-caller{font-size:clamp(17px,2.8vw,24px);font-weight:700;min-height:1.35em;color:#E8C34A;transition:.2s;}
 .race-caller.hot{color:var(--danger);animation:callerHot .5s ease-in-out infinite;}
 @keyframes callerHot{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
@@ -1121,7 +1198,7 @@ h1.title{
   font-family:'Inter';transition:.15s;line-height:1;}
 .ttt-cell:hover{border-color:var(--bone-dim);}
 .ttt-cell.filled{cursor:default;}
-.ttt-cell.win{background:rgba(201,248,57,.14);border-color:var(--amber);}
+.ttt-cell.win{background:rgba(var(--rgb-amber),.14);border-color:var(--amber);}
 .ttt-books{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-top:10px;}
 .ttt-book{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;border-radius:12px;transition:.2s;}
 .ttt-book.pickable{cursor:pointer;border:1.5px dashed transparent;}
@@ -1258,7 +1335,7 @@ h1.title{
 .pl-eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--grey);margin-bottom:8px;}
 .pl-title{font-family:'Fraunces',serif;font-weight:800;font-size:clamp(24px,4vw,38px);line-height:1.05;margin:0;}
 .pl-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
-.pl-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);border:1px solid rgba(201,248,57,.3);border-radius:999px;padding:4px 11px;}
+.pl-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);border:1px solid rgba(var(--rgb-amber),.3);border-radius:999px;padding:4px 11px;}
 .pl-badge.gris{color:var(--bone-dim);border-color:var(--border);}
 .pl-badge.rojo{color:var(--danger);border-color:rgba(224,106,94,.4);}
 .pl-sec{margin-top:20px;padding-top:14px;border-top:1px solid var(--border-soft);}
@@ -1297,7 +1374,7 @@ h1.title{
   position:relative;margin-top:16px;height:min(62vh,600px);
   border-radius:22px;overflow:hidden;
   background:
-    radial-gradient(120% 90% at 50% 0%, rgba(201,248,57,.05), transparent 55%),
+    radial-gradient(120% 90% at 50% 0%, rgba(var(--rgb-amber),.05), transparent 55%),
     linear-gradient(170deg, #10200f, #0a1309 70%);
   border:1px solid var(--border-soft);
   box-shadow:inset 0 2px 34px rgba(0,0,0,.6);
@@ -1603,7 +1680,7 @@ h1.title.sz-hero{
   font-variation-settings:"wght" 740, "wdth" 118;
 }
 .vf-lens.on{
-  border-color:var(--amber);color:var(--amber);background:rgba(201,248,57,.07);
+  border-color:var(--amber);color:var(--amber);background:rgba(var(--rgb-amber),.07);
   font-variation-settings:"wght" 700, "wdth" 110;
 }
 .vf-lens i{font-style:normal;margin-left:8px;opacity:.65;}
@@ -1755,9 +1832,9 @@ h1.title.sz-hero{
 .pl2-btn:focus-visible{outline:2px solid var(--amber);outline-offset:3px;}
 /* el brillo sólo donde hay mouse: en el teléfono el :hover se queda pegado */
 @media (hover:hover){
-  .pl2-btn:hover{background:rgba(18,34,20,.92);border-color:rgba(201,248,57,.55);
+  .pl2-btn:hover{background:rgba(18,34,20,.92);border-color:rgba(var(--rgb-amber),.55);
     color:var(--amber);box-shadow:0 10px 26px -10px rgba(0,0,0,.8),
-    0 0 0 4px rgba(201,248,57,.09);}
+    0 0 0 4px rgba(var(--rgb-amber),.09);}
   .pl2-btn:hover svg{transform:scale(1.1);}
   .pl2-arrow.prev:hover svg{transform:scale(1.1) translateX(-1.5px);}
   .pl2-arrow.next:hover svg{transform:scale(1.1) translateX(1.5px);}
@@ -1791,7 +1868,7 @@ h1.title.sz-hero{
   display:block;width:22px;height:22px;border-radius:50%;pointer-events:none;
   border:1.5px solid rgba(242,245,236,.25);box-shadow:inset 0 1px 3px rgba(0,0,0,.5);
 }
-.pt-dot.mano{border-color:var(--amber);box-shadow:0 0 0 2px rgba(201,248,57,.2), inset 0 1px 3px rgba(0,0,0,.5);}
+.pt-dot.mano{border-color:var(--amber);box-shadow:0 0 0 2px rgba(var(--rgb-amber),.2), inset 0 1px 3px rgba(0,0,0,.5);}
 .pt-aa{
   width:24px;height:22px;flex:none;display:flex;align-items:center;justify-content:center;
   color:var(--bone);line-height:1;overflow:hidden;
@@ -1802,7 +1879,7 @@ h1.title.sz-hero{
   width:24px;height:24px;border-radius:50%;border:none;background:none;
   color:var(--grey);cursor:pointer;font-size:12px;line-height:1;transition:.18s;
 }
-.pt-pick:hover{color:var(--amber);background:rgba(201,248,57,.12);transform:scale(1.12);}
+.pt-pick:hover{color:var(--amber);background:rgba(var(--rgb-amber),.12);transform:scale(1.12);}
 .pt-pick:active{transform:scale(.94);}
 .pt-drop{width:13px;height:13px;display:block;fill:currentColor;}
 .pl2-tool.pt-reset{padding:4px 11px;color:var(--grey);font-size:14px;line-height:1;cursor:pointer;}
@@ -1935,8 +2012,8 @@ h1.title.sz-hero{
   .pl2-t{font-size:17px;}
   .pl2-sub{font-size:11px;}
 }
-.pl-link{display:inline-flex;align-items:center;gap:7px;margin-top:18px;font-size:13px;color:var(--amber);text-decoration:none;border:1px solid rgba(201,248,57,.3);border-radius:999px;padding:9px 18px;transition:.2s;}
-.pl-link:hover{background:rgba(201,248,57,.1);border-color:var(--amber);}
+.pl-link{display:inline-flex;align-items:center;gap:7px;margin-top:18px;font-size:13px;color:var(--amber);text-decoration:none;border:1px solid rgba(var(--rgb-amber),.3);border-radius:999px;padding:9px 18px;transition:.2s;}
+.pl-link:hover{background:rgba(var(--rgb-amber),.1);border-color:var(--amber);}
 .pl-dots{display:flex;gap:6px;justify-content:center;margin-top:16px;}
 .pl-dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:.2s;}
 .pl-dot.act{background:var(--amber);width:20px;border-radius:4px;}
@@ -2065,14 +2142,14 @@ h1.title.sz-hero{
 body.demo #demoBtn{opacity:1;border-color:var(--amber);color:#0A1209;background:var(--amber);font-weight:700;}
 /* barra de comandos de la demo */
 #demoBar{position:fixed;bottom:52px;left:14px;z-index:8000;display:none;flex-direction:column;gap:7px;
-  background:rgba(7,13,6,.92);border:1px solid rgba(201,248,57,.35);border-radius:14px;padding:12px;
+  background:rgba(7,13,6,.92);border:1px solid rgba(var(--rgb-amber),.35);border-radius:14px;padding:12px;
   backdrop-filter:blur(10px);max-width:250px;box-shadow:0 18px 40px -12px rgba(0,0,0,.8);}
 body.demo #demoBar{display:flex;}
 #demoBar .dm-h{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber);font-weight:700;}
 #demoBar .dm-s{font-size:10.5px;color:var(--grey);line-height:1.4;margin:-3px 0 3px;}
-#demoBar button{background:rgba(201,248,57,.08);border:1px solid rgba(201,248,57,.28);color:var(--bone);
+#demoBar button{background:rgba(var(--rgb-amber),.08);border:1px solid rgba(var(--rgb-amber),.28);color:var(--bone);
   border-radius:9px;padding:8px 11px;font-size:11.5px;cursor:pointer;font-family:'Inter';text-align:left;transition:.16s;}
-#demoBar button:hover{background:rgba(201,248,57,.2);border-color:var(--amber);}
+#demoBar button:hover{background:rgba(var(--rgb-amber),.2);border-color:var(--amber);}
 #demoBar button.out{border-color:rgba(255,120,120,.35);color:#ff9a9a;}
 /* franja de aviso arriba, para no confundir la demo con el club real */
 body.demo::before{content:'🧪 MODO DEMO — nada de esto toca tu club';position:fixed;top:0;left:0;right:0;z-index:9000;
@@ -2147,8 +2224,8 @@ body.demo #app{padding-top:20px;}
 .vs-tally span{display:block;font-size:10.5px;color:var(--grey);letter-spacing:.08em;text-transform:uppercase;margin-top:1px;}
 .vs-next-btn{margin:10px auto 0;display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:13px;
   padding:9px 20px;border-radius:999px;cursor:pointer;color:#0A1209;background:var(--amber);border:none;
-  box-shadow:0 10px 24px -8px rgba(201,248,57,.55);transition:transform .2s var(--ease-pop),box-shadow .2s;}
-.vs-next-btn:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 16px 30px -8px rgba(201,248,57,.7);}
+  box-shadow:0 10px 24px -8px rgba(var(--rgb-amber),.55);transition:transform .2s var(--ease-pop),box-shadow .2s;}
+.vs-next-btn:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 16px 30px -8px rgba(var(--rgb-amber),.7);}
 @media (hover:none){ .vs-next-btn{padding:12px 22px;font-size:15px;} }
 
 /* full-bleed: el cuadro rompe el margen de la página y usa TODO el ancho de la ventana;
@@ -2596,7 +2673,7 @@ body.demo #app{padding-top:20px;}
 .st-mid small{font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--grey);opacity:.6;}
 .st-band{
   margin-top:10px;padding:12px 18px;border-radius:12px;
-  background:linear-gradient(90deg, rgba(201,248,57,.09), rgba(201,248,57,.02));
+  background:linear-gradient(90deg, rgba(var(--rgb-amber),.09), rgba(var(--rgb-amber),.02));
   border-left:2px solid var(--amber);font-size:13px;color:var(--bone-dim);
 }
 .st-band.gold{background:linear-gradient(90deg, rgba(232,195,74,.1), rgba(232,195,74,.02));border-left-color:#E8C34A;}
@@ -2634,8 +2711,8 @@ body.demo #app{padding-top:20px;}
 /* las barras de color abren la lista de libros: que se note que se tocan */
 .st-bar[data-sub]{cursor:pointer;padding:5px 8px;margin:-5px -8px;border-radius:9px;
   transition:background .18s;}
-.st-bar[data-sub]:hover{background:rgba(201,248,57,.06);}
-.st-bar[data-sub].elegido{background:rgba(201,248,57,.1);}
+.st-bar[data-sub]:hover{background:rgba(var(--rgb-amber),.06);}
+.st-bar[data-sub].elegido{background:rgba(var(--rgb-amber),.1);}
 .st-bar[data-sub].elegido .stb-l{color:var(--amber);font-weight:600;}
 
 /* ── entrada coreografiada: cada bloque y sus hijos suben al entrar en pantalla ── */
@@ -2735,10 +2812,10 @@ body.demo #app{padding-top:20px;}
 .nt-nueva{
   display:flex;align-items:center;gap:12px;width:100%;text-align:left;
   padding:11px 14px;margin-bottom:12px;cursor:pointer;
-  border:1px dashed var(--border);border-radius:14px;background:rgba(201,248,57,.04);
+  border:1px dashed var(--border);border-radius:14px;background:rgba(var(--rgb-amber),.04);
   color:var(--bone);font:inherit;transition:border-color .18s, background .18s;
 }
-.nt-nueva:hover{border-color:var(--amber);background:rgba(201,248,57,.09);}
+.nt-nueva:hover{border-color:var(--amber);background:rgba(var(--rgb-amber),.09);}
 .nt-nueva i{
   flex:none;width:26px;height:26px;border-radius:50%;background:var(--amber);color:var(--bg);
   display:grid;place-items:center;font-style:normal;font-weight:800;font-size:17px;line-height:1;
@@ -2829,7 +2906,7 @@ body.demo #app{padding-top:20px;}
 
 .nt-tapadas{
   margin-top:11px;padding:9px 12px;border-radius:11px;
-  background:rgba(201,248,57,.05);border:1px solid var(--border-soft);
+  background:rgba(var(--rgb-amber),.05);border:1px solid var(--border-soft);
   font-size:11.5px;line-height:1.5;color:var(--bone-dim);
 }
 
@@ -2977,7 +3054,7 @@ body.demo #app{padding-top:20px;}
 .vg2-tick::after{content:'';position:absolute;left:50%;bottom:0;transform:translateX(-50%);
   width:1px;height:8px;background:var(--border);transition:.22s;}
 .vg2-tick:hover::after{background:var(--bone-dim);height:14px;}
-.vg2-tick.on::after{background:var(--amber);width:2px;height:18px;box-shadow:0 0 8px rgba(201,248,57,.55);}
+.vg2-tick.on::after{background:var(--amber);width:2px;height:18px;box-shadow:0 0 8px rgba(var(--rgb-amber),.55);}
 .vg2-hint{flex:none;font-size:9px;letter-spacing:.22em;color:var(--grey);padding-bottom:3px;}
 @media (max-width:640px){
   .vg2-caption{position:static;width:auto;padding:14px 22px 0;}
@@ -3135,7 +3212,7 @@ body.demo #app{padding-top:20px;}
   display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;}
 .cab-ficha-cara.d1{--dcol:#7CC85A;} .cab-ficha-cara.d2{--dcol:#E8C34A;} .cab-ficha-cara.d3{--dcol:#E06A5E;}
 .cab-ficha.comun .cab-ficha-cara{border-color:var(--amber);
-  box-shadow:0 18px 34px -18px #000,0 0 0 1px rgba(201,248,57,.35),0 0 26px -12px var(--amber);}
+  box-shadow:0 18px 34px -18px #000,0 0 0 1px rgba(var(--rgb-amber),.35),0 0 26px -12px var(--amber);}
 .cab-ficha .sc-rr{width:16px;height:16px;padding:0;margin:0;font-size:8.5px;
   border-radius:50%;line-height:1;flex:none;}
 /* compacta: cuando el alto no da, el texto se achica en vez de salirse */
@@ -3305,8 +3382,8 @@ body.demo #app{padding-top:20px;}
 .col-sug{display:flex;align-items:center;justify-content:center;gap:9px;font-size:12px;color:var(--bone-dim);
   margin:12px 0 2px;flex-wrap:wrap;}
 .col-sug-btn{font-size:11px;padding:4px 11px;border-radius:999px;cursor:pointer;
-  background:rgba(201,248,57,.12);border:1px solid rgba(201,248,57,.4);color:var(--amber);font-family:'Inter';}
-.col-sug-btn:hover{background:rgba(201,248,57,.24);}
+  background:rgba(var(--rgb-amber),.12);border:1px solid rgba(var(--rgb-amber),.4);color:var(--amber);font-family:'Inter';}
+.col-sug-btn:hover{background:rgba(var(--rgb-amber),.24);}
 .col-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:11px;margin-top:14px;}
 .col-card{text-align:left;padding:13px;border-radius:14px;cursor:pointer;color:var(--bone);
   background:linear-gradient(160deg,color-mix(in srgb,var(--cc) 13%,transparent),rgba(0,0,0,.2));
@@ -3509,7 +3586,7 @@ body.demo #app{padding-top:20px;}
   opacity:0;transform:translateY(12px);animation:soIn .5s var(--ease-out) forwards;
   animation-delay:calc(var(--i) * 32ms);}
 @keyframes soIn{to{opacity:1;transform:none;}}
-.so-rk-fila.podio{background:linear-gradient(120deg,rgba(201,248,57,.1),var(--card));
+.so-rk-fila.podio{background:linear-gradient(120deg,rgba(var(--rgb-amber),.1),var(--card));
   border-color:color-mix(in srgb,var(--amber) 35%,transparent);}
 .so-rk-fila.multi{border-style:dashed;}
 .so-rk-n{width:44px;flex:none;text-align:center;font-family:'Fraunces',serif;font-size:20px;
@@ -3549,7 +3626,7 @@ body.demo #app{padding-top:20px;}
   border-radius:999px;background:var(--danger);opacity:.85;}
 /* ---- el cierre del año, dentro de estadísticas ---- */
 .so-invite{text-align:center;padding:26px 20px;border-radius:18px;
-  background:linear-gradient(150deg,rgba(201,248,57,.07),var(--card));border:1px dashed var(--border);}
+  background:linear-gradient(150deg,rgba(var(--rgb-amber),.07),var(--card));border:1px dashed var(--border);}
 .so-invite-t{font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:var(--bone);}
 .so-invite-s{font-size:12px;color:var(--bone-dim);margin:6px 0 16px;}
 .so-st{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;}
@@ -3657,7 +3734,7 @@ body.demo #app{padding-top:20px;}
 
 .wr-pod{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;}
 .wr-pod-x{padding:16px;border-radius:18px;text-align:center;background:var(--card);border:1px solid var(--border);}
-.wr-pod-x.mejor{background:linear-gradient(150deg,rgba(201,248,57,.12),var(--card));border-color:rgba(201,248,57,.34);}
+.wr-pod-x.mejor{background:linear-gradient(150deg,rgba(var(--rgb-amber),.12),var(--card));border-color:rgba(var(--rgb-amber),.34);}
 .wr-pod-cov{width:82px;aspect-ratio:2/3;margin:0 auto;border-radius:8px;background:#1a2416 center/cover no-repeat;
   box-shadow:0 12px 28px -14px #000;}
 .wr-pod-l{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--grey);margin-top:12px;}
@@ -3753,7 +3830,7 @@ body.demo #app{padding-top:20px;}
 /* el haz que se llena a medida que bajás por la historia */
 .hx-beam{position:absolute;left:9px;top:6px;width:2px;border-radius:2px;height:0;z-index:1;
   background:linear-gradient(180deg,#6BF7A6,var(--amber) 42%,#E8C34A 100%);
-  box-shadow:0 0 12px rgba(201,248,57,.5);transition:height .12s linear;
+  box-shadow:0 0 12px rgba(var(--rgb-amber),.5);transition:height .12s linear;
   -webkit-mask-image:linear-gradient(180deg,transparent,#000 6%,#000 100%);
   mask-image:linear-gradient(180deg,transparent,#000 6%,#000 100%);}
 /* la jornada a la que apunta la dirección se destaca un momento */
@@ -3822,7 +3899,7 @@ body.demo #app{padding-top:20px;}
 .hx-chips .k-win {background:rgba(232,195,74,.24);color:#ffdd7a;border:1px solid rgba(232,195,74,.55);}
 .hx-chips .k-res {background:rgba(232,150,74,.18);color:#f0b478;border:1px solid rgba(232,150,74,.36);}
 .hx-chips .k-out {background:rgba(255,110,110,.16);color:#ff9a9a;border:1px solid rgba(255,110,110,.34);}
-.hx-chips .k-pue {background:rgba(201,248,57,.14);color:var(--amber);border:1px solid rgba(201,248,57,.3);}
+.hx-chips .k-pue {background:rgba(var(--rgb-amber),.14);color:var(--amber);border:1px solid rgba(var(--rgb-amber),.3);}
 .hx-chips .k-anu {background:rgba(255,255,255,.06);color:var(--grey);border:1px solid var(--border);}
 .hx-chips .k-nadie{background:rgba(255,255,255,.03);color:var(--grey);border:1px solid var(--border-soft);opacity:.75;}
 .hx-flag b{font-weight:700;}
@@ -3911,7 +3988,7 @@ body.demo #app{padding-top:20px;}
   color:var(--bone-dim);display:inline-flex;align-items:center;gap:7px;transition:.2s;
 }
 .st-chip b{color:var(--grey);font-weight:600;font-size:10.5px;}
-.st-chip.hot{border-color:rgba(201,248,57,.35);background:rgba(201,248,57,.06);color:var(--bone);}
+.st-chip.hot{border-color:rgba(var(--rgb-amber),.35);background:rgba(var(--rgb-amber),.06);color:var(--bone);}
 .st-chip.hot b{color:var(--amber);}
 .st-chip.cand{border-color:rgba(232,195,74,.35);color:#E8C34A;background:rgba(232,195,74,.05);}
 .st-chip.big{font-size:14px;padding:8px 16px;}
@@ -3936,7 +4013,7 @@ body.demo #app{padding-top:20px;}
 /* — autoría: balanza — */
 .st-scale{display:flex;align-items:center;gap:0;height:52px;border-radius:12px;overflow:hidden;border:1px solid var(--border-soft);}
 .st-scale div{display:flex;align-items:center;justify-content:center;gap:9px;height:100%;transition:width 1s var(--ease-out);}
-.st-scale .f{background:linear-gradient(90deg, rgba(201,248,57,.25), rgba(201,248,57,.14));color:var(--bone);}
+.st-scale .f{background:linear-gradient(90deg, rgba(var(--rgb-amber),.25), rgba(var(--rgb-amber),.14));color:var(--bone);}
 .st-scale .m{background:rgba(30,61,38,.4);color:var(--bone-dim);}
 .st-scale b{font-family:'Fraunces',serif;font-weight:900;font-size:19px;}
 .st-scale span{font-size:10px;letter-spacing:.16em;text-transform:uppercase;}
@@ -4118,9 +4195,9 @@ body.demo #app{padding-top:20px;}
   position:relative;z-index:1;
   font-family:'Inter';font-weight:700;font-size:16px;border:none;cursor:pointer;
   background:var(--amber);color:#0A1209;border-radius:999px;padding:16px 40px;
-  box-shadow:0 12px 26px -8px rgba(201,248,57,.5);transition:.25s var(--ease-pop);
+  box-shadow:0 12px 26px -8px rgba(var(--rgb-amber),.5);transition:.25s var(--ease-pop);
 }
-.vt-go:hover{transform:translateY(-3px) scale(1.03);box-shadow:0 18px 34px -8px rgba(201,248,57,.7);}
+.vt-go:hover{transform:translateY(-3px) scale(1.03);box-shadow:0 18px 34px -8px rgba(var(--rgb-amber),.7);}
 .vt-go:disabled{opacity:.4;cursor:default;transform:none;}
 /* los tropes ya sorteados: SIN pastilla, el dibujo grande y a la vista */
 .vt-taken{position:relative;z-index:1;display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
@@ -4229,7 +4306,7 @@ body.demo #app{padding-top:20px;}
   font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;text-align:center;
   padding:4px 9px;border-radius:999px;border:1px solid var(--border);color:var(--grey);
 }
-.vr-tag.crit{border-color:rgba(201,248,57,.4);color:var(--amber);background:rgba(201,248,57,.06);}
+.vr-tag.crit{border-color:rgba(var(--rgb-amber),.4);color:var(--amber);background:rgba(var(--rgb-amber),.06);}
 .vr-tag.none{border-color:rgba(242,245,236,.12);color:var(--grey);opacity:.7;}
 .vr-t{font-size:10.5px;color:var(--bone-dim);text-align:center;line-height:1.2;}
 
@@ -4261,7 +4338,7 @@ body.demo #app{padding-top:20px;}
   width:46px;height:46px;border-radius:12px;font-size:22px;cursor:pointer;
   background:var(--card);border:1.5px solid var(--border);transition:.15s;
 }
-.sf-tap button:active, .sf-tap button.on{border-color:var(--amber);background:rgba(201,248,57,.12);transform:scale(1.08);}
+.sf-tap button:active, .sf-tap button.on{border-color:var(--amber);background:rgba(var(--rgb-amber),.12);transform:scale(1.08);}
 .soga-tap{display:flex;gap:14px;justify-content:center;margin-top:16px;}
 .soga-btn{
   flex:1;max-width:240px;padding:20px 12px;border-radius:16px;cursor:pointer;
@@ -6220,7 +6297,7 @@ const App = {
   /* tiñe el fondo ambiente; sin args vuelve al default */
   ambient(a, b){
     const el = $('#ambient');
-    el.style.setProperty('--am1', a || 'rgba(201,248,57,.055)');
+    el.style.setProperty('--am1', a || 'rgba(var(--rgb-amber),.055)');
     el.style.setProperty('--am2', b || 'rgba(22,64,32,.4)');
   },
 };
@@ -7979,7 +8056,7 @@ function findCommonBook(){
 
 async function screenUnanime(book){
   Flow.hide();
-  App.ambient('rgba(232,195,74,.1)', 'rgba(201,248,57,.07)');
+  App.ambient('rgba(232,195,74,.1)', 'rgba(var(--rgb-amber),.07)');
   Sound.ac();
   // trompetas
   const trumpet = (t0)=>{
@@ -12813,7 +12890,7 @@ const GAMES = [
 
 function screenGameSelect(){
   Flow.set(5);
-  App.ambient('rgba(201,248,57,.05)', 'rgba(50,24,60,.4)');
+  App.ambient('rgba(var(--rgb-amber),.05)', 'rgba(50,24,60,.4)');
   Sound.startMusic('lobby');
   show(`
     <div class="eyebrow">Los finalistas están listos</div>
@@ -12924,7 +13001,7 @@ function launchGame(g, tile){
 
 /* después de "Volver a jugar": repetir el mismo método o elegir otro */
 function offerReplay(){
-  App.ambient('rgba(201,248,57,.05)', 'rgba(50,24,60,.4)');
+  App.ambient('rgba(var(--rgb-amber),.05)', 'rgba(50,24,60,.4)');
   const g = currentGame;
   const ov = overlay(`
     <div class="ov-pop center" style="max-width:500px;">
@@ -18053,7 +18130,7 @@ function renderStats(container){
   };
   /* el aro de una sola medida: se llena hasta donde llega el promedio */
   const aro = (frac, centro, unidad)=>`<div class="st-aro"
-      style="background:conic-gradient(var(--amber) 0 ${(frac*360).toFixed(2)}deg, rgba(201,248,57,.13) ${(frac*360).toFixed(2)}deg 360deg)">
+      style="background:conic-gradient(var(--amber) 0 ${(frac*360).toFixed(2)}deg, rgba(var(--rgb-amber),.13) ${(frac*360).toFixed(2)}deg 360deg)">
       <div class="str-centro"><b>${centro}</b><em>${escapeHtml(unidad)}</em></div></div>`;
   /* una tarjeta del retrato: ojo arriba, título, y lo que le pongas adentro */
   const tarjeta = (ojo, titulo, cuerpo, pie) => `<section class="st-tar">
@@ -18097,7 +18174,7 @@ function renderStats(container){
   /* ribbon de géneros: monocromo con acento (nada de arcoíris) */
   const gTop = S.generos.slice(0,5);
   const gTot = gTop.reduce((s,x)=>s+x[1],0) || 1;
-  const GSHADE = ['var(--amber)','rgba(201,248,57,.6)','rgba(201,248,57,.38)','rgba(242,245,236,.22)','rgba(242,245,236,.12)'];
+  const GSHADE = ['var(--amber)','rgba(var(--rgb-amber),.6)','rgba(var(--rgb-amber),.38)','rgba(242,245,236,.22)','rgba(242,245,236,.12)'];
 
   /* autoría */
   const totAut = S.autoria.F + S.autoria.M || 1;
@@ -19708,6 +19785,11 @@ const HW_PALABRA = 'halloween';
 const HW_MURCIELAGO = `<svg viewBox="-0.0 -46.5 239.0 239.0" fill="currentColor" aria-hidden="true"><g transform="translate(0,146) scale(0.1,-0.1)"><path d="M2030 1265 c-98 -18 -139 -31 -230 -76 -128 -62 -217 -136 -342 -285 -58 -68 -133 -132 -126 -107 1 4 -1 25 -5 46 -6 27 -4 43 8 59 8 13 15 43 15 70 0 25 4 58 10 72 l9 25 -34 -20 c-19 -11 -46 -39 -61 -62 -23 -38 -30 -42 -65 -42 -31 0 -40 4 -45 20 -9 28 -51 83 -73 94 -17 9 -18 5 -16 -69 1 -45 7 -86 14 -94 9 -11 10 -20 2 -35 -6 -11 -11 -31 -11 -46 0 -22 -3 -24 -19 -15 -11 5 -54 51 -97 101 -111 131 -222 209 -374 262 -131 47 -270 59 -365 33 -27 -8 -42 -15 -32 -15 9 -1 17 -5 17 -11 0 -5 16 -12 35 -16 19 -3 35 -10 35 -15 0 -5 9 -9 19 -9 28 0 52 -11 45 -21 -3 -5 0 -9 6 -9 19 0 101 -83 121 -122 25 -49 34 -114 21 -161 l-10 -37 47 0 c141 0 261 -111 261 -242 0 -52 11 -60 42 -31 10 9 41 18 72 21 l54 4 54 -54 c69 -71 106 -116 124 -150 18 -34 24 -36 18 -5 -3 12 4 3 14 -21 10 -23 20 -41 23 -38 3 3 11 -15 18 -40 l13 -45 14 27 c8 14 14 34 14 44 0 31 12 53 20 40 5 -8 10 -2 15 18 3 17 12 33 19 35 7 3 27 30 45 61 65 116 136 169 196 146 15 -6 39 -19 53 -30 39 -31 47 -25 49 38 1 57 22 108 62 156 29 33 109 67 177 73 65 6 65 6 57 32 -27 86 7 218 73 282 32 31 47 58 24 44 -5 -3 -10 -2 -10 4 0 5 14 18 30 28 17 9 30 21 30 25 0 3 16 12 34 19 19 7 33 16 30 21 -3 4 9 8 26 8 28 0 30 2 16 15 -17 18 -63 18 -166 0z m-1693 -121 c-3 -3 -12 -4 -19 -1 -8 3 -5 6 6 6 11 1 17 -2 13 -5z"/></g></svg>`;
 const HW_CALABAZA = `<svg viewBox="-0.0 -6.5 342.0 342.0" fill="currentColor" aria-hidden="true"><g transform="translate(0,329) scale(0.1,-0.1)"><path d="M1884 3055 c-110 -41 -233 -133 -289 -217 -17 -23 -33 -45 -36 -48 -15 -12 -68 -130 -89 -197 -13 -40 -27 -73 -32 -73 -6 0 -35 7 -65 16 -36 10 -70 14 -97 10 -55 -9 -155 -55 -167 -77 -8 -17 -12 -17 -50 -4 -86 31 -231 8 -342 -53 -164 -90 -299 -258 -396 -492 -49 -119 -88 -271 -102 -392 -14 -129 -7 -360 15 -458 93 -428 368 -719 679 -720 61 0 81 4 95 18 18 18 20 17 71 -29 67 -60 163 -106 252 -121 95 -16 245 0 322 36 l57 26 55 -26 c128 -58 330 -55 453 6 68 34 91 49 134 93 26 27 29 28 50 13 57 -40 254 -8 369 59 207 121 352 352 415 663 24 116 25 142 21 297 -4 136 -10 192 -31 280 -14 61 -30 119 -35 130 -5 11 -19 49 -31 85 -62 179 -197 378 -322 472 -141 107 -343 159 -432 113 -28 -15 -31 -14 -57 11 -30 29 -145 74 -189 74 -15 0 -55 -8 -88 -19 l-60 -18 -22 29 c-48 65 -48 182 -1 237 11 13 21 26 23 29 6 14 79 64 108 74 48 16 54 39 21 84 -39 54 -108 114 -129 113 -9 0 -45 -11 -78 -24z m-659 -1084 c65 -146 73 -166 95 -222 12 -30 25 -58 30 -64 14 -19 41 -114 35 -125 -9 -14 -120 -12 -318 6 -201 18 -232 25 -231 47 1 8 22 46 46 84 25 37 86 131 136 208 49 77 100 153 113 169 l22 28 17 -22 c9 -12 34 -61 55 -109z m1072 88 c16 -23 33 -48 38 -56 6 -8 51 -78 102 -156 50 -78 96 -147 101 -153 16 -18 42 -72 42 -87 0 -8 -13 -17 -29 -20 -64 -13 -390 -38 -456 -35 -66 3 -70 4 -68 26 2 13 11 42 22 65 10 23 38 87 61 142 24 55 46 105 50 110 4 6 11 21 15 35 15 49 76 170 85 170 5 0 22 -19 37 -41z m-525 -528 c24 -41 46 -83 51 -91 4 -8 21 -37 37 -65 52 -86 56 -95 39 -106 -8 -5 -96 -9 -197 -9 -152 0 -184 2 -188 15 -5 13 138 291 156 305 4 3 12 15 19 28 17 31 30 19 83 -77z m-965 -210 c82 -61 227 -145 298 -171 l40 -16 3 -101 3 -102 37 -11 c20 -6 61 -18 90 -28 63 -20 71 -14 97 68 29 94 34 97 102 89 85 -11 377 -10 453 1 72 10 85 5 93 -39 3 -16 16 -52 29 -81 20 -46 25 -51 48 -47 53 10 146 39 158 49 8 7 12 41 12 104 l0 94 93 45 c50 25 101 50 112 57 11 7 45 29 75 48 30 19 73 49 94 67 37 31 66 42 66 26 0 -15 -52 -196 -60 -212 -5 -9 -18 -36 -29 -61 -120 -270 -389 -479 -664 -515 -54 -7 -53 -8 -85 115 l-18 65 -140 3 c-105 2 -144 -1 -151 -10 -6 -7 -18 -48 -27 -90 -10 -43 -21 -80 -27 -83 -5 -4 -48 1 -97 10 -64 12 -117 31 -202 73 -103 51 -125 67 -211 152 -96 95 -143 159 -198 269 -58 114 -108 291 -83 291 5 0 45 -27 89 -59z"/></g></svg>`;
 
+/* la araña y el fantasma los dibujo acá: son dos formas simples y no vale la
+   pena otro archivo de assets para esto */
+const HW_ARANA = `<svg viewBox="0 0 64 64" fill="currentColor" aria-hidden="true"><g stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"><path d="M26 30C18 26 14 20 12 14M38 30c8-4 12-10 14-16M25 35C16 34 10 31 6 26M39 35c9-1 15-4 19-9M26 40c-8 4-12 9-14 15M38 40c8 4 12 9 14 15"/></g><ellipse cx="32" cy="35" rx="11" ry="12"/><circle cx="32" cy="22" r="6.5"/><circle cx="29.4" cy="21" r="1.7" fill="#0B0611"/><circle cx="34.6" cy="21" r="1.7" fill="#0B0611"/></svg>`;
+const HW_FANTASMA = `<svg viewBox="0 0 64 64" fill="currentColor" aria-hidden="true"><path d="M32 6c11 0 19 8.6 19 19.4V56c0 1.6-1.9 2.5-3.1 1.4l-4.6-4.1a2 2 0 0 0-2.7.05L36.9 57a2 2 0 0 1-2.8 0l-3.4-3.3a2 2 0 0 0-2.8 0L24.5 57a2 2 0 0 1-2.8-.05l-4.3-4a2 2 0 0 0-2.7 0l-4.6 4.1C8.9 58.2 7 57.3 7 55.7V25.4C7 14.6 15 6 26 6z"/><ellipse cx="24" cy="26" rx="3.4" ry="4.4" fill="#0B0611"/><ellipse cx="40" cy="26" rx="3.4" ry="4.4" fill="#0B0611"/><ellipse cx="32" cy="37" rx="3.4" ry="4.6" fill="#0B0611"/></svg>`;
+
 /* ---------- encendido y apagado ---------- */
 const hwEncendido = ()=>{ try{ return localStorage.getItem(HW_KEY) === '1'; }catch(e){ return false; } };
 
@@ -19716,9 +19798,11 @@ function hwAplicar(on){
   const vieja = document.querySelector('#hwCapa');
   if(vieja) vieja.remove();
   hwPararAmbiente();
+  hwPararMusica();
   if(on){
     document.body.appendChild(hwCapa());
     hwArrancarAmbiente();
+    hwArrancarMusica();
   }
 }
 
@@ -19726,28 +19810,85 @@ async function hwToggle(forzar){
   const on = (forzar === undefined) ? !hwEncendido() : !!forzar;
   try{ localStorage.setItem(HW_KEY, on ? '1' : '0'); }catch(e){}
   hwAplicar(on);
-  if(on){ hwRisa(); setTimeout(hwOrgano, 420); try{ toast('🎃 Modo Halloween. Que alguien apague la luz.'); }catch(e){} }
-  else { try{ toast('🕯 Se terminó. Volvió el verde.'); }catch(e){} }
+  if(on){
+    /* 🌩 LA ENTRADA. Un trueno que asusta de verdad: el relámpago primero —la
+       luz llega antes que el sonido, como en la vida— y el estruendo encima.
+       La pantalla tiembla. No es sutil a propósito: es el único momento del
+       modo que pide ser un golpe. */
+    hwRelampago(true);
+    hwTrueno(true);
+    hwSacudir();
+    setTimeout(()=>{ hwRisa(); }, 1100);
+    setTimeout(()=>{ hwOrgano(); }, 1500);
+    try{ toast('🎃 Modo Halloween. Que alguien apague la luz.'); }catch(e){}
+  } else {
+    try{ toast('🕯 Se terminó. Volvió el verde.'); }catch(e){}
+  }
   return on;
 }
 
 /* ---------- la capa de adornos ----------
-   Cuelga del body (ver el aviso de arriba sobre `filter` y `position:fixed`). */
+   Cuelga del body y va detrás del contenido (ver el aviso de arriba sobre
+   `filter` y `position:fixed`, y la luna que tapaba el botón de empezar). */
 function hwCapa(){
   const d = document.createElement('div');
   d.id = 'hwCapa';
   d.setAttribute('aria-hidden', 'true');
   d.innerHTML = `
     <i class="hw-luna"></i>
+    <i class="hw-niebla n1"></i><i class="hw-niebla n2"></i>
     <i class="hw-tela tl"></i><i class="hw-tela tr"></i>
     <span class="hw-bat b1">${HW_MURCIELAGO}</span>
     <span class="hw-bat b2">${HW_MURCIELAGO}</span>
     <span class="hw-bat b3">${HW_MURCIELAGO}</span>
+    <span class="hw-fantasma">${HW_FANTASMA}</span>
+    <span class="hw-hilo"><i></i><span class="hw-arana">${HW_ARANA}</span></span>
     <span class="hw-zapallo">${HW_CALABAZA}</span>`;
   return d;
 }
 
-/* ---------- el sonido, todo sintetizado ---------- */
+/* el relámpago va aparte de la capa: tiene que taparlo TODO, hasta la ficha
+   abierta, así que vive arriba de todo y se borra solo */
+function hwRelampago(fuerte){
+  const f = document.createElement('div');
+  f.className = 'hw-rayo' + (fuerte ? ' fuerte' : '');
+  document.body.appendChild(f);
+  setTimeout(()=>f.remove(), fuerte ? 1200 : 700);
+}
+function hwSacudir(){
+  const app = document.querySelector('#app');
+  if(!app) return;
+  app.classList.add('hw-tiembla');
+  setTimeout(()=>app.classList.remove('hw-tiembla'), 700);
+}
+
+/* ---------- el sonido, todo sintetizado ----------
+   Ni un kilobyte de audio nuevo: todo sale del motor de 02-audio.js. */
+
+/* 🌩 el trueno. Son tres cosas: el chasquido (ruido agudo que cae de golpe),
+   el cuerpo (ruido grave largo) y el retumbe (un seno muy bajo que se apaga
+   despacio). Juntas suenan a tormenta; cualquiera sola suena a nada. */
+function hwTrueno(fuerte){
+  if(!Sound.isEnabled || !Sound.isEnabled()) return;
+  const c = Sound.ac(); if(!c) return;
+  const t0 = c.currentTime + 0.01;
+  const v = fuerte ? 1 : 0.42;
+  // el chasquido
+  Sound.noise({ dur:0.22, vol:0.55*v, lp:7000, sweepTo:420, hp:300, wet:0.35, at:t0 });
+  Sound.noise({ dur:0.1,  vol:0.42*v, lp:9000, sweepTo:2200, hp:1200, at:t0 });
+  // el cuerpo, que entra apenas después y dura
+  Sound.noise({ dur:2.6, vol:0.4*v, lp:420, sweepTo:90, wet:0.85, at:t0+0.05 });
+  Sound.noise({ dur:1.7, vol:0.26*v, lp:900, sweepTo:160, wet:0.7, at:t0+0.26 });
+  // el retumbe
+  Sound.tone({ freq:52, glideTo:28, dur:2.9, type:'sine', vol:0.5*v, wet:0.6, at:t0+0.04 });
+  Sound.tone({ freq:78, glideTo:38, dur:2.2, type:'triangle', vol:0.2*v, wet:0.7, at:t0+0.08 });
+  // y el eco lejano, que es lo que lo vuelve tormenta y no portazo
+  if(fuerte){
+    Sound.noise({ dur:2.2, vol:0.16, lp:300, sweepTo:70, wet:0.9, at:t0+0.9 });
+    Sound.tone({ freq:40, glideTo:24, dur:2.4, type:'sine', vol:0.17, wet:0.8, at:t0+1.0 });
+  }
+}
+
 function hwRisa(at){
   if(!Sound.isEnabled || !Sound.isEnabled()) return;
   const c = Sound.ac(); if(!c) return;
@@ -19789,21 +19930,98 @@ function hwCampana(){
   Sound.tone({ freq:110, dur:2.6, type:'sine', vol:0.07, wet:0.85 });
   Sound.tone({ freq:164.81, dur:2.2, type:'sine', vol:0.035, wet:0.85 });
 }
+/* viento: ruido muy filtrado y largo, con la frecuencia barriendo despacio */
+function hwViento(){
+  if(!Sound.isEnabled || !Sound.isEnabled()) return;
+  Sound.noise({ dur:4.2, vol:0.05, lp:520, sweepTo:180, hp:90, wet:0.85 });
+  Sound.noise({ dur:3.4, vol:0.03, lp:300, sweepTo:700, hp:60, wet:0.9 });
+}
+/* búho: dos notas, la segunda más baja. Es literalmente eso */
+function hwBuho(){
+  if(!Sound.isEnabled || !Sound.isEnabled()) return;
+  const c = Sound.ac(); if(!c) return;
+  const t = c.currentTime + 0.02;
+  Sound.tone({ freq:420, glideTo:360, dur:0.3, type:'sine', vol:0.07, wet:0.8, at:t });
+  Sound.tone({ freq:330, glideTo:300, dur:0.42, type:'sine', vol:0.06, wet:0.8, at:t+0.42 });
+}
+/* cadenas: golpecitos agudos y cortos, desordenados */
+function hwCadenas(){
+  if(!Sound.isEnabled || !Sound.isEnabled()) return;
+  const c = Sound.ac(); if(!c) return;
+  const t = c.currentTime + 0.02;
+  for(let i=0;i<7;i++)
+    Sound.noise({ dur:0.07, vol:0.035, lp:9000, hp:2600, wet:0.7, at:t + i*0.07 + Math.random()*0.04 });
+}
+/* latido: dos golpes graves, el segundo más flojo. El del corazón que se acelera */
+function hwLatido(){
+  if(!Sound.isEnabled || !Sound.isEnabled()) return;
+  const c = Sound.ac(); if(!c) return;
+  const t = c.currentTime + 0.02;
+  for(let i=0;i<4;i++){
+    const b = t + i*0.78;
+    Sound.tone({ freq:62, glideTo:40, dur:0.2, type:'sine', vol:0.1, wet:0.4, at:b });
+    Sound.tone({ freq:54, glideTo:34, dur:0.17, type:'sine', vol:0.06, wet:0.4, at:b+0.26 });
+  }
+}
 
-/* cada tanto pasa algo. Muy de vez en cuando: si suena seguido deja de dar
-   miedo y empieza a molestar. */
+/* ---------- la música ----------
+   Una cajita de música en la menor, lenta, con un bajo que la sostiene. Va con
+   su propio reloj y NO usa Sound.PATTERNS: ese secuenciador es de a uno, y si
+   lo ocupara, cualquier minijuego le pisaría la banda sonora (o se la pisaría
+   él). Así conviven: esto queda abajo, como atmósfera. */
+const HW_MELODIA = [
+  // la menor: la-do-mi-do · sol#-si-mi-si · (la octava arriba la hace la cajita)
+  440.00, 523.25, 659.25, 523.25,  415.30, 493.88, 659.25, 493.88,
+  440.00, 523.25, 698.46, 523.25,  415.30, 493.88, 587.33, 493.88,
+];
+const HW_BAJO = [110.00, 0, 0, 0, 103.83, 0, 0, 0, 110.00, 0, 0, 0, 98.00, 0, 0, 0];
+let hwMusica = null;
+function hwArrancarMusica(){
+  hwPararMusica();
+  const spb = 0.46;                       // lento: es atmósfera, no un tema
+  let paso = 0, prox = 0;
+  const tic = ()=>{
+    if(!Sound.isEnabled || !Sound.isEnabled()) return;
+    const c = Sound.ac(); if(!c) return;
+    if(!prox) prox = c.currentTime + 0.1;
+    while(prox < c.currentTime + 0.5){
+      const i = paso % HW_MELODIA.length;
+      const f = HW_MELODIA[i];
+      if(f){
+        // dos osciladores: el agudo es la púa de la cajita, el otro le da cuerpo
+        Sound.tone({ freq:f*2, dur:0.5, type:'triangle', vol:0.035, wet:0.9, at:prox });
+        Sound.tone({ freq:f,   dur:0.4, type:'sine',     vol:0.022, wet:0.8, at:prox });
+      }
+      const b = HW_BAJO[i];
+      if(b) Sound.tone({ freq:b, dur:1.5, type:'sine', vol:0.045, wet:0.5, at:prox });
+      paso++; prox += spb;
+    }
+  };
+  hwMusica = setInterval(tic, 120);
+}
+function hwPararMusica(){ if(hwMusica){ clearInterval(hwMusica); hwMusica = null; } }
+
+/* ---------- lo que pasa cada tanto ----------
+   Muy de vez en cuando: si suena seguido deja de dar miedo y empieza a
+   molestar. El relámpago viene con su trueno flojo, no con el de la entrada —
+   ese asusta una vez y está bien así. */
 let hwAmbiente = null;
 function hwArrancarAmbiente(){
   hwPararAmbiente();
   const unaVez = ()=>{
     const r = Math.random();
-    if(r < 0.34) hwCrujido();
-    else if(r < 0.62) hwChillido();
-    else if(r < 0.86) hwCampana();
+    if(r < 0.17){ hwRelampago(); setTimeout(()=>hwTrueno(false), 260 + Math.random()*500); }
+    else if(r < 0.32) hwViento();
+    else if(r < 0.45) hwCrujido();
+    else if(r < 0.57) hwBuho();
+    else if(r < 0.68) hwChillido();
+    else if(r < 0.78) hwCadenas();
+    else if(r < 0.88) hwCampana();
+    else if(r < 0.95) hwLatido();
     else hwRisa();
-    hwAmbiente = setTimeout(unaVez, 24000 + Math.random()*36000);
+    hwAmbiente = setTimeout(unaVez, 16000 + Math.random()*26000);
   };
-  hwAmbiente = setTimeout(unaVez, 14000 + Math.random()*16000);
+  hwAmbiente = setTimeout(unaVez, 9000 + Math.random()*12000);
 }
 function hwPararAmbiente(){ if(hwAmbiente){ clearTimeout(hwAmbiente); hwAmbiente = null; } }
 
@@ -19821,7 +20039,8 @@ addEventListener('keydown', e=>{
   if(hwBuffer === HW_PALABRA){ hwBuffer = ''; hwToggle(); }
 });
 
-/* al abrir, si quedó encendido se vuelve a poner */
+/* al abrir, si quedó encendido se vuelve a poner (sin el trueno: asustar al
+   que entra a mirar la bóveda no era la idea) */
 if(hwEncendido()) hwAplicar(true);
 
 /* ============================================================
@@ -19829,7 +20048,7 @@ if(hwEncendido()) hwAplicar(true);
    ============================================================ */
 function screenRoulette(){
   Flow.set(5);
-  App.ambient('rgba(201,248,57,.04)', 'rgba(40,16,12,.4)');
+  App.ambient('rgba(var(--rgb-amber),.04)', 'rgba(40,16,12,.4)');
   let alive = State.finalists.slice();
   const fellThisRun = [];              // para "volver a girar"
   alive.forEach(b=>ensureColor(b));
@@ -20051,7 +20270,7 @@ async function celebrate(winner, fellThisRun){
   setTimeout(()=>Sound.playCelebration(), 500);   // canción sorpresa (sin mostrar el nombre)
   ensureColor(winner).then(c=>{
     $('#vignette').classList.remove('on');
-    App.ambient(winner._haloColor.replace('0.55','0.14'), 'rgba(201,248,57,.06)');
+    App.ambient(winner._haloColor.replace('0.55','0.14'), 'rgba(var(--rgb-amber),.06)');
     const wash = document.createElement('div');
     wash.style.cssText = `position:fixed;inset:0;z-index:4000;pointer-events:none;
       background:radial-gradient(circle at 50% 42%, ${winner._haloColor.replace('0.55','0.35')} 0%, transparent 58%);

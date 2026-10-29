@@ -1684,7 +1684,7 @@ function findCommonBook(){
 
 async function screenUnanime(book){
   Flow.hide();
-  App.ambient('rgba(232,195,74,.1)', 'rgba(201,248,57,.07)');
+  App.ambient('rgba(232,195,74,.1)', 'rgba(var(--rgb-amber),.07)');
   Sound.ac();
   // trompetas
   const trumpet = (t0)=>{

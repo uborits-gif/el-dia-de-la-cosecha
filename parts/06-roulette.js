@@ -4,7 +4,7 @@
    ============================================================ */
 function screenRoulette(){
   Flow.set(5);
-  App.ambient('rgba(201,248,57,.04)', 'rgba(40,16,12,.4)');
+  App.ambient('rgba(var(--rgb-amber),.04)', 'rgba(40,16,12,.4)');
   let alive = State.finalists.slice();
   const fellThisRun = [];              // para "volver a girar"
   alive.forEach(b=>ensureColor(b));
@@ -226,7 +226,7 @@ async function celebrate(winner, fellThisRun){
   setTimeout(()=>Sound.playCelebration(), 500);   // canción sorpresa (sin mostrar el nombre)
   ensureColor(winner).then(c=>{
     $('#vignette').classList.remove('on');
-    App.ambient(winner._haloColor.replace('0.55','0.14'), 'rgba(201,248,57,.06)');
+    App.ambient(winner._haloColor.replace('0.55','0.14'), 'rgba(var(--rgb-amber),.06)');
     const wash = document.createElement('div');
     wash.style.cssText = `position:fixed;inset:0;z-index:4000;pointer-events:none;
       background:radial-gradient(circle at 50% 42%, ${winner._haloColor.replace('0.55','0.35')} 0%, transparent 58%);

@@ -564,7 +564,7 @@ function renderStats(container){
   };
   /* el aro de una sola medida: se llena hasta donde llega el promedio */
   const aro = (frac, centro, unidad)=>`<div class="st-aro"
-      style="background:conic-gradient(var(--amber) 0 ${(frac*360).toFixed(2)}deg, rgba(201,248,57,.13) ${(frac*360).toFixed(2)}deg 360deg)">
+      style="background:conic-gradient(var(--amber) 0 ${(frac*360).toFixed(2)}deg, rgba(var(--rgb-amber),.13) ${(frac*360).toFixed(2)}deg 360deg)">
       <div class="str-centro"><b>${centro}</b><em>${escapeHtml(unidad)}</em></div></div>`;
   /* una tarjeta del retrato: ojo arriba, título, y lo que le pongas adentro */
   const tarjeta = (ojo, titulo, cuerpo, pie) => `<section class="st-tar">
@@ -608,7 +608,7 @@ function renderStats(container){
   /* ribbon de géneros: monocromo con acento (nada de arcoíris) */
   const gTop = S.generos.slice(0,5);
   const gTot = gTop.reduce((s,x)=>s+x[1],0) || 1;
-  const GSHADE = ['var(--amber)','rgba(201,248,57,.6)','rgba(201,248,57,.38)','rgba(242,245,236,.22)','rgba(242,245,236,.12)'];
+  const GSHADE = ['var(--amber)','rgba(var(--rgb-amber),.6)','rgba(var(--rgb-amber),.38)','rgba(242,245,236,.22)','rgba(242,245,236,.12)'];
 
   /* autoría */
   const totAut = S.autoria.F + S.autoria.M || 1;
